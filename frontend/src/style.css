@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.safe-height {
+  height: env(safe-area-inset-bottom);
+  height: constant(safe-area-inset-bottom);
+  /* height: 88px; */
+  background-color: var(--weui-BG-1);
+}
+.safe-height--no-color {
+  background-color: unset;
+}
+.scroll {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll--fix {
+  overscroll-behavior: auto;
+}
+.scroll--hidden::-webkit-scrollbar {
+  display: none;
+}
+.dialog-touch-container {
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.__a {
+  animation: __a 0.1s;
+}
+
+@keyframes __a {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
