@@ -36,6 +36,20 @@ const configure = {
         title: "PDF",
         pathname: "/pdf_preview",
       },
+      text_preview: {
+        title: "详情",
+        pathname: "/preview",
+      },
+      settings_layout: {
+        title: "设置",
+        pathname: "/settings",
+        children: {
+          system: {
+            title: "系统信息",
+            pathname: "/settings_system",
+          },
+        },
+      },
       login: {
         title: "登录",
         pathname: "/login",
@@ -59,3 +73,7 @@ export type PageKeys = PageKeysType<typeof configure>;
 const result = build<PageKeys>(configure);
 export const routes = result.routes;
 export const routesWithPathname = result.routesWithPathname;
+
+export function mapPathnameWithPageKey(key: PageKeys) {
+  return routes[key].pathname;
+}

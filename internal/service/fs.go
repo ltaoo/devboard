@@ -125,6 +125,45 @@ func (f *FileService) OpenFileDialog() *Result {
 	})
 }
 
+type SaveFileToBody struct {
+	Filename string `json:"filename"`
+	Content  string `json:"content"`
+}
+
+func (f *FileService) SaveFileTo(body SaveFileToBody) *Result {
+	if body.Filename == "" {
+		return Error(fmt.Errorf("缺少 filename 参数"))
+	}
+	if body.Content == "" {
+		return Error(fmt.Errorf("缺少 content 参数"))
+	}
+	dialog := application.SaveFileDialog()
+	dialog.CanCreateDirectories(true)
+	dialog.SetFilename(body.Filename)
+	// dialog.SetTitle("Save Document")
+	// dialog.SetDefaultFilename("document.txt")
+	// dialog.SetFilters([]*application.FileFilter{
+	// 	{
+	// 		DisplayName: "Text Files (*.txt)",
+	// 		Pattern:     "*.txt",
+	// 	},
+	// })
+
+	if path, err := dialog.PromptForSingleSelection(); err == nil {
+		fmt.Println("select the path save file to", path)
+		file, err := os.Create(filepath.Join(path, body.Filename))
+		if err != nil {
+			return Error(err)
+		}
+		defer file.Close()
+		_, err = file.Write([]byte(body.Content))
+		if err != nil {
+			return Error(err)
+		}
+	}
+	return Ok(map[string]interface{}{})
+}
+
 type OpenPreviewWindowBody struct {
 	MimeType string `json:"mime_type"`
 	Filepath string `json:"filepath"`

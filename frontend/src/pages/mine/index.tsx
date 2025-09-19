@@ -22,17 +22,6 @@ import {
 import { ListCore } from "@/domains/list";
 import { RequestCore } from "@/domains/request";
 import {
-  fetchWorkoutActionHistoryListOfWorkoutDay,
-  fetchWorkoutActionHistoryListOfWorkoutDayProcess,
-} from "@/biz/workout_action/services";
-import { ActivityCalendar } from "@/biz/activity_calendar";
-import {
-  fetchFinishedWorkoutDayList,
-  fetchFinishedWorkoutDayListProcess,
-  fetchWorkoutDayList,
-  fetchWorkoutDayListProcess,
-} from "@/biz/workout_day/services";
-import {
   createAccount,
   fetch_user_profile,
   fetch_user_profile_process,
@@ -41,12 +30,10 @@ import {
 import { fetchGiftCardProfile, usingGiftCard } from "@/biz/subscription/services";
 import { Result } from "@/domains/result";
 import { SubscriptionStatus } from "@/biz/subscription/constants";
-import { Avatars } from "@/biz/student/constants";
 import { SelectViewModel } from "@/biz/select_base";
 import { CalendarCore } from "@/domains/ui/calendar";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
 import { UserAccountForm } from "@/biz/user/account_form";
-import { WorkoutDayStatus } from "@/biz/workout_day/constants";
 import { Select } from "@/components/ui/select";
 
 function HomeMineViewModel(props: ViewComponentProps) {
@@ -55,25 +42,6 @@ function HomeMineViewModel(props: ViewComponentProps) {
       profile: new RequestCore(fetch_user_profile, { process: fetch_user_profile_process, client: props.client }),
       update_profile: new RequestCore(update_user_profile, { client: props.client }),
       create_account: new RequestCore(createAccount, { client: props.client }),
-    },
-    workout_action_history: {
-      list: new ListCore(
-        new RequestCore(fetchWorkoutActionHistoryListOfWorkoutDay, {
-          process: fetchWorkoutActionHistoryListOfWorkoutDayProcess,
-          client: props.client,
-        })
-      ),
-    },
-    workout_day: {
-      finished_list: new ListCore(
-        new RequestCore(fetchFinishedWorkoutDayList, {
-          process: fetchFinishedWorkoutDayListProcess,
-          client: props.client,
-        })
-      ),
-      list: new ListCore(
-        new RequestCore(fetchWorkoutDayList, { process: fetchWorkoutDayListProcess, client: props.client })
-      ),
     },
     gift_card: {
       profile: new RequestCore(fetchGiftCardProfile, { client: props.client }),
@@ -99,13 +67,7 @@ function HomeMineViewModel(props: ViewComponentProps) {
       ui.$input_nickname.setValue(_nickname);
       ui.$dialog_nickname_update.show();
     },
-    showDialogAvatarURLUpdate() {
-      const matched = Avatars.find((v) => v.url === _avatar_url);
-      if (matched) {
-        ui.$select_avatar.select(matched);
-      }
-      ui.$dialog_avatar_update.show();
-    },
+    showDialogAvatarURLUpdate() {},
     clearGiftCardProfile() {
       ui.$input_gift_card_code.clear();
       // @ts-ignore
@@ -117,27 +79,6 @@ function HomeMineViewModel(props: ViewComponentProps) {
       const first_day = ui.$calendar.state.weeks[0].dates[0];
       const last_week = ui.$calendar.state.weeks[ui.$calendar.state.weeks.length - 1];
       const last_day = last_week.dates[last_week.dates.length - 1];
-      request.workout_day.finished_list.init({
-        finished_at_start: first_day.yyyy,
-        finished_at_end: last_day.yyyy,
-      });
-      // if (r.error) {
-      //   props.app.tip({
-      //     text: [r.error.message],
-      //   });
-      //   return;
-      // }
-      // const vv = r.data.dataSource.filter((v) => {
-      //   return v.day !== null;
-      // }) as { day: string }[];
-      // ui.$calendar.methods.setData(
-      //   vv.map((v) => {
-      //     return {
-      //       day: v.day,
-      //       num: 1,
-      //     };
-      //   })
-      // );
     },
     async refreshMyProfile() {
       const r = await request.mine.profile.run();
@@ -181,21 +122,7 @@ function HomeMineViewModel(props: ViewComponentProps) {
       props.app.$user.updateToken(r2.data);
       return Result.Ok(r2.data);
     },
-    async handleClickDate(date: { yyyy: string }) {
-      const [finished_at_start, finished_at_end] = [
-        dayjs(date.yyyy).startOf("date").toDate(),
-        dayjs(date.yyyy).endOf("date").toDate(),
-      ];
-      const r = await request.workout_day.list.search({
-        finished_at_start,
-        finished_at_end,
-        status: WorkoutDayStatus.Finished,
-      });
-      if (r.error) {
-        return;
-      }
-      ui.$dialog_calendar_workout_days.show();
-    },
+    async handleClickDate(date: { yyyy: string }) {},
     async handleClickPrevMonthReport() {
       const v = ui.$select_month.value;
       const today = dayjs("2025/06/01");
@@ -331,7 +258,7 @@ function HomeMineViewModel(props: ViewComponentProps) {
     }),
     $select_avatar: SelectViewModel({
       defaultValue: [],
-      list: Avatars,
+      list: [],
       multiple: false,
     }),
     $dialog_avatar_update: new DialogCore(),
@@ -342,30 +269,7 @@ function HomeMineViewModel(props: ViewComponentProps) {
       },
     }),
     $btn_avatar_submit: new ButtonCore({
-      async onClick() {
-        const v = ui.$select_avatar.value;
-        if (v.length === 0) {
-          props.app.tip({
-            text: ["请选择头像"],
-          });
-          return;
-        }
-        ui.$btn_nickname_submit.setLoading(true);
-        const r = await request.mine.update_profile.run({ avatar_url: v[0].key });
-        ui.$btn_nickname_submit.setLoading(false);
-        if (r.error) {
-          props.app.tip({
-            text: [r.error.message],
-          });
-          return;
-        }
-        _avatar_url = v[0].url;
-        props.app.tip({
-          text: ["修改成功"],
-        });
-        methods.refresh();
-        ui.$dialog_avatar_update.hide();
-      },
+      async onClick() {},
     }),
     $dialog_gift_card: new DialogCore({}),
     $input_gift_card_code: new InputCore({
@@ -445,9 +349,6 @@ function HomeMineViewModel(props: ViewComponentProps) {
             dates: w.dates.map((d) => {
               return {
                 ...d,
-                has_workout_day: request.workout_day.finished_list.response.dataSource.find(
-                  (v) => v.date_text === d.yyyy
-                ),
               };
             }),
           };
@@ -463,9 +364,6 @@ function HomeMineViewModel(props: ViewComponentProps) {
     get theme() {
       return _theme;
     },
-    get workout_days() {
-      return request.workout_day.list.response.dataSource;
-    },
   };
   enum Events {
     StateChange,
@@ -474,8 +372,6 @@ function HomeMineViewModel(props: ViewComponentProps) {
     [Events.StateChange]: typeof _state;
   };
   const bus = base<TheTypesOfEvents>();
-  request.workout_day.finished_list.onStateChange(() => methods.refresh());
-  request.workout_day.list.onStateChange(() => methods.refresh());
   request.gift_card.profile.onStateChange(() => methods.refresh());
   // ui.$calendar.onStateChange(() => methods.refresh());
   ui.$dialog_nickname_update.onShow(() => {
@@ -505,8 +401,7 @@ export function HomeMineView(props: ViewComponentProps) {
 
   return (
     <>
-      <ScrollView store={vm.ui.$view} class="scroll--hidden bg-w-bg-0">
-      </ScrollView>
+      <ScrollView store={vm.ui.$view} class="scroll--hidden bg-w-bg-0"></ScrollView>
       <DropdownMenu store={vm.ui.$menu} />
     </>
   );

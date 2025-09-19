@@ -2,37 +2,41 @@
  * @file 首页
  */
 import { For, Match, Show, Switch } from "solid-js";
-import { Earth, Link } from "lucide-solid";
+import { Earth, Eye, File, Link } from "lucide-solid";
+import { Browser, Events } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
 import { Button, ScrollView, Skeleton } from "@/components/ui";
+import { RelativeTime } from "@/components/relative_time";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 
 import { RequestCore, TheResponseOfRequestCore } from "@/domains/request";
 import { base, Handler } from "@/domains/base";
 import { ButtonCore, DialogCore, ScrollViewCore } from "@/domains/ui";
-import { openFileDialog, openFilePreview } from "@/biz/fs/service";
-import { fetchPasteEventList, fetchPasteEventListProcess } from "@/biz/paste/service";
+import { openLocalFile, openFilePreview, saveFileTo } from "@/biz/fs/service";
+import { fetchPasteEventList, fetchPasteEventListProcess, openPreviewWindow } from "@/biz/paste/service";
 
 import { LocalVideo } from "./components/LazyVideo";
 import { LocalImage } from "./components/LocalImage";
-import { RelativeTime } from "@/components/relative_time";
 
 function HomeIndexPageViewModel(props: ViewComponentProps) {
   const request = {
     file: {
-      open_dialog: new RequestCore(openFileDialog, { client: props.client }),
+      open_file: new RequestCore(openLocalFile, { client: props.client }),
+      save_file: new RequestCore(saveFileTo, { client: props.client }),
       open_preview_window: new RequestCore(openFilePreview, { client: props.client }),
     },
     paste: {
       list: new RequestCore(fetchPasteEventList, { process: fetchPasteEventListProcess, client: props.client }),
+      preview: new RequestCore(openPreviewWindow, { client: props.client }),
     },
   };
-  type SelectedFile = TheResponseOfRequestCore<typeof request.file.open_dialog>["files"][number];
+  type SelectedFile = TheResponseOfRequestCore<typeof request.file.open_file>["files"][number];
+  type PasteRecord = TheResponseOfRequestCore<typeof request.paste.list>["list"][number];
   const methods = {
     refresh() {
-      bus.emit(Events.StateChange, { ..._state });
+      bus.emit(EventNames.StateChange, { ..._state });
     },
     async handleClickFile(file: SelectedFile) {
       console.log("[]handleClickVideo", file.name);
@@ -41,6 +45,16 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
         return;
       }
       console.log("[]handleClickVideo", r);
+    },
+    handleClickEyeBtn(v: PasteRecord) {
+      request.paste.preview.run({ id: v.id });
+    },
+    handleClickFileBtn(v: PasteRecord) {
+      const time = new Date().valueOf() / 1000;
+      request.file.save_file.run({
+        filename: `${time}.json`,
+        content: v.content.text,
+      });
     },
   };
   const ui = {
@@ -90,16 +104,28 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       return request.paste.list.response;
     },
   };
-  enum Events {
+  enum EventNames {
     StateChange,
   }
   type TheTypesOfEvents = {
-    [Events.StateChange]: typeof _state;
+    [EventNames.StateChange]: typeof _state;
   };
   const bus = base<TheTypesOfEvents>();
 
   // request.file.open_dialog.onStateChange(() => methods.refresh());
   request.paste.list.onStateChange(() => methods.refresh());
+  Events.On("common:WindowFilesDropped", (event) => {
+    const files = event.data.files;
+    console.log(files);
+    // files.forEach((file) => {
+    //   console.log("File dropped:", file);
+    //   // Process the dropped files
+    //   handleFileUpload(file);
+    // });
+  });
+  Events.On("clipboard:update", () => {
+    request.paste.list.reload();
+  });
 
   return {
     methods,
@@ -122,8 +148,8 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
     destroy() {
       bus.destroy();
     },
-    onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
-      return bus.on(Events.StateChange, handler);
+    onStateChange(handler: Handler<TheTypesOfEvents[EventNames.StateChange]>) {
+      return bus.on(EventNames.StateChange, handler);
     },
   };
 }
@@ -151,13 +177,24 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
               return (
                 <div class="">
                   <div class="p-2 max-h-[120px] overflow-hidden rounded-md bg-w-bg-5">
-                    <Switch fallback={<div>Unknown</div>}>
+                    <Switch fallback={<div>{v.content.text}</div>}>
                       <Match when={v.type === "url"}>
-                        <div class="flex items-center gap-1 w-full overflow-auto whitespace-nowrap scroll--hidden">
-                          <Link class="w-4 h-4" />
-                          <a class="flex-1 w-0" href={v.content.text}>
-                            {v.content.text}
-                          </a>
+                        <div class="w-full overflow-auto whitespace-nowrap scroll--hidden">
+                          <div
+                            class="flex items-center gap-1 cursor-pointer"
+                            onClick={() => {
+                              Browser.OpenURL(v.content.text);
+                            }}
+                          >
+                            <Link class="w-4 h-4" />
+                            <div class="flex-1 w-0">{v.content.text}</div>
+                          </div>
+                        </div>
+                      </Match>
+                      <Match when={v.type === "color"}>
+                        <div class="flex items-center gap-1">
+                          <div class="w-[16px] h-[16px]" style={{ "background-color": v.content.text }}></div>
+                          <div>{v.content.text}</div>
                         </div>
                       </Match>
                       <Match when={v.type === "json"}>
@@ -179,8 +216,30 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                   <div>
                     <div>{v.type}</div>
                   </div>
-                  <div class="text-sm">
-                    <RelativeTime time={v.created_at}></RelativeTime>
+                  <div class="flex justify-between">
+                    <div class="text-sm">
+                      <RelativeTime time={v.created_at}></RelativeTime>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <Show when={["json"].includes(v.type)}>
+                        <div
+                          class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
+                          onClick={() => {
+                            vm.methods.handleClickEyeBtn(v);
+                          }}
+                        >
+                          <Eye class="w-4 h-4" />
+                        </div>
+                        <div
+                          class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
+                          onClick={() => {
+                            vm.methods.handleClickFileBtn(v);
+                          }}
+                        >
+                          <File class="w-4 h-4" />
+                        </div>
+                      </Show>
+                    </div>
                   </div>
                 </div>
               );

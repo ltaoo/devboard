@@ -8,7 +8,6 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { ButtonCore, DialogCore, InputCore, ScrollViewCore, SelectCore } from "@/domains/ui";
 import { RequestCore } from "@/domains/request";
-import { createWorkoutDay } from "@/biz/workout_day/services";
 import { ArrayFieldCore, ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
 import { FieldObjV2 } from "@/components/fieldv2/obj";
 import { FieldV2 } from "@/components/fieldv2/field";
@@ -18,11 +17,7 @@ import { InputWithKeyboardView } from "@/components/input-with-keyboard";
 import { Portal } from "solid-js/web";
 
 function FeaturePlaygroundViewModel(props: ViewComponentProps) {
-  const request = {
-    workout_day: {
-      create: new RequestCore(createWorkoutDay, { _name: "create_workout_day", client: props.client, onFailed() {} }),
-    },
-  };
+  const request = {};
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });

@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -66,28 +65,17 @@ func main() {
 	}, application.ServiceOptions{
 		Route: "/file",
 	})
+	common_service := application.NewService(&service.CommonService{
+		App: app,
+	})
 	v := service.NewPasteService(app, biz_app.DB)
 	paste_service := application.NewService(&v)
+	system_service := application.NewService(&service.SystemService{})
 	app.RegisterService(greet_service)
 	app.RegisterService(fs_service)
+	app.RegisterService(common_service)
 	app.RegisterService(paste_service)
-
-	error_win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Error",
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			// TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		Hidden:             true,
-		Width:              428,
-		Height:             260,
-		DisableResize:      true,
-		ZoomControlEnabled: false,
-		BackgroundColour:   application.NewRGB(27, 38, 54),
-		URL:                "/error",
-	})
-
+	app.RegisterService(system_service)
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.
 	// 'Mac' options tailor the window when running on macOS.
@@ -105,19 +93,34 @@ func main() {
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
 	})
-	win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
-		fmt.Println(e.Context().DroppedFiles())
+
+	error_win := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title: "Error",
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:                application.MacBackdropTranslucent,
+		},
+		Hidden:             true,
+		Width:              428,
+		Height:             260,
+		DisableResize:      true,
+		ZoomControlEnabled: false,
+		BackgroundColour:   application.NewRGB(27, 38, 54),
+		URL:                "/error",
 	})
+	// win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
+	// 	fmt.Println(e.Context().DroppedFiles())
+	// })
 
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.
-	go func() {
-		for {
-			now := time.Now().Format(time.RFC1123)
-			app.Event.Emit("time", now)
-			time.Sleep(time.Second)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		now := time.Now().Format(time.RFC1123)
+	// 		app.Event.Emit("time", now)
+	// 		time.Sleep(time.Second)
+	// 	}
+	// }()
 	go func() {
 		ch := clipboard.Watch(context.TODO())
 		for data := range ch {
@@ -158,8 +161,18 @@ func main() {
 					}
 				}
 			}
+			app.Event.Emit("clipboard:update")
 		}
 	}()
+	app.Event.On("m:show-error", func(event *application.CustomEvent) {
+		body := event.Data.(service.ErrorBody)
+		url := fmt.Sprintf("/error?title=%v&desc=%v", body.Title, body.Content)
+		error_win.SetURL(url)
+		error_win.Show()
+	})
+	win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
+		fmt.Println(e.Context().DroppedFiles())
+	})
 	go func() {
 		cfg, err := config.LoadConfig()
 		if err != nil {

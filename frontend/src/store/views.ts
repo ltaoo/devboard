@@ -27,4 +27,13 @@ export const pages: Omit<Record<PageKeys, ViewComponent>, "root"> = {
   "root.pdf_preview": lazy(async () => ({
     default: (await import("@/pages/file_preview/pdf_preview")).PDFFilePreviewView,
   })),
+  "root.text_preview": lazy(async () => ({
+    default: (await import("@/pages/preview")).PreviewView,
+  })),
+  "root.settings_layout": lazy(async () => ({
+    default: (await import("@/pages/settings/settings_layout")).SettingsView,
+  })),
+  "root.settings_layout.system": lazy(async () => ({
+    default: (await import("@/pages/settings/system")).SystemInfoView,
+  })),
 };

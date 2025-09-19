@@ -4,7 +4,6 @@
  */
 import { request } from "@/biz/requests";
 import { UserCore } from "@/biz/user/index";
-import { fetchWorkoutActionList, fetchWorkoutActionListProcess } from "@/biz/workout_action/services";
 import { ListCore } from "@/domains/list/index";
 import { ImageCore } from "@/domains/ui/index";
 import { Application } from "@/domains/app/index";
@@ -136,16 +135,6 @@ if (!app.env.pc && !app.env.wechat) {
 // setTimeout(() => {
 //   user.refreshToken();
 // }, 1000 * 60 * 10);
-
-export const $workout_action_list = new ListCore(
-  new RequestCore(fetchWorkoutActionList, {
-    process: fetchWorkoutActionListProcess,
-    client,
-  }),
-  {
-    pageSize: 24,
-  }
-);
 
 app.setEnv({
   prod: import.meta.env.PROD,

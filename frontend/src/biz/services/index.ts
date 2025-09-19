@@ -1,17 +1,20 @@
 /**
  *
  */
-import dayjs from "dayjs";
+import { OpenWindow } from "~/commonservice";
+import { OpenWindowBody } from "~/models";
+
+import { PageKeys, mapPathnameWithPageKey } from "@/store/routes";
+
 import { request } from "@/biz/requests";
-import { ListResponse, ListResponseWithCursor } from "@/biz/requests/types";
-import { FetchParams } from "@/domains/list/typing";
-import { TmpRequestResp } from "@/domains/request/utils";
-import { Result, UnpackedResult } from "@/domains/result";
-import { TheResponseOfFetchFunction } from "@/domains/request";
-import { Unpacked } from "@/types";
-import { parseJSONStr } from "@/utils";
 
-export function createEquipment(params: { name: string; zh_name: string; overview: string; media: string }) {
-  return request.post<void>("/api/equipment/create", params);
+export function openWindow(body: { title: string; route: PageKeys }) {
+  const url = mapPathnameWithPageKey(body.route);
+  return request.post<void>(
+    OpenWindow,
+    new OpenWindowBody({
+      title: body.title,
+      url,
+    })
+  );
 }
-

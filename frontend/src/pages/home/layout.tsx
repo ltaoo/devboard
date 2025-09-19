@@ -2,20 +2,26 @@
  * @file 后台/首页布局
  */
 import { For, JSX, createSignal } from "solid-js";
-import { Users, Home, Bike, BicepsFlexed, User, Star, Boxes } from "lucide-solid";
+import { Users, Home, Bike, BicepsFlexed, User, Star, Boxes, Settings, List, ClipboardList } from "lucide-solid";
 
 import { pages } from "@/store/views";
 import { ViewComponent, ViewComponentProps } from "@/store/types";
-import { PageKeys } from "@/store/routes";
+import { mapPathnameWithPageKey, PageKeys, routes, routesWithPathname } from "@/store/routes";
 import { useViewModel } from "@/hooks";
 import { Show } from "@/packages/ui/show";
 import { KeepAliveRouteView } from "@/components/ui";
 
 import { base, Handler } from "@/domains/base";
+import { RequestCore } from "@/domains/request";
+import { openWindow } from "@/biz/services";
 import { cn } from "@/utils/index";
 
 function HomeLayoutViewModel(props: ViewComponentProps) {
-  const request = {};
+  const request = {
+    common: {
+      open_window: new RequestCore(openWindow, { client: props.client }),
+    },
+  };
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -41,7 +47,7 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
   const _menus: { text: string; icon: JSX.Element; badge?: boolean; url?: PageKeys; onClick?: () => void }[] = [
     {
       text: "首页",
-      icon: <Home class="w-6 h-6" />,
+      icon: <ClipboardList class="w-6 h-6" />,
       url: "root.home_layout.index",
     },
     {
@@ -50,14 +56,15 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
       // url: "root.home_layout.tools",
     },
     {
-      text: "好友",
-      icon: <Users class="w-6 h-6" />,
-      // url: "root.home_layout.student_list",
-    },
-    {
-      text: "我的",
-      icon: <User class="w-6 h-6" />,
+      text: "设置",
+      icon: <Settings class="w-6 h-6" />,
       // url: "root.home_layout.mine",
+      onClick() {
+        request.common.open_window.run({
+          title: "设置",
+          route: "root.settings_layout.system",
+        });
+      },
     },
   ];
 
