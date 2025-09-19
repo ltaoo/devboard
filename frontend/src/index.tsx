@@ -13,13 +13,17 @@ import { KeepAliveRouteView } from "./components/ui";
 import { Toast } from "./components/ui/toast";
 
 import { ToastCore } from "./domains/ui/toast";
+import { RequestCore } from "./domains/request";
+import { showError } from "./biz/services";
 
 import "./style.css";
-import { useViewModelStore } from "./hooks";
 
 function Application() {
   const view = history.$view;
   const toast = new ToastCore();
+  const request = {
+    show_error: new RequestCore(showError, { client }),
+  };
 
   const [state, setState] = createSignal(app.state);
   const [views, setViews] = createSignal(view.subViews);
@@ -29,9 +33,9 @@ function Application() {
 
   app.onTip((msg) => {
     const { icon, text } = msg;
-    toast.show({
-      icon,
-      texts: text,
+    request.show_error.run({
+      title: "发生错误",
+      content: text.join("\n"),
     });
   });
   app.onLoading((msg) => {

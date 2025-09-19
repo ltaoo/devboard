@@ -150,8 +150,7 @@ func (f *FileService) SaveFileTo(body SaveFileToBody) *Result {
 	// })
 
 	if path, err := dialog.PromptForSingleSelection(); err == nil {
-		fmt.Println("select the path save file to", path)
-		file, err := os.Create(filepath.Join(path, body.Filename))
+		file, err := os.Create(path)
 		if err != nil {
 			return Error(err)
 		}

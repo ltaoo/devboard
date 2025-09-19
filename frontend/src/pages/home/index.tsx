@@ -50,7 +50,7 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       request.paste.preview.run({ id: v.id });
     },
     handleClickFileBtn(v: PasteRecord) {
-      const time = new Date().valueOf() / 1000;
+      const time = parseInt(String(new Date().valueOf() / 1000));
       request.file.save_file.run({
         filename: `${time}.json`,
         content: v.content.text,
