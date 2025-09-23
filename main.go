@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	_ "embed"
+	"encoding/base64"
 	"fmt"
 	"log"
 
@@ -17,7 +18,6 @@ import (
 	"devboard/models"
 	"devboard/pkg/clipboard"
 	"devboard/pkg/logger"
-	"devboard/pkg/util"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -134,7 +134,6 @@ func main() {
 			}
 			if data.Type == "public.utf8-plain-text" {
 				if text, ok := data.Data.(string); ok {
-					fmt.Println(text)
 					created_paste_content := models.PasteContent{
 						ContentType: "text",
 						Text:        text,
@@ -155,9 +154,22 @@ func main() {
 			}
 			if data.Type == "public.png" {
 				if f, ok := data.Data.([]byte); ok {
-					img_filepath, err := util.SaveByteAsLocalImage(f)
-					if err == nil {
-						fmt.Println("the image save to", img_filepath)
+					encoded := base64.StdEncoding.EncodeToString(f)
+					created_paste_content := models.PasteContent{
+						ContentType: "image",
+						ImageBase64: encoded,
+					}
+					if err := biz_app.DB.Create(&created_paste_content).Error; err != nil {
+						log.Fatalf("Failed to create paste content: %v", err)
+						return
+					}
+					created_paste_event := models.PasteEvent{
+						ContentType: "image",
+						ContentId:   created_paste_content.Id,
+					}
+					if err := biz_app.DB.Create(&created_paste_event).Error; err != nil {
+						log.Fatalf("Failed to create paste event: %v", err)
+						return
 					}
 				}
 			}

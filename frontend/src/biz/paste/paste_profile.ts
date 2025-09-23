@@ -1,16 +1,12 @@
-import { Match, Show, Switch } from "solid-js";
-
-import { ViewComponentProps } from "@/store/types";
-import { useViewModel } from "@/hooks";
-
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
-import { fetchPasteEventProfile, fetchPasteEventProfileProcess } from "@/biz/paste/service";
+import { HttpClientCore } from "@/domains/http_client";
 import { toNumber } from "@/utils/primitive";
-import { JSONPreviewPanelView } from "@/components/preview-panels/json";
 
-function PreviewModel(props: ViewComponentProps) {
+import { fetchPasteEventProfile, fetchPasteEventProfileProcess } from "./service";
+
+export function PasteEventProfileModel(props: { client: HttpClientCore }) {
   const request = {
     paste: {
       profile: new RequestCore(fetchPasteEventProfile, {
@@ -23,16 +19,11 @@ function PreviewModel(props: ViewComponentProps) {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    async ready() {
-      const id = toNumber(props.view.query.id);
-      if (id === null) {
-        return;
-      }
+    load(id: number) {
       request.paste.profile.run({ id });
     },
   };
   const ui = {};
-
   let _state = {
     get profile() {
       return request.paste.profile.response;
@@ -54,9 +45,7 @@ function PreviewModel(props: ViewComponentProps) {
     methods,
     ui,
     state: _state,
-    ready() {
-      methods.ready();
-    },
+    ready() {},
     destroy() {
       bus.destroy();
     },
@@ -69,18 +58,4 @@ function PreviewModel(props: ViewComponentProps) {
   };
 }
 
-export function PreviewView(props: ViewComponentProps) {
-  const [state, vm] = useViewModel(PreviewModel, [props]);
-
-  return (
-    <div>
-      <Show when={state().profile}>
-        <Switch fallback={<div>{state().profile?.content.text!}</div>}>
-          <Match when={state().profile?.type === "json"}>
-            <JSONPreviewPanelView text={state().profile?.content.text!} />
-          </Match>
-        </Switch>
-      </Show>
-    </div>
-  );
-}
+export type PasteEventProfileModel = ReturnType<typeof PasteEventProfileModel>;

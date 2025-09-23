@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
 
-import { FetchPasteEventList, FetchPasteEventProfile, Preview } from "~/pasteservice";
-import { PasteEventProfileBody, PastePreviewBody } from "~/models";
+import { FetchPasteEventList, FetchPasteEventProfile, PreviewPasteEvent } from "~/pasteservice";
 
 import { FetchParams } from "@/domains/list/typing";
 import { request } from "@/biz/requests";
@@ -125,8 +124,11 @@ function text_content_detector(text: string) {
   if (text.match(/^#[a-f0-9]{3,6}/i)) {
     return "color";
   }
+  if (text.match(/^17259([0-9]{5}|[0-9]{8})/)) {
+    return "timestamp";
+  }
   if (text.match(/^{[\s\n]{1,}"[a-zA-Z0-9]{1,}":/)) {
-    return "json";
+    return "JSON";
   }
   const lang = detectCodeLanguage(text);
   if (lang) {
@@ -147,11 +149,14 @@ export function fetchPasteEventList(body: Partial<FetchParams>) {
         id: number;
         content_type: string;
         text: string;
+        image_base64: string;
       };
       created_at: string;
     }>
-  >(FetchPasteEventList, {});
+  >(FetchPasteEventList, body);
 }
+
+function processPartialPasteEvent() {}
 export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEventList>) {
   if (r.error) {
     return Result.Err(r.error);
@@ -159,18 +164,34 @@ export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEv
   return Result.Ok({
     ...r.data,
     list: r.data.list.map((v) => {
+      const t = (() => {
+        if (v.content_type === "text" && v.content.text) {
+          const t = text_content_detector(v.content.text);
+          if (t) {
+            return t;
+          }
+        }
+        return v.content_type;
+      })();
       return {
         ...v,
-        type: (() => {
-          if (v.content_type === "text" && v.content.text) {
-            const t = text_content_detector(v.content.text);
-            if (t) {
-              return t;
-            }
+        origin_text: v.content.text,
+        text: (() => {
+          const tt = v.content.text;
+          if (t === "timestamp") {
+            const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
+            return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
           }
-          return v.content_type;
+          return tt;
         })(),
+        image_url: v.content.image_base64 ? `data:image/png;base64,${v.content.image_base64}` : null,
+        height: (() => {
+          // @todo 根据内容类型及所需空间（文本、图片）估算大概值
+          return 102;
+        })(),
+        type: t,
         created_at: dayjs(v.created_at),
+        created_at_text: dayjs(v.created_at).format("YYYY-MM-DD HH:mm:ss"),
       };
     }),
   });
@@ -182,30 +203,47 @@ export function fetchPasteEventProfile(body: { id: number }) {
     content_type: string;
     content: {
       text: string;
+      image_base64: string;
     };
     created_at: string;
-  }>(FetchPasteEventProfile, new PasteEventProfileBody({ event_id: body.id }));
+  }>(FetchPasteEventProfile, { event_id: body.id });
 }
 export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPasteEventProfile>) {
   if (r.error) {
     return Result.Err(r.error);
   }
   const v = r.data;
+  const t = (() => {
+    if (v.content_type === "text" && v.content.text) {
+      const t = text_content_detector(v.content.text);
+      if (t) {
+        return t;
+      }
+    }
+    return v.content_type;
+  })();
   return Result.Ok({
     ...v,
-    type: (() => {
-      if (v.content_type === "text" && v.content.text) {
-        const t = text_content_detector(v.content.text);
-        if (t) {
-          return t;
-        }
+    origin_text: v.content.text,
+    text: (() => {
+      const tt = v.content.text;
+      if (t === "timestamp") {
+        const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
+        return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
       }
-      return v.content_type;
+      return tt;
     })(),
+    image_url: v.content.image_base64 ? `data:image/png;base64,${v.content.image_base64}` : null,
+    height: (() => {
+      // @todo 根据内容类型及所需空间（文本、图片）估算大概值
+      return 102;
+    })(),
+    type: t,
     created_at: dayjs(v.created_at),
+    created_at_text: dayjs(v.created_at).format("YYYY-MM-DD HH:mm:ss"),
   });
 }
 
-export function openPreviewWindow(body: { id: number }) {
-  return request.post(Preview, new PasteEventProfileBody({ event_id: body.id }));
+export function openPasteEventPreviewWindow(body: { id: number }) {
+  return request.post(PreviewPasteEvent, { event_id: body.id });
 }

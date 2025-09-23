@@ -36,7 +36,7 @@ const configure = {
         title: "PDF",
         pathname: "/pdf_preview",
       },
-      text_preview: {
+      paste_event_preview: {
         title: "详情",
         pathname: "/preview",
       },

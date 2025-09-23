@@ -27,7 +27,7 @@ export const ScrollView = (props: { store: ScrollViewCore } & JSX.HTMLAttributes
       store={props.store}
       // onClick={rest.onClick}
     >
-      <ScrollViewPrimitive.Indicator class="relative w-full overflow-hidden text-center" store={props.store}>
+      <ScrollViewPrimitive.Indicator class="scroll-view__indicator relative w-full overflow-hidden text-center" store={props.store}>
         <div class="absolute left-0 bottom-0 w-full min-h-[30px] py-[10px]">
           <ScrollViewPrimitive.Progress class="w-[50px] h-[50px] mx-auto rounded-full bg-w-bg-0" store={props.store}>
             <div
