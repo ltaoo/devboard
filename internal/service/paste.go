@@ -26,17 +26,31 @@ func NewPasteService(app *application.App, db *gorm.DB) PasteService {
 func (s *PasteService) SetDatabase(db *gorm.DB) {
 	s.db = db
 }
-func (s *PasteService) FetchPasteEventList() *Result {
-	var list []models.PasteEvent
+
+type FetchPasteEventListBody struct {
+	models.Pagination
+}
+
+func (s *PasteService) FetchPasteEventList(body FetchPasteEventListBody) *Result {
 	if s.db == nil {
 		return Error(fmt.Errorf("请先初始化数据库"))
 	}
-
-	if err := s.db.Preload("Content").Order("created_at DESC").Find(&list).Error; err != nil {
+	query := s.db.Preload("Content")
+	pb := models.NewPaginationBuilder[models.PasteEvent](query).
+		SetLimit(body.PageSize).
+		SetPage(body.Page).
+		SetOrderBy("created_at DESC")
+	var list1 []models.PasteEvent
+	if err := pb.Build().Find(&list1).Error; err != nil {
 		return Error(err)
 	}
+	list2, has_more, next_marker := pb.ProcessResults(list1)
 	return Ok(map[string]interface{}{
-		"list": list,
+		"list":        list2,
+		"page":        body.Page,
+		"page_size":   pb.GetLimit(),
+		"has_more":    has_more,
+		"next_marker": next_marker,
 	})
 }
 
@@ -58,11 +72,11 @@ func (s *PasteService) FetchPasteEventProfile(body PasteEventProfileBody) *Resul
 	return Ok(&record)
 }
 
-type PastePreviewBody struct {
+type PasteEventPreviewBody struct {
 	EventId int `json:"event_id"`
 }
 
-func (s *PasteService) Preview(body PastePreviewBody) *Result {
+func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 	if body.EventId == 0 {
 		return Error(fmt.Errorf("缺少 event_id 参数"))
 	}
