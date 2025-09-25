@@ -2,9 +2,10 @@
  * @file 首页
  */
 import { For, Match, Show, Switch } from "solid-js";
-import { Copy, Earth, Eye, File, Link } from "lucide-solid";
+import { Bird, Check, Copy, Earth, Eye, File, Link } from "lucide-solid";
 import { Browser, Events } from "@wailsio/runtime";
 
+import { data } from "@mock/created_paste_event";
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
 import { Button, ListView, ScrollView, Skeleton } from "@/components/ui";
@@ -22,10 +23,19 @@ import { ListCore } from "@/domains/list";
 import { TheItemTypeFromListCore } from "@/domains/list/typing";
 import { openLocalFile, openFilePreview, saveFileTo } from "@/biz/fs/service";
 import { isCodeContent } from "@/biz/paste/utils";
-import { fetchPasteEventList, fetchPasteEventListProcess, openPasteEventPreviewWindow } from "@/biz/paste/service";
+import {
+  fetchPasteEventList,
+  fetchPasteEventListProcess,
+  openPasteEventPreviewWindow,
+  processPartialPasteEvent,
+} from "@/biz/paste/service";
 
 import { LocalVideo } from "./components/LazyVideo";
 import { LocalImage } from "./components/LocalImage";
+import { WithTagsInput, WithTagsInputModel } from "@/components/with-tags-input";
+import dayjs from "dayjs";
+import { DynamicContent } from "@/components/dynamic-content";
+import { DynamicContentWithClick } from "@/components/dynamic-content/with-click";
 
 function HomeIndexPageViewModel(props: ViewComponentProps) {
   const request = {
@@ -119,6 +129,16 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
         // console.log(r.data);
       },
     }),
+    $input_search: WithTagsInputModel({
+      defaultValue: "",
+      onEnter() {
+        // await ui.$waterfall.methods.cleanColumns();
+        request.paste.list.search({
+          types: ui.$input_search.state.tags.map((tag) => tag.replace(/^#/, "")),
+          keyword: ui.$input_search.state.value,
+        });
+      },
+    }),
     $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 12, size: 10, buffer: 4 }),
   };
 
@@ -143,20 +163,65 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
   const bus = base<TheTypesOfEvents>();
   // request.file.open_dialog.onStateChange(() => methods.refresh());
   // request.paste.list.onStateChange(() => methods.refresh());
-  request.paste.list.onDataSourceAdded((added) => {
-    console.log("[PAGE]home/index - onDataSourceAdded", added);
-    ui.$waterfall.methods.appendItems(added);
-    console.log("[PAGE]home/index - handle added items", ui.$waterfall.state.columns.length);
-    ui.$waterfall.state.columns.forEach((column) => {
-      console.log("[PAGE]home/index - handle added items", column.items.length);
-    });
-    // methods.refresh();
+  // request.paste.list.onStateChange((v) => {
+  //   console.log("[PAGE]home/index - onStateChange", v);
+  //   for (let i = 0; i < v.dataSource.length; i += 1) {
+  //     const record = v.dataSource[i];
+  //     ui.$waterfall.methods.appendItems(added);
+  //     console.log("[PAGE]home/index - handle added items", ui.$waterfall.state.columns.length);
+  //   }
+  // });
+  request.paste.list.onDataSourceChange(({ dataSource, reason }) => {
+    // const isNewRequest = dataSource.length !== 0 && dataSource.length <= request.paste.list.response.dataSource.length;
+    // console.log("[]onDataSourceChange", dataSource.length, request.paste.list.response.dataSource.length);
+    if (["init", "reload", "refresh", "search"].includes(reason)) {
+      ui.$waterfall.methods.cleanColumns();
+      ui.$waterfall.methods.appendItems(dataSource);
+      return;
+    }
+    const existing_ids = ui.$waterfall.$items.map((v) => v.state.payload.id);
+    const added_items: PasteRecord[] = [];
+    for (let i = 0; i < dataSource.length; i += 1) {
+      const dd = dataSource[i];
+      // const is_existing = existing_data_source.includes(dd.id);
+      const is_existing = existing_ids.includes(dd.id);
+      if (!is_existing) {
+        added_items.push(dd);
+      }
+    }
+    console.log(
+      "[]onDataSourceChange - before appendItems",
+      existing_ids,
+      dataSource.map((v) => v.id),
+      added_items
+    );
+    ui.$waterfall.methods.appendItems(added_items);
   });
   ui.$waterfall.onStateChange(() => {
     methods.refresh();
   });
-  Events.On("clipboard:update", () => {
-    request.paste.list.reload();
+  // setTimeout(() => {
+  //   const created_paste_event = data;
+  //   const vv = processPartialPasteEvent(created_paste_event);
+  //   const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
+  //   console.log(vv.height, ui.$waterfall.gutter);
+  //   const changed_height = height_of_new_paste_event;
+  //   ui.$waterfall.$columns[0].methods.addHeight(changed_height);
+  //   ui.$view.setScrollTop(changed_height);
+  //   ui.$waterfall.methods.unshiftItems([vv]);
+  // }, 2000);
+  Events.On("clipboard:update", (event) => {
+    const created_paste_event = event.data[0];
+    if (!created_paste_event) {
+      return;
+    }
+    const vv = processPartialPasteEvent(created_paste_event);
+    const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
+    console.log(vv.height, ui.$waterfall.gutter);
+    const changed_height = height_of_new_paste_event;
+    ui.$waterfall.$columns[0].methods.addHeight(changed_height);
+    ui.$view.setScrollTop(changed_height);
+    ui.$waterfall.methods.unshiftItems([vv]);
   });
 
   return {
@@ -194,18 +259,24 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
     <>
       <ScrollView
         store={vm.ui.$view}
-        class="z-0 bg-w-bg-0"
+        class="z-0 relative bg-w-bg-0"
         classList={{
           // "w-[375px] mx-auto": props.app.env.pc,
           "w-full": !props.app.env.pc,
         }}
       >
-        {/* <div>
-          <input />
+        {/* <div class="p-4 pb-0">
+          <WithTagsInput store={vm.ui.$input_search} />
         </div> */}
         <WaterfallView
           class="p-4"
           store={vm.ui.$waterfall}
+          fallback={
+            <div class="flex flex-col items-center justify-center pt-12">
+              <Bird class="text-w-fg-2 w-36 h-36" />
+              <div class="mt-2 text-center text-w-fg-1">没有数据</div>
+            </div>
+          }
           render={(payload) => {
             const v = payload;
             return (
@@ -274,7 +345,16 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                           vm.methods.handleClickCopyBtn(v);
                         }}
                       >
-                        <Copy class="w-4 h-4" />
+                        <DynamicContentWithClick
+                          options={[
+                            {
+                              content: <Copy class="w-4 h-4" />,
+                            },
+                            {
+                              content: <Check class="w-4 h-4 text-green-500" />,
+                            },
+                          ]}
+                        />
                       </div>
                       <Show when={["JSON"].includes(v.type)}>
                         <div

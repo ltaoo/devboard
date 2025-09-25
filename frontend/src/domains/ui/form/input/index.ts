@@ -8,6 +8,7 @@ enum Events {
   Focus,
   Blur,
   Enter,
+  KeyDown,
   Clear,
   Click,
 }
@@ -16,13 +17,14 @@ type TheTypesOfEvents<T> = {
   [Events.Change]: T;
   [Events.Blur]: T;
   [Events.Enter]: T;
+  [Events.KeyDown]: { key: string };
   [Events.Focus]: void;
   [Events.Clear]: void;
   [Events.Click]: { x: number; y: number };
   [Events.StateChange]: InputState<T>;
 };
 
-type InputProps<T> = {
+export type InputProps<T> = {
   /** 字段键 */
   name?: string;
   disabled?: boolean;
@@ -32,6 +34,7 @@ type InputProps<T> = {
   autoFocus?: boolean;
   autoComplete?: boolean;
   onChange?: (v: T) => void;
+  onKeyDown?: (v: { key: string }) => void;
   onEnter?: (v: T) => void;
   onBlur?: (v: T) => void;
   onClear?: () => void;
@@ -116,6 +119,9 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
         onEnter(this.value);
       });
     }
+    if (props.onKeyDown) {
+      this.onKeyDown(props.onKeyDown);
+    }
     if (onBlur) {
       this.onBlur(onBlur);
     }
@@ -129,10 +135,17 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
   setMounted() {
     this.emit(Events.Mounted);
   }
-  handleEnter() {
-    if (this.value === this.valueUsed) {
+  handleKeyDown(event: { key: string }) {
+    if (event.key === "Enter") {
+      this.handleEnter();
       return;
     }
+    this.emit(Events.KeyDown, event);
+  }
+  handleEnter() {
+    // if (this.value === this.valueUsed) {
+    //   return;
+    // }
     this.valueUsed = this.value;
     this.emit(Events.Enter, this.value);
   }
@@ -232,6 +245,9 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
   }
   onBlur(handler: Handler<TheTypesOfEvents<T>[Events.Blur]>) {
     return this.on(Events.Blur, handler);
+  }
+  onKeyDown(handler: Handler<TheTypesOfEvents<T>[Events.KeyDown]>) {
+    return this.on(Events.KeyDown, handler);
   }
   onEnter(handler: Handler<TheTypesOfEvents<T>[Events.Enter]>) {
     return this.on(Events.Enter, handler);

@@ -9,6 +9,14 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
+    setHeight(h: number) {
+      _height = h;
+      methods.refresh();
+    },
+    addHeight(h: number) {
+      _height += h;
+      methods.refresh();
+    },
     /**
      * 放置一个 item 到列中
      */
@@ -46,18 +54,59 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
       });
       item.methods.setIndex(_$total_items.length);
       item.methods.setColumn(_index);
-      _payload = item.state.payload;
       _height += item.state.height + _gutter;
       _$total_items.push(item);
       _$items = _$total_items.slice(_range.start, _range.end + _buffer_size);
       bus.emit(Events.HeightChange, _height);
       // bus.emit(Events.StateChange, _state);
     },
+    /**
+     * 往顶部插入一个 item 到列中
+     */
+    unshiftItem(item: WaterfallCellModel<T>) {
+      item.onHeightChange(([original_height, height_difference]) => {
+        // _height += height_difference;
+        // const idx = _$total_items.findIndex((v) => v === item);
+        // if (idx !== -1) {
+        //   const $next = _$total_items[idx + 1];
+        //   if ($next) {
+        //     console.log("[DOMAIN]appendItem - before setTopWithDifference", [_index, item.idx]);
+        //     $next.methods.setTopWithDifference(height_difference);
+        //   }
+        // }
+        // bus.emit(Events.HeightChange, _height);
+        // methods.handleScroll(_scroll);
+        // methods.refresh();
+        // methods.handleScroll(_)
+        //       this.emit(Events.StateChange, { ...this.state });
+      });
+      // item.onTopChange(([, top_difference]) => {
+      //   const idx = _$total_items.findIndex((v) => v === item);
+      //   if (idx) {
+      //     const $next = _$total_items[idx + 1];
+      //     if ($next) {
+      //       $next.methods.setTopWithDifference(top_difference);
+      //     }
+      //   }
+      // });
+      // for (let i = 0; i < _$total_items.length; i += 1) {
+      //   const $item = _$total_items[i];
+      //   $item.methods.setTopWithDifference(item.height);
+      // }
+      item.methods.setIndex(_$total_items.length);
+      item.methods.setColumn(_index);
+      _height += item.height + _gutter;
+      _$total_items.unshift(item);
+      _$items.unshift(item);
+      bus.emit(Events.HeightChange, _height);
+      methods.refresh();
+    },
     findItemById(id: number) {
       return _$total_items.find((v) => v.id === id);
     },
     clean() {
       _$items = [];
+      _$total_items = [];
       _height = 0;
       bus.emit(Events.StateChange, { ..._state });
     },
@@ -134,11 +183,10 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
       }
       _range = range;
       _$items = $visible_items;
-      bus.emit(Events.StateChange, { ..._state });
+      methods.refresh();
     },
   };
 
-  let _payload: unknown;
   /** 该列下标 */
   let _index = props.index ?? 0;
   /** 该列累计高度 */

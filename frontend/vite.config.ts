@@ -21,6 +21,7 @@ const config = defineConfig(({ mode }) => {
       alias: {
         // "lucide-solid": require.resolve("lucide-solid").replace("cjs", "esm"),
         "@": path.resolve(__dirname, "./src"),
+        "@mock": path.resolve(__dirname, "./mock"),
         "~": path.resolve(__dirname, "./bindings/devboard/internal/service"),
       },
     },

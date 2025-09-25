@@ -29,17 +29,26 @@ func (s *PasteService) SetDatabase(db *gorm.DB) {
 
 type FetchPasteEventListBody struct {
 	models.Pagination
+
+	Types   []string `json:"types"`
+	Keyword string   `json:"keyword"`
 }
 
 func (s *PasteService) FetchPasteEventList(body FetchPasteEventListBody) *Result {
 	if s.db == nil {
 		return Error(fmt.Errorf("请先初始化数据库"))
 	}
-	query := s.db.Preload("Content")
+	query := s.db.Preload("Content").Joins("JOIN paste_content ON paste_event.content_id = paste_content.id")
+	if body.Keyword != "" {
+		query = query.Where("paste_content.text LIKE ?", "%"+body.Keyword+"%")
+	}
+	if len(body.Types) != 0 {
+		query = query.Where("paste_event.content_type in (?)", body.Types)
+	}
 	pb := models.NewPaginationBuilder[models.PasteEvent](query).
 		SetLimit(body.PageSize).
 		SetPage(body.Page).
-		SetOrderBy("created_at DESC")
+		SetOrderBy("paste_event.created_at DESC")
 	var list1 []models.PasteEvent
 	if err := pb.Build().Find(&list1).Error; err != nil {
 		return Error(err)

@@ -123,6 +123,10 @@ func main() {
 	// }()
 	go func() {
 		ch := clipboard.Watch(context.TODO())
+		var created_paste_event models.PasteEvent
+		// var prev_paste_event models.PasteEvent
+		// if err := biz_app.DB.First(&prev_paste_event).Error; err != nil {
+		// }
 		for data := range ch {
 			fmt.Println(data.Type)
 			if data.Type == "public.file-url" {
@@ -134,6 +138,13 @@ func main() {
 			}
 			if data.Type == "public.utf8-plain-text" {
 				if text, ok := data.Data.(string); ok {
+					// if prev_paste_event.Id != 0 {
+					// 	prev_type := prev_paste_event.ContentType
+					// 	prev_text := prev_paste_event.Content.Text
+					// 	if prev_type == "text" && prev_text == text {
+					// 		return
+					// 	}
+					// }
 					created_paste_content := models.PasteContent{
 						ContentType: "text",
 						Text:        text,
@@ -142,10 +153,11 @@ func main() {
 						log.Fatalf("Failed to create paste content: %v", err)
 						return
 					}
-					created_paste_event := models.PasteEvent{
+					created_paste_event = models.PasteEvent{
 						ContentType: "text",
 						ContentId:   created_paste_content.Id,
 					}
+					created_paste_event.Content = created_paste_content
 					if err := biz_app.DB.Create(&created_paste_event).Error; err != nil {
 						log.Fatalf("Failed to create paste event: %v", err)
 						return
@@ -155,6 +167,13 @@ func main() {
 			if data.Type == "public.png" {
 				if f, ok := data.Data.([]byte); ok {
 					encoded := base64.StdEncoding.EncodeToString(f)
+					// if prev_paste_event.Id != 0 {
+					// 	prev_type := prev_paste_event.ContentType
+					// 	prev_image_base64 := prev_paste_event.Content.ImageBase64
+					// 	if prev_type == "image" && prev_image_base64 == encoded {
+					// 		return
+					// 	}
+					// }
 					created_paste_content := models.PasteContent{
 						ContentType: "image",
 						ImageBase64: encoded,
@@ -163,17 +182,18 @@ func main() {
 						log.Fatalf("Failed to create paste content: %v", err)
 						return
 					}
-					created_paste_event := models.PasteEvent{
+					created_paste_event = models.PasteEvent{
 						ContentType: "image",
 						ContentId:   created_paste_content.Id,
 					}
+					created_paste_event.Content = created_paste_content
 					if err := biz_app.DB.Create(&created_paste_event).Error; err != nil {
 						log.Fatalf("Failed to create paste event: %v", err)
 						return
 					}
 				}
 			}
-			app.Event.Emit("clipboard:update")
+			app.Event.Emit("clipboard:update", created_paste_event)
 		}
 	}()
 	app.Event.On("m:show-error", func(event *application.CustomEvent) {
