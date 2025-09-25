@@ -106,7 +106,21 @@ type TheTypesOfEvents<T> = {
   [Events.AfterSearch]: { params: any };
   [Events.ParamsChange]: FetchParams;
   [Events.DataSourceAdded]: T[];
-  [Events.DataSourceChange]: T[];
+  [Events.DataSourceChange]: {
+    dataSource: T[];
+    reason:
+      | "init"
+      | "goto"
+      | "next"
+      | "prev"
+      | "clear"
+      | "refresh"
+      | "search"
+      | "load_more"
+      | "reload"
+      | "reset"
+      | "manually";
+  };
   [Events.StateChange]: ListState<T>;
   [Events.Error]: Error;
   [Events.Completed]: void;
@@ -348,8 +362,10 @@ export class ListCore<
     };
     // console.log("[DOMAIN]list/init - before Event.StateChange", this.response.dataSource);
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceAdded, [...res.data.dataSource]);
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "init",
+    });
     return Result.Ok({ ...this.response });
   }
   /** 无论如何都会触发一次 state change */
@@ -381,7 +397,10 @@ export class ListCore<
       ...res.data,
     };
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "next",
+    });
     return Result.Ok({ ...this.response });
   }
   /**
@@ -410,7 +429,10 @@ export class ListCore<
       ...res.data,
     };
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "prev",
+    });
     return Result.Ok({ ...this.response });
   }
   nextWithCursor() {}
@@ -439,7 +461,10 @@ export class ListCore<
     this.response.dataSource = prevItems.concat(res.data.dataSource);
     this.emit(Events.StateChange, { ...this.response });
     this.emit(Events.DataSourceAdded, [...res.data.dataSource]);
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "load_more",
+    });
     return Result.Ok({ ...this.response });
   }
   /**
@@ -469,7 +494,10 @@ export class ListCore<
     this.response.dataSource = prevItems.concat(res.data.dataSource);
     this.emit(Events.StateChange, { ...this.response });
     this.emit(Events.DataSourceAdded, [...res.data.dataSource]);
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "load_more",
+    });
     return Result.Ok({ ...this.response });
   }
   /**
@@ -506,7 +534,10 @@ export class ListCore<
       ...res.data,
     };
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "goto",
+    });
     return Result.Ok({ ...this.response });
   }
   async search(...args: Parameters<S["service"]>) {
@@ -528,7 +559,11 @@ export class ListCore<
       ...res.data,
     };
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    // this.emit(Events.DataSourceAdded, [...res.data.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "search",
+    });
     return Result.Ok({ ...this.response });
   }
   searchDebounce = debounce(800, (...args: Parameters<S["service"]>) => {
@@ -553,14 +588,19 @@ export class ListCore<
       ...res.data,
     };
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "reset",
+    });
     return Result.Ok({ ...this.response });
   }
   /**
    * 使用当前参数重新请求一次，PC 端「刷新」操作时调用该方法
    */
-  reload() {
-    return this.fetch({});
+  async reload() {
+    const r = await this.fetch({});
+
+    return r;
   }
   /**
    * 页码置为 1，其他参数保留，重新请求一次。移动端「刷新」操作时调用该方法
@@ -587,7 +627,10 @@ export class ListCore<
       ...res.data,
     };
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "refresh",
+    });
     return Result.Ok({ ...this.response });
   }
   clear() {
@@ -596,7 +639,10 @@ export class ListCore<
     };
     this.params = { ...DEFAULT_PARAMS };
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "clear",
+    });
   }
   deleteItem(fn: (item: T) => boolean) {
     const { dataSource } = this.response;
@@ -606,7 +652,10 @@ export class ListCore<
     this.response.total = nextDataSource.length;
     this.response.dataSource = nextDataSource;
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "manually",
+    });
   }
   /**
    * 移除列表中的多项（用在删除场景）
@@ -620,7 +669,10 @@ export class ListCore<
     this.response.total = nextDataSource.length;
     this.response.dataSource = nextDataSource;
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "manually",
+    });
   }
   modifyItem(fn: (item: T) => T) {
     const { dataSource } = this.response;
@@ -636,11 +688,17 @@ export class ListCore<
     this.response.dataSource = nextDataSource;
     // console.log("[DOMAIN]list/index - modifyItem", nextDataSource[0]);
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "manually",
+    });
   }
   replaceDataSource(dataSource: T[]) {
     this.response.dataSource = dataSource;
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "manually",
+    });
   }
   /**
    * 手动修改当前 dataSource
@@ -651,7 +709,10 @@ export class ListCore<
       return fn(item);
     });
     this.emit(Events.StateChange, { ...this.response });
-    this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "manually",
+    });
   }
   /**
    * 手动修改当前 response

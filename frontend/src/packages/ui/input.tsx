@@ -7,7 +7,6 @@ import { effect } from "solid-js/web";
 import { InputCore } from "@/domains/ui/form/input";
 import { connect } from "@/domains/ui/form/input/connect.web";
 import { ValueInputInterface } from "@/domains/ui/form/types";
-import { cn } from "@/utils";
 
 const Input = (props: { store: InputCore<any> } & JSX.HTMLAttributes<HTMLInputElement>) => {
   const { store } = props;
@@ -41,14 +40,15 @@ const Input = (props: { store: InputCore<any> } & JSX.HTMLAttributes<HTMLInputEl
 
   return (
     <input
+      {...props}
       ref={ref}
-      class={cn(props.class)}
-      style={props.style}
       multiple
       value={value()}
       placeholder={placeholder()}
       disabled={disabled()}
       type={type()}
+      autocomplete="false"
+      autocorrect="off"
       onInput={(event: Event & { currentTarget: HTMLInputElement }) => {
         // console.log("[COMPONENT]ui/input onInput", event.currentTarget.value);
         store.handleChange(event);
@@ -58,9 +58,9 @@ const Input = (props: { store: InputCore<any> } & JSX.HTMLAttributes<HTMLInputEl
       //   store.handleChange(event);
       // }}
       onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          store.handleEnter();
-        }
+        store.handleKeyDown({
+          key: event.key,
+        });
       }}
       onBlur={() => {
         store.handleBlur();

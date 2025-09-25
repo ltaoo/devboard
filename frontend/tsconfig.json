@@ -15,6 +15,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@mock/*": ["./mock/*"],
       "~/*": ["./bindings/devboard/internal/service/*"]
     }
   }

@@ -5,8 +5,9 @@ import { FetchPasteEventList, FetchPasteEventProfile, PreviewPasteEvent } from "
 import { FetchParams } from "@/domains/list/typing";
 import { request } from "@/biz/requests";
 import { ListResponse } from "@/biz/requests/types";
-import { TmpRequestResp } from "@/domains/request/utils";
+import { TmpRequestResp, UnpackedRequestPayload } from "@/domains/request/utils";
 import { Result } from "@/domains/result";
+import { Unpacked } from "@/types";
 
 function isGolang(code: string) {
   if (code.match(/:=/)) {
@@ -58,6 +59,9 @@ function isReactJSX(code: string) {
     return true;
   }
   if (code.match(/className=/) && code.match(/<[a-zA-Z]{1,}/)) {
+    return true;
+  }
+  if (code.match(/style=\{\{/) && code.match(/<[a-zA-Z]{1,}/)) {
     return true;
   }
   if (code.match(/useState|useCallback|useMemo|useEffect/)) {
@@ -124,7 +128,7 @@ function text_content_detector(text: string) {
   if (text.match(/^#[a-f0-9]{3,6}/i)) {
     return "color";
   }
-  if (text.match(/^17259([0-9]{5}|[0-9]{8})/)) {
+  if (text.match(/^17([0-9]{8}|[0-9]{11})/)) {
     return "timestamp";
   }
   if (text.match(/^{[\s\n]{1,}"[a-zA-Z0-9]{1,}":/)) {
@@ -140,7 +144,7 @@ function text_content_detector(text: string) {
   return null;
 }
 
-export function fetchPasteEventList(body: Partial<FetchParams>) {
+export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types: string[]; keyword: string }>) {
   return request.post<
     ListResponse<{
       id: number;
@@ -156,63 +160,9 @@ export function fetchPasteEventList(body: Partial<FetchParams>) {
   >(FetchPasteEventList, body);
 }
 
-function processPartialPasteEvent() {}
-export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEventList>) {
-  if (r.error) {
-    return Result.Err(r.error);
-  }
-  return Result.Ok({
-    ...r.data,
-    list: r.data.list.map((v) => {
-      const t = (() => {
-        if (v.content_type === "text" && v.content.text) {
-          const t = text_content_detector(v.content.text);
-          if (t) {
-            return t;
-          }
-        }
-        return v.content_type;
-      })();
-      return {
-        ...v,
-        origin_text: v.content.text,
-        text: (() => {
-          const tt = v.content.text;
-          if (t === "timestamp") {
-            const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
-            return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
-          }
-          return tt;
-        })(),
-        image_url: v.content.image_base64 ? `data:image/png;base64,${v.content.image_base64}` : null,
-        height: (() => {
-          // @todo 根据内容类型及所需空间（文本、图片）估算大概值
-          return 102;
-        })(),
-        type: t,
-        created_at: dayjs(v.created_at),
-        created_at_text: dayjs(v.created_at).format("YYYY-MM-DD HH:mm:ss"),
-      };
-    }),
-  });
-}
-
-export function fetchPasteEventProfile(body: { id: number }) {
-  return request.post<{
-    id: number;
-    content_type: string;
-    content: {
-      text: string;
-      image_base64: string;
-    };
-    created_at: string;
-  }>(FetchPasteEventProfile, { event_id: body.id });
-}
-export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPasteEventProfile>) {
-  if (r.error) {
-    return Result.Err(r.error);
-  }
-  const v = r.data;
+export function processPartialPasteEvent(
+  v: UnpackedRequestPayload<ReturnType<typeof fetchPasteEventList>>["list"][number]
+) {
   const t = (() => {
     if (v.content_type === "text" && v.content.text) {
       const t = text_content_detector(v.content.text);
@@ -222,7 +172,7 @@ export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPast
     }
     return v.content_type;
   })();
-  return Result.Ok({
+  return {
     ...v,
     origin_text: v.content.text,
     text: (() => {
@@ -241,6 +191,42 @@ export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPast
     type: t,
     created_at: dayjs(v.created_at),
     created_at_text: dayjs(v.created_at).format("YYYY-MM-DD HH:mm:ss"),
+  };
+}
+export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEventList>) {
+  if (r.error) {
+    return Result.Err(r.error);
+  }
+  return Result.Ok({
+    ...r.data,
+    list: r.data.list.map((v) => {
+      return processPartialPasteEvent(v);
+    }),
+  });
+}
+
+export function fetchPasteEventProfile(body: { id: number }) {
+  return request.post<{
+    id: number;
+    content_type: string;
+    content: {
+      id: number;
+      content_type: string;
+      text: string;
+      image_base64: string;
+    };
+    created_at: string;
+  }>(FetchPasteEventProfile, { event_id: body.id });
+}
+export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPasteEventProfile>) {
+  if (r.error) {
+    return Result.Err(r.error);
+  }
+  const v = r.data;
+  const vv = processPartialPasteEvent(v);
+  return Result.Ok({
+    ...v,
+    ...vv,
   });
 }
 

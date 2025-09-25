@@ -1,7 +1,7 @@
 /**
  * @file 支持多列的瀑布流组件
  */
-import { For, JSX } from "solid-js";
+import { For, JSX, Show } from "solid-js";
 
 import { useViewModelStore } from "@/hooks";
 
@@ -10,7 +10,11 @@ import { WaterfallColumnModel } from "@/domains/ui/waterfall/column";
 import { WaterfallCellModel } from "@/domains/ui/waterfall/cell";
 
 export function WaterfallView<T>(
-  props: { store: WaterfallModel<T>; render: (payload: T) => JSX.Element } & JSX.HTMLAttributes<HTMLDivElement>
+  props: {
+    store: WaterfallModel<T>;
+    fallback?: JSX.Element;
+    render: (payload: T) => JSX.Element;
+  } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
   const [state, vm] = useViewModelStore(props.store);
 
@@ -21,15 +25,17 @@ export function WaterfallView<T>(
         "flex space-x-2": true,
       }}
     >
-      <For each={state().columns}>
-        {(column, idx) => {
-          const $column = vm.$columns[idx()];
-          if (!$column) {
-            return null;
-          }
-          return <WaterfallColumnView store={$column} render={props.render} />;
-        }}
-      </For>
+      <Show when={state().items.length} fallback={props.fallback}>
+        <For each={state().columns}>
+          {(column, idx) => {
+            const $column = vm.$columns[idx()];
+            if (!$column) {
+              return null;
+            }
+            return <WaterfallColumnView store={$column} render={props.render} />;
+          }}
+        </For>
+      </Show>
     </div>
   );
 }

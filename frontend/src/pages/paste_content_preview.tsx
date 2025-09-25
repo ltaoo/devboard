@@ -71,7 +71,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(PreviewPasteEventModel, [props]);
 
   return (
-    <div class="relative">
+    <div class="relative w-full h-full">
       <Show when={state().profile}>
         <div class="content">
           <Switch
