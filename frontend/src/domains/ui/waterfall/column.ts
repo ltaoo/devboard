@@ -5,6 +5,25 @@ import { toFixed } from "@/utils";
 import { WaterfallCellModel } from "./cell";
 
 export function WaterfallColumnModel<T>(props: { index?: number; size?: number; buffer?: number; gutter?: number }) {
+  function handleScrollForce(values: { scrollTop: number }) {
+    const { scrollTop } = values;
+    _scroll = values;
+    const range = methods.calcVisibleRange(scrollTop);
+    const update = (() => {
+      if (scrollTop === 0) {
+        return true;
+      }
+      if (range.start !== _range.start || range.end !== _range.end) {
+        return true;
+      }
+      return false;
+    })();
+    console.log("[]handleScrollForce - before if (!update", update, scrollTop, range);
+    if (!update) {
+      return;
+    }
+    methods.update(range);
+  }
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -14,8 +33,8 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
       methods.refresh();
     },
     addHeight(h: number) {
-      _height += h;
-      methods.refresh();
+      const height = _height + h;
+      methods.setHeight(height);
     },
     /**
      * 放置一个 item 到列中
@@ -23,12 +42,18 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
     appendItem(item: WaterfallCellModel<T>) {
       item.onHeightChange(([original_height, height_difference]) => {
         _height += height_difference;
-        const idx = _$total_items.findIndex((v) => v === item);
+        const idx = _$items.findIndex((v) => v.id === item.id);
         if (idx !== -1) {
-          const $next = _$total_items[idx + 1];
+          const $next = _$items[idx + 1];
           if ($next) {
-            console.log("[DOMAIN]appendItem - before setTopWithDifference", [_index, item.idx]);
+            console.log(
+              "[DOMAIN]appendItem - before setTopWithDifference",
+              [_index, item.idx],
+              height_difference,
+              $next.state.top
+            );
             $next.methods.setTopWithDifference(height_difference);
+            console.log("[DOMAIN]appendItem - after setTopWithDifference", $next.state.top);
           }
         }
         console.log(
@@ -38,7 +63,7 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
           [original_height, height_difference]
         );
         bus.emit(Events.HeightChange, _height);
-        methods.handleScroll(_scroll);
+        // methods.handleScroll(_scroll);
         methods.refresh();
         // methods.handleScroll(_)
         //       this.emit(Events.StateChange, { ...this.state });
@@ -63,41 +88,36 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
     /**
      * 往顶部插入一个 item 到列中
      */
-    unshiftItem(item: WaterfallCellModel<T>) {
+    unshiftItem(item: WaterfallCellModel<T>, opt: Partial<{ skipUpdateHeight: boolean }> = {}) {
       item.onHeightChange(([original_height, height_difference]) => {
         // _height += height_difference;
-        // const idx = _$total_items.findIndex((v) => v === item);
+        // const idx = _$items.findIndex((v) => v === item);
         // if (idx !== -1) {
-        //   const $next = _$total_items[idx + 1];
+        //   const $next = _$items[idx + 1];
         //   if ($next) {
-        //     console.log("[DOMAIN]appendItem - before setTopWithDifference", [_index, item.idx]);
         //     $next.methods.setTopWithDifference(height_difference);
         //   }
         // }
-        // bus.emit(Events.HeightChange, _height);
-        // methods.handleScroll(_scroll);
-        // methods.refresh();
-        // methods.handleScroll(_)
-        //       this.emit(Events.StateChange, { ...this.state });
       });
-      // item.onTopChange(([, top_difference]) => {
-      //   const idx = _$total_items.findIndex((v) => v === item);
-      //   if (idx) {
-      //     const $next = _$total_items[idx + 1];
-      //     if ($next) {
-      //       $next.methods.setTopWithDifference(top_difference);
-      //     }
-      //   }
-      // });
+      item.onTopChange(([, top_difference]) => {
+        // const idx = _$items.findIndex((v) => v === item);
+        // if (idx) {
+        //   const $next = _$items[idx + 1];
+        //   if ($next) {
+        //     $next.methods.setTopWithDifference(top_difference);
+        //   }
+        // }
+      });
       // for (let i = 0; i < _$total_items.length; i += 1) {
       //   const $item = _$total_items[i];
       //   $item.methods.setTopWithDifference(item.height);
       // }
       item.methods.setIndex(_$total_items.length);
       item.methods.setColumn(_index);
-      _height += item.height + _gutter;
+      if (!opt.skipUpdateHeight) {
+        _height += item.height + _gutter;
+      }
       _$total_items.unshift(item);
-      _$items.unshift(item);
       bus.emit(Events.HeightChange, _height);
       methods.refresh();
     },
@@ -110,44 +130,32 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
       _height = 0;
       bus.emit(Events.StateChange, { ..._state });
     },
-    handleScroll: throttle(200, (values: { scrollTop: number }) => {
-      const { scrollTop } = values;
-      _scroll = values;
-      const range = methods.calcVisibleRange(scrollTop);
-      const update = (() => {
-        if (scrollTop === 0) {
-          return true;
-        }
-        if (range.start !== _range.start || range.end !== _range.end) {
-          return true;
-        }
-        return false;
-      })();
-      if (!update) {
-        return;
-      }
-      methods.update(range);
-    }),
+    handleScrollForce,
+    handleScroll: throttle(100, handleScrollForce),
+    resetRange() {
+      _range = { start: 0, end: _size + _buffer_size };
+      _$items = _$total_items.slice(_range.start, _range.end);
+      methods.calcVisibleRange(0);
+    },
     calcVisibleRange(scroll_top: number) {
-      const items = _$total_items;
-      let start = _range.start;
-      let end = _range.end;
-      const cur_first = _$items[0];
-      if (!cur_first) {
+      // const items = _$total_items;
+      const $cur_first = _$items[0];
+      if (!$cur_first) {
         return _range;
       }
-      let items_height_total = cur_first.state.top;
+      let items_height_total = $cur_first.state.top;
       // console.log("before", this.range, start, end);
+      let { start, end } = _range;
       (() => {
-        for (let i = start; i < end; i += 1) {
-          const item = items[i];
-          if (!item) {
+        for (let i = start; i < end + 1; i += 1) {
+          const $item = _$total_items[i];
+          if (!$item) {
             return;
           }
-          console.log("[DOMAIN]ui/waterfall/column - calcVisibleRange - before setTop", items_height_total);
-          item.methods.setTop(items_height_total);
+          // console.log("[DOMAIN]ui/waterfall/column - calcVisibleRange - before setTop", items_height_total);
+          $item.methods.setTop(items_height_total);
           // console.log("set top", itemsHeightTotal, scrollTop);
-          items_height_total = toFixed(items_height_total + item.state.height + _gutter, 0);
+          items_height_total = toFixed(items_height_total + $item.state.height + _gutter, 0);
           // if (itemsHeightTotal >= scrollTop) {
           //   start = i;
           //   end = start + this.size;
@@ -155,8 +163,8 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
           //   return;
           // }
         }
-        for (let i = start; i < items.length; i += 1) {
-          const item = items[i];
+        for (let i = start; i < _$total_items.length; i += 1) {
+          const item = _$total_items[i];
           // console.log(i, item);
           // item.top = itemsHeightTotal;
           if (item.state.top >= scroll_top) {
@@ -170,9 +178,8 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
       })();
       //     const count = this.buffer_size;
       // console.log("before Math.max", start, start - this.buffer_size);
-      const idx_start = Math.max(0, start - _buffer_size);
-      const idx_end = Math.min(end, items.length);
-      return { start: idx_start, end: idx_end };
+      const result = { start: Math.max(0, start - _buffer_size), end: Math.min(end, _$total_items.length) };
+      return result;
     },
     update(range: { start: number; end: number }) {
       // console.log("[DOMAIN]waterfall/column - update case range is changed", range);

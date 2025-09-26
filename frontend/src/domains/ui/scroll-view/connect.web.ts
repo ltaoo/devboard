@@ -118,7 +118,9 @@ export function connectScroll(store: ScrollViewCore, $scroll: HTMLDivElement) {
       window.removeEventListener("touchmove", handleTouchMoveInBounce);
     }
   };
+  let _scroll_top = 0;
   store.setScrollTop = (top: number) => {
+    _scroll_top = top;
     $scroll.scrollTop = top;
   };
   store.getScrollTop = () => {

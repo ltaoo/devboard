@@ -13,6 +13,7 @@ export function WaterfallView<T>(
   props: {
     store: WaterfallModel<T>;
     fallback?: JSX.Element;
+    extra?: JSX.Element;
     render: (payload: T) => JSX.Element;
   } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
@@ -25,6 +26,7 @@ export function WaterfallView<T>(
         "flex space-x-2": true,
       }}
     >
+      {props.extra}
       <Show when={state().items.length} fallback={props.fallback}>
         <For each={state().columns}>
           {(column, idx) => {
@@ -77,8 +79,9 @@ export function WaterfallCellView<T>(
       data-idx={state().idx}
       data-width={state().width}
       data-height={state().height}
+      data-top={state().top}
       onAnimationEnd={(event) => {
-        console.log("[COMPONENT]ui/waterfall/waterfall - WaterfallCellView onAnimationEnd", state().id);
+        // console.log("[COMPONENT]ui/waterfall/waterfall - WaterfallCellView onAnimationEnd", state().id);
         const { width, height } = event.currentTarget.getBoundingClientRect();
         vm.methods.load({ width, height });
       }}

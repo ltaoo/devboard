@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 
-import { FetchPasteEventList, FetchPasteEventProfile, PreviewPasteEvent } from "~/pasteservice";
+import { DeletePasteEvent, FetchPasteEventList, FetchPasteEventProfile, PreviewPasteEvent } from "~/pasteservice";
 
 import { FetchParams } from "@/domains/list/typing";
 import { request } from "@/biz/requests";
@@ -228,6 +228,10 @@ export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPast
     ...v,
     ...vv,
   });
+}
+
+export function deletePasteEvent(body: { id: number }) {
+  return request.post(DeletePasteEvent, { event_id: body.id });
 }
 
 export function openPasteEventPreviewWindow(body: { id: number }) {

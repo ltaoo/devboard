@@ -3,12 +3,7 @@ import { base, BaseDomain, Handler } from "@/domains/base";
 import { WaterfallColumnModel } from "./column";
 import { WaterfallCellModel } from "./cell";
 
-const defaultListState = {
-  items: [],
-  columns: [],
-  pendingItems: [],
-  height: 0,
-};
+setInterval(() => {}, 100);
 
 export function WaterfallModel<T>(props: { column?: number; size?: number; buffer?: number; gutter?: number }) {
   const methods = {
@@ -26,7 +21,7 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
         return;
       }
       for (let i = 0; i < columns; i += 1) {
-        console.log("[]before new ListColumnViewCore", size);
+        // console.log("[]before new ListColumnViewCore", size);
         const column = WaterfallColumnModel<T>({ size, buffer, gutter, index: i });
         column.onHeightChange((height) => {
           if (_height >= height) {
@@ -37,7 +32,7 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
           // this.handleScroll(this.scrollValues);
         });
         column.onStateChange(() => {
-          console.log("[BIZ]Waterfall/waterfall - handle column StateChange");
+          // console.log("[BIZ]Waterfall/waterfall - handle column StateChange");
           bus.emit(Events.StateChange, { ..._state });
         });
         _$columns.push(column);
@@ -47,8 +42,8 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
       }
       _initialized = true;
     },
-    unshiftItems(items: T[]) {
-      const createdItems = items.map((v) => {
+    unshiftItems(items: T[], opt: Partial<{ skipUpdateHeight: boolean }> = {}) {
+      const $created_items = items.map((v) => {
         _index += 1;
         return WaterfallCellModel<T>({
           payload: v,
@@ -65,15 +60,16 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
           index: _index,
         });
       });
-      for (let i = 0; i < createdItems.length; i += 1) {
-        const item = createdItems[i];
-        this.unshiftItemToColumn(item);
+      for (let i = 0; i < $created_items.length; i += 1) {
+        const item = $created_items[i];
+        this.unshiftItemToColumn(item, opt);
       }
       // _items.push(...createdItems);
       //     this.state.pendingItems.push(...createdItems);
       // methods.handleScroll(_scrollValues);
-      console.log("[BIZ]Waterfall/waterfall - appendItems before StateChange", _state.columns[0].items);
-      bus.emit(Events.StateChange, { ..._state });
+      // console.log("[BIZ]Waterfall/waterfall - appendItems before StateChange", _state.columns[0].items);
+      methods.refresh();
+      return $created_items;
     },
     /**
      * 追加 items 到视图中
@@ -130,11 +126,11 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
       lowestColumn.methods.appendItem(item);
     },
     /** 往前面插入 cell */
-    unshiftItemToColumn(item: WaterfallCellModel<T>) {
+    unshiftItemToColumn(item: WaterfallCellModel<T>, opt: Partial<{ skipUpdateHeight: boolean }> = {}) {
       if (_$columns.length === 1) {
         console.log("[BIZ]Waterfall/waterfall - placeItemToColumn", _$items.length, item.state.payload);
         _$items.unshift(item);
-        _$columns[0].methods.unshiftItem(item);
+        _$columns[0].methods.unshiftItem(item, opt);
         return;
       }
       const columns = _$columns;
@@ -144,10 +140,10 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
       );
       const lowestColumn = columns.find((c) => c.state.height === minHeight);
       if (!lowestColumn) {
-        columns[0].methods.unshiftItem(item);
+        columns[0].methods.unshiftItem(item, opt);
         return;
       }
-      lowestColumn.methods.unshiftItem(item);
+      lowestColumn.methods.unshiftItem(item, opt);
     },
     /** 清空所有数据 */
     cleanColumns() {
@@ -175,15 +171,50 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
         })?.state.payload ?? null
       );
     },
-    handleScroll(values: { scrollTop: number; clientHeight?: number }) {
+    deleteCell(finder: (v: T) => boolean) {
+      const $matched = _$items.find(($v) => {
+        return finder($v.state.payload);
+      });
+      if (!$matched) {
+        return;
+      }
+      $matched.methods.setHeight(0);
+    },
+    resetRange() {
+      for (let i = 0; i < _$columns.length; i += 1) {
+        _$columns[i].methods.resetRange();
+      }
+    },
+    isFinishScroll(v: number) {
+      const cur = v;
+      console.log("check has finish scroll", cur, _last_scroll_position);
+      if (cur === _last_scroll_position) {
+        console.log("滚动已停止");
+      }
+      _last_scroll_position = cur;
+      _ticking = false;
+    },
+    handleScroll(values: { scrollTop: number; clientHeight?: number }, opt: Partial<{ force: boolean }> = {}) {
       if (values.scrollTop) {
         _scrollValues.scrollTop = values.scrollTop;
+        // _last_scroll_position = values.scrollTop;
       }
       if (values.clientHeight) {
         _scrollValues.clientHeight = values.clientHeight;
       }
+      // if (!_ticking) {
+      //   window.requestAnimationFrame(() => {
+      //     methods.isFinishScroll(values.scrollTop ?? 0);
+      //   });
+      //   _ticking = true;
+      // }
+      _scrolling = true;
       for (let i = 0; i < _$columns.length; i += 1) {
-        _$columns[i].methods.handleScroll(values);
+        if (opt.force) {
+          _$columns[i].methods.handleScrollForce(values);
+        } else {
+          _$columns[i].methods.handleScroll(values);
+        }
       }
     },
   };
@@ -195,6 +226,10 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
   /** 列间距 */
   let _gutter = props.gutter ?? 0;
   let _index = -1;
+  /** 是否处于滚动中 */
+  let _scrolling = false;
+  let _last_scroll_position = 0;
+  let _ticking = false;
   let _scrollValues = {
     scrollTop: 0,
     clientHeight: 0,
