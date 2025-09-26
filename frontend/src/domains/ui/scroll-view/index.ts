@@ -462,6 +462,9 @@ export class ScrollViewCore extends BaseDomain<TheTypesOfEvents> {
     console.log("请在 connect 中实现 getScrollTop 方法");
     return 0;
   }
+  addScrollTop(difference: number) {
+    this.setScrollTop(this.getScrollTop() + difference);
+  }
   /* 设置滚动条的位置 */
   setScrollTop(y: number) {
     console.log("请在 connect 中实现 setScrollTop 方法");

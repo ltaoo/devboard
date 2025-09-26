@@ -53,6 +53,15 @@ export function WaterfallCellModel<T>(props: { index: number; height: number; pa
       _top = top;
       methods.refresh();
     },
+    setHeight(height: number) {
+      if (_height === height) {
+        return;
+      }
+      const original_height = _height;
+      _height == height;
+      bus.emit(Events.HeightChange, [original_height, original_height - height]);
+      methods.refresh();
+    },
     setPosition(position: { x: number; y: number }) {
       _position = position;
       bus.emit(Events.StateChange, { ..._state });

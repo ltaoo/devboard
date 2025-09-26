@@ -81,6 +81,21 @@ func (s *PasteService) FetchPasteEventProfile(body PasteEventProfileBody) *Resul
 	return Ok(&record)
 }
 
+type PasteEventBody struct {
+	EventId int `json:"event_id"`
+}
+
+func (s *PasteService) DeletePasteEvent(body PasteEventBody) *Result {
+	if body.EventId == 0 {
+		return Error(fmt.Errorf("缺少 id 参数"))
+	}
+	var record models.PasteEvent
+	if err := s.db.Where("id = ?", body.EventId).Delete(&record).Error; err != nil {
+		return Error(err)
+	}
+	return Ok(&record)
+}
+
 type PasteEventPreviewBody struct {
 	EventId int `json:"event_id"`
 }

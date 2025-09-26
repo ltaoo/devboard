@@ -2,7 +2,7 @@
  * @file 首页
  */
 import { For, Match, Show, Switch } from "solid-js";
-import { Bird, Check, Copy, Earth, Eye, File, Link } from "lucide-solid";
+import { Bird, Check, Copy, Earth, Eye, File, Link, Trash } from "lucide-solid";
 import { Browser, Events } from "@wailsio/runtime";
 
 import { data } from "@mock/created_paste_event";
@@ -24,6 +24,7 @@ import { TheItemTypeFromListCore } from "@/domains/list/typing";
 import { openLocalFile, openFilePreview, saveFileTo } from "@/biz/fs/service";
 import { isCodeContent } from "@/biz/paste/utils";
 import {
+  deletePasteEvent,
   fetchPasteEventList,
   fetchPasteEventListProcess,
   openPasteEventPreviewWindow,
@@ -48,6 +49,7 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       list: new ListCore(
         new RequestCore(fetchPasteEventList, { process: fetchPasteEventListProcess, client: props.client })
       ),
+      delete: new RequestCore(deletePasteEvent, { client: props.client }),
       preview: new RequestCore(openPasteEventPreviewWindow, { client: props.client }),
     },
   };
@@ -56,6 +58,46 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
   const methods = {
     refresh() {
       bus.emit(EventNames.StateChange, { ..._state });
+    },
+    prepareLoadRecord(data: PasteRecord) {
+      _added_records.push(data);
+      if (_show_refresh_tip === true) {
+        return;
+      }
+      _show_refresh_tip = true;
+      methods.refresh();
+    },
+    loadAddedRecords() {
+      if (_show_refresh_tip === false) {
+        return;
+      }
+      if (_added_records.length === 0) {
+        return;
+      }
+      _show_refresh_tip = false;
+      let height_of_new_paste_event = 0;
+      for (let i = 0; i < _added_records.length; i += 1) {
+        const vv = _added_records[i];
+        height_of_new_paste_event += vv.height + ui.$waterfall.gutter;
+      }
+      const changed_height = height_of_new_paste_event;
+      ui.$waterfall.$columns[0].methods.addHeight(changed_height);
+      const current_scroll_top = ui.$view.getScrollTop();
+      ui.$view.setScrollTop(current_scroll_top + changed_height);
+      const $created_items = ui.$waterfall.methods.unshiftItems(_added_records.reverse());
+      // ui.$waterfall.methods.resetRange();
+
+      ui.$waterfall.methods.resetRange();
+      ui.$view.setScrollTop(0);
+      ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
+
+      for (let i = 0; i < $created_items.length; i += 1) {
+        const $cell = $created_items[i];
+        $cell.onHeightChange(([height, difference]) => {
+          const current_scroll_top = ui.$view.getScrollTop();
+          ui.$view.setScrollTop(current_scroll_top + difference);
+        });
+      }
     },
     async handleClickFile(file: SelectedFile) {
       console.log("[]handleClickVideo", file.name);
@@ -74,6 +116,30 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
     },
     handleClickCopyBtn(v: PasteRecord) {
       props.app.copy(v.text);
+    },
+    async handleClickTrashBtn(v: PasteRecord) {
+      appendMockData();
+      // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 501 }));
+      // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 502 }));
+      // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 503 }));
+
+      // setTimeout(() => {
+      //   methods.loadAddedRecords();
+      // }, 800);
+
+      // ui.$waterfall.methods.resetRange();
+      // ui.$view.setScrollTop(0);
+      // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
+      // const r = await request.paste.delete.run({ id: v.id });
+      // if (r.error) {
+      //   return;
+      // }
+      // request.paste.list.deleteItem((record) => {
+      //   return record.id === v.id;
+      // });
+      // ui.$waterfall.methods.deleteCell((record) => {
+      //   return record.id === v.id;
+      // });
     },
     handleClickFileBtn(v: PasteRecord) {
       const time = parseInt(String(new Date().valueOf() / 1000));
@@ -143,15 +209,20 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
   };
 
   let _selected_files = [] as SelectedFile[];
+  let _added_records: PasteRecord[] = [];
+  let _show_refresh_tip = false;
   const _state = {
     get waterfall() {
       return ui.$waterfall.state;
     },
-    get selected_files() {
-      return _selected_files;
-    },
     get paste_event() {
       return request.paste.list.response;
+    },
+    get show_refresh_tip() {
+      return _show_refresh_tip;
+    },
+    get selected_files() {
+      return _selected_files;
     },
   };
   enum EventNames {
@@ -200,28 +271,54 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
   ui.$waterfall.onStateChange(() => {
     methods.refresh();
   });
-  // setTimeout(() => {
-  //   const created_paste_event = data;
-  //   const vv = processPartialPasteEvent(created_paste_event);
-  //   const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
-  //   console.log(vv.height, ui.$waterfall.gutter);
-  //   const changed_height = height_of_new_paste_event;
-  //   ui.$waterfall.$columns[0].methods.addHeight(changed_height);
-  //   ui.$view.setScrollTop(changed_height);
-  //   ui.$waterfall.methods.unshiftItems([vv]);
-  // }, 2000);
+  let _iii = 500;
+  function appendMockData() {
+    const created_paste_event = { ...data, id: (_iii += 1) };
+    const vv = processPartialPasteEvent(created_paste_event);
+    // const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
+    // const added_height = height_of_new_paste_event;
+    const h = 100;
+    const added_height = 120;
+    // const h = ui.$waterfall.$columns[0].state.height;
+    // 新增高度，然后滚动距离也要增加这个高度
+    ui.$waterfall.$columns[0].methods.addHeight(added_height);
+    const h2 = ui.$waterfall.$columns[0].state.height;
+    console.log("[]appendMockData", added_height, h, h2);
+    ui.$view.setScrollTop(ui.$view.getScrollTop() + added_height);
+    const $created_items = ui.$waterfall.methods.unshiftItems([vv], { skipUpdateHeight: true });
+    const $first = $created_items[0];
+    // if (!$first) {
+    //   return;
+    // }
+    // $first.onHeightChange(([height, difference]) => {
+    //   ui.$view.addScrollTop(difference);
+    // });
+  }
+  // setTimeout(appendMockData, 5000);
+
   Events.On("clipboard:update", (event) => {
     const created_paste_event = event.data[0];
     if (!created_paste_event) {
       return;
     }
     const vv = processPartialPasteEvent(created_paste_event);
-    const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
-    console.log(vv.height, ui.$waterfall.gutter);
-    const changed_height = height_of_new_paste_event;
-    ui.$waterfall.$columns[0].methods.addHeight(changed_height);
-    ui.$view.setScrollTop(changed_height);
-    ui.$waterfall.methods.unshiftItems([vv]);
+    methods.prepareLoadRecord(vv);
+
+    // const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
+    // const changed_height = height_of_new_paste_event;
+    // ui.$waterfall.$columns[0].methods.addHeight(changed_height);
+    // const current_scroll_top = ui.$view.getScrollTop();
+    // ui.$view.setScrollTop(current_scroll_top + changed_height);
+    // const $created_items = ui.$waterfall.methods.unshiftItems([vv]);
+    // const $first = $created_items[0];
+    // if (!$first) {
+    //   return;
+    // }
+    // $first.onHeightChange(([height, difference]) => {
+    //   console.log(difference);
+    //   const current_scroll_top = ui.$view.getScrollTop();
+    //   ui.$view.setScrollTop(current_scroll_top + difference);
+    // });
   });
 
   return {
@@ -276,6 +373,15 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
               <Bird class="text-w-fg-2 w-36 h-36" />
               <div class="mt-2 text-center text-w-fg-1">没有数据</div>
             </div>
+          }
+          extra={
+            <Show when={state().show_refresh_tip}>
+              <div class="z-[99] fixed top-4 left-1/2 -translate-x-1/2">
+                <div class="p-4 cursor-pointer" onClick={vm.methods.loadAddedRecords}>
+                  <div>加载新内容</div>
+                </div>
+              </div>
+            </Show>
           }
           render={(payload) => {
             const v = payload;
@@ -339,6 +445,14 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                   </div>
                   <div class="operations flex justify-between">
                     <div class="flex items-center gap-1">
+                      <div
+                        class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
+                        onClick={() => {
+                          vm.methods.handleClickTrashBtn(v);
+                        }}
+                      >
+                        <Trash class="w-4 h-4" />
+                      </div>
                       <div
                         class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
                         onClick={() => {
