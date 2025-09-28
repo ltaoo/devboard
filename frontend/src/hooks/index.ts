@@ -41,7 +41,9 @@ export function useViewModelStore<
   vm.onStateChange((v) => {
     setState(v);
   });
-  onMount(() => {});
+  onMount(() => {
+    console.log("[]onMounted");
+  });
   // 注释掉是因为一个 store 可能被 A B 两个组件共同使用，A 组件卸载后如果取消所有监听，B 组件就无法同步状态了
   // onCleanup(() => {
   //   if (vm.destroy) {

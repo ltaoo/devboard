@@ -125,6 +125,7 @@ export function connectScroll(store: ScrollViewCore, $scroll: HTMLDivElement) {
   };
   store.getScrollTop = () => {
     return $scroll.scrollTop;
+    // return _scroll_top;
   };
   store.getScrollClientHeight = () => {
     return $scroll.clientHeight;

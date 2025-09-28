@@ -721,7 +721,10 @@ export class ListCore<
   modifyResponse(fn: (v: Response<T>) => Response<T>) {
     this.response = fn({ ...this.response });
     this.emit(Events.StateChange, { ...this.response });
-    // this.emit(Events.DataSourceChange, [...this.response.dataSource]);
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "manually",
+    });
   }
   /**
    * 手动修改当前 params

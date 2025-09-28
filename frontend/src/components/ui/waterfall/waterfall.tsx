@@ -14,7 +14,7 @@ export function WaterfallView<T>(
     store: WaterfallModel<T>;
     fallback?: JSX.Element;
     extra?: JSX.Element;
-    render: (payload: T) => JSX.Element;
+    render: (payload: T, idx: number) => JSX.Element;
   } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
   const [state, vm] = useViewModelStore(props.store);
@@ -42,7 +42,10 @@ export function WaterfallView<T>(
   );
 }
 
-export function WaterfallColumnView<T>(props: { store: WaterfallColumnModel<T>; render: (payload: T) => JSX.Element }) {
+export function WaterfallColumnView<T>(props: {
+  store: WaterfallColumnModel<T>;
+  render: (payload: T, idx: number) => JSX.Element;
+}) {
   const [state, vm] = useViewModelStore(props.store);
 
   return (
@@ -67,7 +70,10 @@ export function WaterfallColumnView<T>(props: { store: WaterfallColumnModel<T>; 
 }
 
 export function WaterfallCellView<T>(
-  props: { store: WaterfallCellModel<T>; render: (payload: T) => JSX.Element } & JSX.HTMLAttributes<HTMLDivElement>
+  props: {
+    store: WaterfallCellModel<T>;
+    render: (payload: T, idx: number) => JSX.Element;
+  } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
   const [state, vm] = useViewModelStore(props.store);
 
@@ -86,7 +92,7 @@ export function WaterfallCellView<T>(
         vm.methods.load({ width, height });
       }}
     >
-      {props.render(state().payload)}
+      {props.render(state().payload, state().idx)}
     </div>
   );
 }

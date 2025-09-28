@@ -5,7 +5,30 @@ import { For, Match, Show, Switch } from "solid-js";
 import { Bird, Check, Copy, Earth, Eye, File, Link, Trash } from "lucide-solid";
 import { Browser, Events } from "@wailsio/runtime";
 
-import { data } from "@mock/created_paste_event";
+import {
+  d1,
+  d10,
+  d11,
+  d12,
+  d13,
+  d14,
+  d15,
+  d16,
+  d17,
+  d18,
+  d19,
+  d2,
+  d20,
+  d21,
+  d22,
+  d3,
+  d4,
+  d5,
+  d6,
+  d7,
+  d8,
+  d9,
+} from "@mock/created_paste_event";
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
 import { Button, ListView, ScrollView, Skeleton } from "@/components/ui";
@@ -60,44 +83,52 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       bus.emit(EventNames.StateChange, { ..._state });
     },
     prepareLoadRecord(data: PasteRecord) {
+      appendMockData(data);
       _added_records.push(data);
-      if (_show_refresh_tip === true) {
-        return;
-      }
-      _show_refresh_tip = true;
+      // if (_show_refresh_tip === true) {
+      //   return;
+      // }
+      // _show_refresh_tip = true;
       methods.refresh();
     },
     loadAddedRecords() {
-      if (_show_refresh_tip === false) {
-        return;
-      }
+      // if (_show_refresh_tip === false) {
+      //   return;
+      // }
       if (_added_records.length === 0) {
         return;
       }
-      _show_refresh_tip = false;
-      let height_of_new_paste_event = 0;
-      for (let i = 0; i < _added_records.length; i += 1) {
-        const vv = _added_records[i];
-        height_of_new_paste_event += vv.height + ui.$waterfall.gutter;
-      }
-      const changed_height = height_of_new_paste_event;
-      ui.$waterfall.$columns[0].methods.addHeight(changed_height);
-      const current_scroll_top = ui.$view.getScrollTop();
-      ui.$view.setScrollTop(current_scroll_top + changed_height);
-      const $created_items = ui.$waterfall.methods.unshiftItems(_added_records.reverse());
-      // ui.$waterfall.methods.resetRange();
-
-      ui.$waterfall.methods.resetRange();
       ui.$view.setScrollTop(0);
-      ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
+      // _show_refresh_tip = false;
+      _added_records = [];
+      methods.refresh();
+      setTimeout(() => {
+        ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
+      }, 0);
 
-      for (let i = 0; i < $created_items.length; i += 1) {
-        const $cell = $created_items[i];
-        $cell.onHeightChange(([height, difference]) => {
-          const current_scroll_top = ui.$view.getScrollTop();
-          ui.$view.setScrollTop(current_scroll_top + difference);
-        });
-      }
+      // let height_of_new_paste_event = 0;
+      // for (let i = 0; i < _added_records.length; i += 1) {
+      //   const vv = _added_records[i];
+      //   height_of_new_paste_event += vv.height + ui.$waterfall.gutter;
+      // }
+      // const changed_height = height_of_new_paste_event;
+      // ui.$waterfall.$columns[0].methods.addHeight(changed_height);
+      // const current_scroll_top = ui.$view.getScrollTop();
+      // ui.$view.setScrollTop(current_scroll_top + changed_height);
+      // const $created_items = ui.$waterfall.methods.unshiftItems(_added_records.reverse());
+      // // ui.$waterfall.methods.resetRange();
+
+      // ui.$waterfall.methods.resetRange();
+      // ui.$view.setScrollTop(0);
+      // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
+
+      // for (let i = 0; i < $created_items.length; i += 1) {
+      //   const $cell = $created_items[i];
+      //   $cell.onHeightChange(([height, difference]) => {
+      //     const current_scroll_top = ui.$view.getScrollTop();
+      //     ui.$view.setScrollTop(current_scroll_top + difference);
+      //   });
+      // }
     },
     async handleClickFile(file: SelectedFile) {
       console.log("[]handleClickVideo", file.name);
@@ -118,15 +149,16 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       props.app.copy(v.text);
     },
     async handleClickTrashBtn(v: PasteRecord) {
-      appendMockData();
+      // appendMockData({
+      //   ...d1,
+      //   id: Math.random(),
+      // });
       // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 501 }));
       // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 502 }));
       // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 503 }));
-
       // setTimeout(() => {
       //   methods.loadAddedRecords();
       // }, 800);
-
       // ui.$waterfall.methods.resetRange();
       // ui.$view.setScrollTop(0);
       // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
@@ -159,11 +191,24 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
         // ui.$view.finishPullToRefresh();
       },
       async onReachBottom() {
-        console.log("[PAGE]home/index - onReachBottom");
+        // console.log("[PAGE]home/index - onReachBottom");
         await request.paste.list.loadMore();
+        // await request.paste.list.modifyResponse((prev) => {
+        //   return {
+        //     ...prev,
+        //     noMore: true,
+        //     dataSource: [
+        //       ...prev.dataSource,
+        //       ...[d12, d13, d14, d15, d16, d17, d18, d19, d20, d21, d22].map((v) => {
+        //         return processPartialPasteEvent(v);
+        //       }),
+        //     ],
+        //   };
+        // });
         ui.$view.finishLoadingMore();
       },
       onScroll(pos) {
+        console.log("[PAGE]home/index - onScroll", pos);
         ui.$waterfall.methods.handleScroll({
           scrollTop: pos.scrollTop,
         });
@@ -219,7 +264,7 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       return request.paste.list.response;
     },
     get show_refresh_tip() {
-      return _show_refresh_tip;
+      return _added_records.length;
     },
     get selected_files() {
       return _selected_files;
@@ -242,9 +287,13 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
   //     console.log("[PAGE]home/index - handle added items", ui.$waterfall.state.columns.length);
   //   }
   // });
+  // request.paste.list.onStateChange(() => {
+  //   JSON.stringify(request.paste.list.response.dataSource);
+  // })
   request.paste.list.onDataSourceChange(({ dataSource, reason }) => {
     // const isNewRequest = dataSource.length !== 0 && dataSource.length <= request.paste.list.response.dataSource.length;
     // console.log("[]onDataSourceChange", dataSource.length, request.paste.list.response.dataSource.length);
+    JSON.stringify(request.paste.list.response.dataSource);
     if (["init", "reload", "refresh", "search"].includes(reason)) {
       ui.$waterfall.methods.cleanColumns();
       ui.$waterfall.methods.appendItems(dataSource);
@@ -260,39 +309,40 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
         added_items.push(dd);
       }
     }
-    console.log(
-      "[]onDataSourceChange - before appendItems",
-      existing_ids,
-      dataSource.map((v) => v.id),
-      added_items
-    );
     ui.$waterfall.methods.appendItems(added_items);
   });
   ui.$waterfall.onStateChange(() => {
     methods.refresh();
   });
-  let _iii = 500;
-  function appendMockData() {
-    const created_paste_event = { ...data, id: (_iii += 1) };
-    const vv = processPartialPasteEvent(created_paste_event);
-    // const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
-    // const added_height = height_of_new_paste_event;
-    const h = 100;
-    const added_height = 120;
-    // const h = ui.$waterfall.$columns[0].state.height;
-    // 新增高度，然后滚动距离也要增加这个高度
-    ui.$waterfall.$columns[0].methods.addHeight(added_height);
-    const h2 = ui.$waterfall.$columns[0].state.height;
-    console.log("[]appendMockData", added_height, h, h2);
+  function appendMockData(d: PasteRecord) {
+    // const created_paste_event = d;
+    // const vv = processPartialPasteEvent(created_paste_event);
+    const vv = d;
+    const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
+    const added_height = height_of_new_paste_event;
+    const $column = ui.$waterfall.$columns[0];
+    // const h = $column.state.height;
+    // $column.methods.addHeight(added_height);
+    // const h2 = ui.$waterfall.$columns[0].state.height;
+    // const range = $column.range;
+    let need_adjust_scroll_top = true;
+    // if (ui.$view.getScrollTop() === 0) {
+    //   need_adjust_scroll_top = true;
+    // }
+    console.log("[]before  need_adjust_scroll_top", ui.$view.getScrollTop(), need_adjust_scroll_top);
+    // console.log("[]before setScrollTop", ui.$view.getScrollTop(), added_height, h, h2, h2 - h);
     ui.$view.setScrollTop(ui.$view.getScrollTop() + added_height);
+    console.log("[]after setScrollTop", ui.$view.getScrollTop());
     const $created_items = ui.$waterfall.methods.unshiftItems([vv], { skipUpdateHeight: true });
     const $first = $created_items[0];
-    // if (!$first) {
-    //   return;
-    // }
-    // $first.onHeightChange(([height, difference]) => {
-    //   ui.$view.addScrollTop(difference);
-    // });
+    if (!$first) {
+      return;
+    }
+    $first.onHeightChange(([height, difference]) => {
+      console.log("[]before setScrollTop in onHeightChange", ui.$view.getScrollTop(), difference);
+      ui.$view.addScrollTop(difference);
+      console.log("[]after setScrollTop in onHeightChange", ui.$view.getScrollTop());
+    });
   }
   // setTimeout(appendMockData, 5000);
 
@@ -327,11 +377,20 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
     ui,
     state: _state,
     async ready() {
+      // setTimeout(() => {
+      //   if (ui.$view.rect.height) {
+      //     ui.$waterfall.methods.setClientHeight(ui.$view.rect.height);
+      //   }
+      //   ui.$waterfall.methods.cleanColumns();
+      //   ui.$waterfall.methods.appendItems(
+      //     [d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11].map((v) => processPartialPasteEvent(v))
+      //   );
+      // }, 1000);
       const r = await request.paste.list.init();
-      if (r.error) {
-        return;
-      }
-      console.log(r.data);
+      // if (r.error) {
+      //   return;
+      // }
+      // console.log(r.data);
       // const r = await methods.ready();
       // if (r.error) {
       //   props.app.tip({
@@ -353,7 +412,14 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
   const [state, vm] = useViewModel(HomeIndexPageViewModel, [props]);
 
   return (
-    <>
+    <div class="relative w-full h-full">
+      <Show when={!!state().show_refresh_tip}>
+        <div class="z-[99] absolute top-4 left-1/2 -translate-x-1/2">
+          <div class="p-4 bg-w-bg-3 rounded-md cursor-pointer" onClick={vm.methods.loadAddedRecords}>
+            <div>{state().show_refresh_tip}条新内容</div>
+          </div>
+        </div>
+      </Show>
       <ScrollView
         store={vm.ui.$view}
         class="z-0 relative bg-w-bg-0"
@@ -374,25 +440,17 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
               <div class="mt-2 text-center text-w-fg-1">没有数据</div>
             </div>
           }
-          extra={
-            <Show when={state().show_refresh_tip}>
-              <div class="z-[99] fixed top-4 left-1/2 -translate-x-1/2">
-                <div class="p-4 cursor-pointer" onClick={vm.methods.loadAddedRecords}>
-                  <div>加载新内容</div>
-                </div>
-              </div>
-            </Show>
-          }
-          render={(payload) => {
+          render={(payload, idx) => {
             const v = payload;
             return (
-              <div class="">
+              <div class="relative ">
                 <div
                   class="p-2 max-h-[120px] overflow-hidden rounded-md bg-w-bg-5"
                   onClick={() => {
                     vm.methods.handleClickPasteContent(v);
                   }}
                 >
+                  {/* <div class="absolute right-0">{idx}</div> */}
                   <Switch fallback={<div>{v.text}</div>}>
                     <Match when={v.type === "url"}>
                       <div class="w-full overflow-auto whitespace-nowrap scroll--hidden">
@@ -488,6 +546,6 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
           }}
         />
       </ScrollView>
-    </>
+    </div>
   );
 };
