@@ -149,16 +149,6 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       props.app.copy(v.text);
     },
     async handleClickTrashBtn(v: PasteRecord) {
-      // appendMockData({
-      //   ...d1,
-      //   id: Math.random(),
-      // });
-      // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 501 }));
-      // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 502 }));
-      // methods.prepareLoadRecord(processPartialPasteEvent({ ...data, id: 503 }));
-      // setTimeout(() => {
-      //   methods.loadAddedRecords();
-      // }, 800);
       // ui.$waterfall.methods.resetRange();
       // ui.$view.setScrollTop(0);
       // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
@@ -166,12 +156,15 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       // if (r.error) {
       //   return;
       // }
-      // request.paste.list.deleteItem((record) => {
-      //   return record.id === v.id;
-      // });
-      // ui.$waterfall.methods.deleteCell((record) => {
-      //   return record.id === v.id;
-      // });
+      request.paste.list.deleteItem((record) => {
+        return record.id === v.id;
+      });
+      ui.$waterfall.methods.deleteCell((record) => {
+        return record.id === v.id;
+      });
+      if (request.paste.list.response.dataSource.length < 10 && !request.paste.list.response.noMore) {
+        request.paste.list.loadMore();
+      }
     },
     handleClickFileBtn(v: PasteRecord) {
       const time = parseInt(String(new Date().valueOf() / 1000));
@@ -208,7 +201,6 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
         ui.$view.finishLoadingMore();
       },
       onScroll(pos) {
-        console.log("[PAGE]home/index - onScroll", pos);
         ui.$waterfall.methods.handleScroll({
           scrollTop: pos.scrollTop,
         });
@@ -443,7 +435,12 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
           render={(payload, idx) => {
             const v = payload;
             return (
-              <div class="relative ">
+              <div
+                classList={{
+                  "relative rounded-md": true,
+                  "hover:bg-w-bg-3": true,
+                }}
+              >
                 <div
                   class="p-2 max-h-[120px] overflow-hidden rounded-md bg-w-bg-5"
                   onClick={() => {

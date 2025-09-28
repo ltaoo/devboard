@@ -1,11 +1,16 @@
 import { base, BaseDomain, Handler } from "@/domains/base";
 import { throttle } from "@/utils/lodash/throttle";
-import { toFixed } from "@/utils";
+import { remove_arr_item, toFixed } from "@/utils";
 
 import { WaterfallCellModel } from "./cell";
 import { inRange } from "@/utils/primitive";
 
-export function WaterfallColumnModel<T>(props: { index?: number; size?: number; buffer?: number; gutter?: number }) {
+export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
+  index?: number;
+  size?: number;
+  buffer?: number;
+  gutter?: number;
+}) {
   function handleScrollForce(values: { scrollTop: number }) {
     const { scrollTop } = values;
     _scroll = values;
@@ -81,8 +86,8 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
         }
       });
       const idx = _$total_items.length;
-      $item.methods.setIndex(idx);
-      $item.methods.setColumn(_index);
+      // $item.methods.setIndex(idx);
+      $item.methods.setColumnIdx(_index);
       _height += $item.state.height + _gutter;
       _$total_items.push($item);
       const $prev = _$total_items[idx - 1];
@@ -138,8 +143,8 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
       //     $next.methods.setTopWithDifference(height_difference);
       //   }
       // }
-      $item.methods.setIndex(idx);
-      $item.methods.setColumn(_index);
+      // $item.methods.setIndex(idx);
+      $item.methods.setColumnIdx(_index);
       // if (!opt.skipUpdateHeight) {
       _height += $item.height + _gutter;
       // }
@@ -156,6 +161,31 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
     },
     findItemById(id: number) {
       return _$total_items.find((v) => v.id === id);
+    },
+    deleteCell($item: WaterfallCellModel<T>) {
+      // const idx = $item.idx;
+      const idx = _$total_items.findIndex((v) => v.id === $item.id);
+      if (idx === -1) {
+        return;
+      }
+      const $next = _$total_items[idx + 1];
+      const $backup = _$total_items[_end];
+      const height_difference = $item.height + _gutter;
+      _height -= height_difference;
+      console.log("[BIZ]waterfall/column - delete cell", idx, $next?.idx, height_difference);
+      if ($next) {
+        $next.methods.setTopWithDifference(-height_difference);
+      }
+      _$total_items = remove_arr_item(_$total_items, idx);
+      const idx2 = _$items.findIndex((v) => v.id === $item.id);
+      // const idx3 = _$items
+      if (idx2 !== -1) {
+        _$items = remove_arr_item(_$items, idx2);
+        if ($backup) {
+          _$items.push($backup);
+        }
+      }
+      methods.refresh();
     },
     clean() {
       _$items = [];
@@ -203,24 +233,24 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
         //   }
         // }
         // 这里是从全部列表中，找出应该从哪里开始展示的逻辑
-        // for (let i = start; i < _$total_items.length; i += 1) {
-        //   const item = _$total_items[i];
-        //   if (item.state.top >= scroll_top) {
-        //     // 这个 -1 是为什么？
-        //     start = i - 1;
-        //     end = start + _size;
-        //     return;
-        //   }
-        // }
-        const vvv = scroll_top + _client_height / 2;
-        const idx = _$total_items.findIndex(($v) => {
-          return inRange(vvv, [$v.state.top - 100, $v.state.top + 100]);
-        });
-        if (idx === -1) {
-          return;
+        for (let i = start; i < _$total_items.length; i += 1) {
+          const item = _$total_items[i];
+          if (item.state.top >= scroll_top) {
+            // 这个 -1 是为什么？
+            start = i - 1;
+            end = start + _size;
+            return;
+          }
         }
-        start = Math.min(0, idx - _size * 2);
-        end = Math.max(_$total_items.length, start + _size * 2);
+        // const vvv = scroll_top + _client_height / 2;
+        // const idx = _$total_items.findIndex(($v) => {
+        //   return inRange(vvv, [$v.state.top - 100, $v.state.top + 100]);
+        // });
+        // if (idx === -1) {
+        //   return;
+        // }
+        // start = Math.max(0, idx - _size);
+        // end = Math.min(_$total_items.length, start + _size);
       })();
       //     const count = this.buffer_size;
       console.log("before Math.max", [start, start - _buffer_size], [end, _$total_items.length]);
@@ -319,4 +349,4 @@ export function WaterfallColumnModel<T>(props: { index?: number; size?: number; 
   };
 }
 
-export type WaterfallColumnModel<T> = ReturnType<typeof WaterfallColumnModel<T>>;
+export type WaterfallColumnModel<T extends Record<string, unknown>> = ReturnType<typeof WaterfallColumnModel<T>>;
