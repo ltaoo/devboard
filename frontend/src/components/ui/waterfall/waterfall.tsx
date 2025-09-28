@@ -9,7 +9,7 @@ import { WaterfallModel } from "@/domains/ui/waterfall/waterfall";
 import { WaterfallColumnModel } from "@/domains/ui/waterfall/column";
 import { WaterfallCellModel } from "@/domains/ui/waterfall/cell";
 
-export function WaterfallView<T>(
+export function WaterfallView<T extends Record<string, unknown>>(
   props: {
     store: WaterfallModel<T>;
     fallback?: JSX.Element;
@@ -42,7 +42,7 @@ export function WaterfallView<T>(
   );
 }
 
-export function WaterfallColumnView<T>(props: {
+export function WaterfallColumnView<T extends Record<string, unknown>>(props: {
   store: WaterfallColumnModel<T>;
   render: (payload: T, idx: number) => JSX.Element;
 }) {
@@ -69,7 +69,7 @@ export function WaterfallColumnView<T>(props: {
   );
 }
 
-export function WaterfallCellView<T>(
+export function WaterfallCellView<T extends Record<string, unknown>>(
   props: {
     store: WaterfallCellModel<T>;
     render: (payload: T, idx: number) => JSX.Element;

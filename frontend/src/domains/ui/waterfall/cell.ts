@@ -1,7 +1,11 @@
 import { base, BaseDomain, Handler } from "@/domains/base";
 import { toFixed } from "@/utils";
 
-export function WaterfallCellModel<T>(props: { index: number; height: number; payload: T }) {
+export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
+  uid: number;
+  height: number;
+  payload: T;
+}) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -32,10 +36,10 @@ export function WaterfallCellModel<T>(props: { index: number; height: number; pa
       bus.emit(Events.Visible);
     },
     setIndex(idx: number) {
-      _index = idx;
+      _idx = idx;
     },
-    setColumn(idx: number) {
-      _column = idx;
+    setColumnIdx(idx: number) {
+      _column_idx = idx;
     },
     setTopWithDifference(difference: number) {
       if (difference === 0) {
@@ -84,8 +88,10 @@ export function WaterfallCellModel<T>(props: { index: number; height: number; pa
   let _loaded = false;
   /** 该卡片超过 50% 的内容进入页面 */
   let _visible = false;
-  let _index = props.index;
-  let _column = 0;
+  /** 其实是 id */
+  let _idx = props.uid;
+  let _id = props.payload["id"] ?? _idx;
+  let _column_idx = 0;
   /** 该 item 定位 */
   let _position = { x: 0, y: 0 };
 
@@ -94,7 +100,7 @@ export function WaterfallCellModel<T>(props: { index: number; height: number; pa
       return _id;
     },
     get idx() {
-      return _index;
+      return _idx;
     },
     get position() {
       return _position;
@@ -142,7 +148,7 @@ export function WaterfallCellModel<T>(props: { index: number; height: number; pa
   };
 
   const bus = base<TheTypesOfEvents>();
-  let _id = bus.uid();
+  // let _id = props.payload["id"] ?? bus.uid();
 
   return {
     state: _state,
@@ -151,7 +157,10 @@ export function WaterfallCellModel<T>(props: { index: number; height: number; pa
       return _id;
     },
     get idx() {
-      return _index;
+      return _idx;
+    },
+    get column_idx() {
+      return _column_idx;
     },
     get size() {
       return _state.size;
@@ -184,4 +193,4 @@ export function WaterfallCellModel<T>(props: { index: number; height: number; pa
   };
 }
 
-export type WaterfallCellModel<T> = ReturnType<typeof WaterfallCellModel<T>>;
+export type WaterfallCellModel<T extends Record<string, unknown>> = ReturnType<typeof WaterfallCellModel<T>>;

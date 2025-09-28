@@ -2,10 +2,16 @@ import { base, BaseDomain, Handler } from "@/domains/base";
 
 import { WaterfallColumnModel } from "./column";
 import { WaterfallCellModel } from "./cell";
+import { remove_arr_item } from "@/utils";
 
 setInterval(() => {}, 100);
 
-export function WaterfallModel<T>(props: { column?: number; size?: number; buffer?: number; gutter?: number }) {
+export function WaterfallModel<T extends Record<string, unknown>>(props: {
+  column?: number;
+  size?: number;
+  buffer?: number;
+  gutter?: number;
+}) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -57,7 +63,7 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
             }
             return 120;
           })(),
-          index: _index,
+          uid: _index,
         });
       });
       for (let i = 0; i < $created_items.length; i += 1) {
@@ -90,7 +96,7 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
             }
             return 120;
           })(),
-          index: _index,
+          uid: _index,
         });
       });
       for (let i = 0; i < createdItems.length; i += 1) {
@@ -177,13 +183,21 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
       );
     },
     deleteCell(finder: (v: T) => boolean) {
-      const $matched = _$items.find(($v) => {
+      const idx = _$items.findIndex(($v) => {
         return finder($v.state.payload);
       });
-      if (!$matched) {
+      if (idx === -1) {
         return;
       }
-      $matched.methods.setHeight(0);
+      const $matched = _$items[idx];
+      const column_idx = $matched.column_idx;
+      const $column = _$columns[column_idx];
+      if (!$column) {
+        return;
+      }
+      $column.methods.deleteCell($matched);
+      remove_arr_item(_$items, idx);
+      methods.handleScroll({ scrollTop: _scrollValues.scrollTop });
     },
     resetRange() {
       for (let i = 0; i < _$columns.length; i += 1) {
@@ -292,4 +306,4 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
   };
 }
 
-export type WaterfallModel<T> = ReturnType<typeof WaterfallModel<T>>;
+export type WaterfallModel<T extends Record<string, unknown>> = ReturnType<typeof WaterfallModel<T>>;
