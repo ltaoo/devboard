@@ -6,7 +6,6 @@ import { Result } from "@/domains/result";
 export const request = request_factory({
   hostnames: {},
   process<T>(r: Result<{ code: number | string; msg: string; data: T }>) {
-    // console.log("[common]", r);
     if (r.error) {
       return Result.Err(r.error);
     }
@@ -14,6 +13,7 @@ export const request = request_factory({
     if (code !== 0) {
       return Result.Err(msg, code, data);
     }
+    // console.log("[common]", JSON.stringify(data));
     return Result.Ok(data);
   },
 });

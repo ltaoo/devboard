@@ -154,6 +154,11 @@ export function WaterfallModel<T>(props: { column?: number; size?: number; buffe
       _height = 0;
       bus.emit(Events.StateChange, { ..._state });
     },
+    setClientHeight(v: number) {
+      for (let i = 0; i < _$columns.length; i += 1) {
+        _$columns[i].methods.setClientHeight(v);
+      }
+    },
     mapCellWithColumnIdxAndIdx(column_idx: number, cell_idx: number) {
       const $column = _$columns[column_idx];
       if ($column) {

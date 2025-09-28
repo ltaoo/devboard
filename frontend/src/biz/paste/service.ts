@@ -186,7 +186,7 @@ export function processPartialPasteEvent(
     image_url: v.content.image_base64 ? `data:image/png;base64,${v.content.image_base64}` : null,
     height: (() => {
       // @todo 根据内容类型及所需空间（文本、图片）估算大概值
-      return 102;
+      return 84;
     })(),
     type: t,
     created_at: dayjs(v.created_at),

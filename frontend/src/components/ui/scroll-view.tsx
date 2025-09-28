@@ -8,7 +8,9 @@ import * as ScrollViewPrimitive from "@/packages/ui/scroll-view";
 import { ScrollViewCore } from "@/domains/ui/scroll-view";
 import { cn } from "@/utils/index";
 
-export const ScrollView = (props: { store: ScrollViewCore } & JSX.HTMLAttributes<HTMLDivElement>) => {
+export const ScrollView = (
+  props: { store: ScrollViewCore; extra?: JSX.Element } & JSX.HTMLAttributes<HTMLDivElement>
+) => {
   // const { store, children, ...rest } = props;
 
   const [rotate, setRotate] = createSignal(false);
@@ -27,7 +29,10 @@ export const ScrollView = (props: { store: ScrollViewCore } & JSX.HTMLAttributes
       store={props.store}
       // onClick={rest.onClick}
     >
-      <ScrollViewPrimitive.Indicator class="scroll-view__indicator relative w-full overflow-hidden text-center" store={props.store}>
+      <ScrollViewPrimitive.Indicator
+        class="scroll-view__indicator relative w-full overflow-hidden text-center"
+        store={props.store}
+      >
         <div class="absolute left-0 bottom-0 w-full min-h-[30px] py-[10px]">
           <ScrollViewPrimitive.Progress class="w-[50px] h-[50px] mx-auto rounded-full bg-w-bg-0" store={props.store}>
             <div
@@ -49,6 +54,7 @@ export const ScrollView = (props: { store: ScrollViewCore } & JSX.HTMLAttributes
           </ScrollViewPrimitive.Loading>
         </div>
       </ScrollViewPrimitive.Indicator>
+      {props.extra}
       {props.children}
     </ScrollViewPrimitive.Root>
   );

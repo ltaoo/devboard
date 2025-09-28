@@ -11,3 +11,7 @@ export function toNumber<T extends number | undefined>(
   }
   return vv as any;
 }
+
+export function inRange(v: number, [a, b]: [number, number]) {
+  return v >= a && v <= b;
+}
