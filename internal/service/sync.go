@@ -1,17 +1,20 @@
 package service
 
 import (
-	"devboard/internal/biz"
-	"devboard/models"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/studio-b12/gowebdav"
 	"github.com/wailsapp/wails/v3/pkg/application"
+
+	"devboard/internal/biz"
+	"devboard/models"
 )
 
 type SyncService struct {
@@ -27,11 +30,36 @@ type FileNode struct {
 	Files    []*FileNode `json:"files,omitempty"`
 }
 
-func (s *SyncService) ExportRecordList() *Result {
-	root_dir := "/Users/mayfair/Documents/export_ttt"
+func (s *SyncService) PingWebDav(body WebDavSyncConfigBody) *Result {
+	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
+	err := client.Connect()
+	if err != nil {
+		return Error(err)
+	}
+	return Ok(map[string]interface{}{
+		"ok": true,
+	})
+}
+
+type WebDavSyncConfigBody struct {
+	URL      string `json:"url"`
+	RootDir  string `json:"root_dir"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func (s *SyncService) ExportRecordList(body WebDavSyncConfigBody) *Result {
+	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
+	err := client.Connect()
+	if err != nil {
+		return Error(err)
+	}
+
+	// root_dir := "/Users/mayfair/Documents/export_ttt"
 	table_name := "paste_event"
-	table_out_dir := filepath.Join(root_dir, s.Biz.Name, table_name)
-	table_last_operation_time_filepath := filepath.Join(table_out_dir, "last_operation_time")
+	table_out_dir := filepath.Join(body.RootDir, table_name)
+	remote_last_operation_time_filename := "last_operation_time"
+	remote_last_operation_time_filepath := filepath.Join(table_out_dir, remote_last_operation_time_filename)
 
 	var records []map[string]interface{}
 	result := s.Biz.DB.Table(table_name).Order("last_operation_time DESC").Find(&records)
@@ -48,25 +76,46 @@ func (s *SyncService) ExportRecordList() *Result {
 	if len(records) == 0 {
 		return Ok(files)
 	}
-
 	table_last_record := records[0]
-	table_last_operation_time_byte, err := os.ReadFile(table_last_operation_time_filepath)
+	table_last_operation_time := table_last_record["last_operation_time"].(string)
+	millis, err := strconv.ParseInt(table_last_operation_time, 10, 64)
+	// _record_last_operation_time, err := time.Parse("20060102", table_last_operation_time)
 	if err != nil {
 		return Error(err)
 	}
-	table_last_operation_time := string(table_last_operation_time_byte)
-	_table_last_operation_time, err := time.Parse("20060102", table_last_operation_time)
+	_record_last_operation_time := time.Unix(0, millis*int64(time.Millisecond))
+	_, err = client.Stat(remote_last_operation_time_filepath)
 	if err != nil {
-		return Error(err)
+		if !gowebdav.IsErrNotFound(err) {
+			return Error(err)
+		}
+		// 文件不存在
+	} else {
+		// 文件存在
+		remote_last_operation_time_byte, err := client.Read(remote_last_operation_time_filepath)
+		if err != nil {
+			return Error(err)
+		}
+		remote_last_operation_time := string(remote_last_operation_time_byte)
+		remote_millis, err := strconv.ParseInt(remote_last_operation_time, 10, 64)
+		if err != nil {
+			return Error(err)
+		}
+		_remote_last_operation_time := time.Unix(0, remote_millis*int64(time.Millisecond))
+		// _remote_last_operation_time, err := time.Parse("20060102", remote_last_operation_time)
+		// 如果本地数据库，最新的记录时间在 webdav 之前，说明需要 同步到本地，而不能 同步到远端
+		if _record_last_operation_time.Before(_remote_last_operation_time) {
+			return Ok(nil)
+		}
+
 	}
-	_record_last_operation_time, err := time.Parse("20060102", table_last_record["last_operation_time"].(string))
-	if err != nil {
-		return Error(err)
-	}
-	// 如果本地数据库，最新的记录时间在 webdav 之前，说明需要 同步到本地，而不能 同步到远端
-	if _record_last_operation_time.Before(_table_last_operation_time) {
-		return Ok(nil)
-	}
+
+	files = append(files, &FileNode{
+		Name:     remote_last_operation_time_filename,
+		Filepath: remote_last_operation_time_filepath,
+		Type:     "file",
+		Content:  table_last_operation_time,
+	})
 
 	// 按天分组记录
 	day_groups := make(map[string][]map[string]interface{})
@@ -188,14 +237,26 @@ func (s *SyncService) ExportRecordList() *Result {
 
 	for _, file := range files {
 		if file.Type == "folder" {
-			if err := os.MkdirAll(file.Filepath, 0755); err != nil {
+			if !strings.HasSuffix(file.Filepath, "/") {
+				file.Filepath += "/"
+			}
+			// 使用 MkdirAll 创建目录（包括父目录）
+			if err := client.MkdirAll(file.Filepath, 0755); err != nil {
 				return Error(fmt.Errorf("创建目录失败: %v", err))
 			}
+			// if err := os.MkdirAll(file.Filepath, 0755); err != nil {
+			// 	return Error(fmt.Errorf("创建目录失败: %v", err))
+			// }
 		}
 		if file.Type == "file" {
-			if err := os.WriteFile(file.Filepath, []byte(file.Content), 0644); err != nil {
+			data := []byte(file.Content)
+			// 写入文件
+			if err := client.Write(file.Filepath, data, 0644); err != nil {
 				return Error(fmt.Errorf("写入文件失败: %v", err))
 			}
+			// if err := os.WriteFile(file.Filepath, []byte(file.Content), 0644); err != nil {
+			// 	return Error(fmt.Errorf("写入文件失败: %v", err))
+			// }
 		}
 	}
 
@@ -217,12 +278,59 @@ func get_day_timestamp_range(dateStr string) (start_time, end_time int64, err er
 	return day_start.Unix(), day_end.Unix(), nil
 }
 
-func (s *SyncService) ImportFileList() *Result {
-	root_dir := "/Users/mayfair/Documents/export_ttt"
-	out_dir := filepath.Join(root_dir, s.Biz.Name, "clipboard")
-	table_name := "paste_event"
+func (s *SyncService) ImportFileList(body WebDavSyncConfigBody) *Result {
+	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
+	err := client.Connect()
+	if err != nil {
+		return Error(err)
+	}
 
-	entries, err := os.ReadDir(out_dir)
+	table_name := "paste_event"
+	table_out_dir := filepath.Join(body.RootDir, table_name)
+	remote_last_operation_time_filename := "last_operation_time"
+	remote_last_operation_time_filepath := filepath.Join(table_out_dir, remote_last_operation_time_filename)
+
+	_, err = client.Stat(remote_last_operation_time_filepath)
+	if err != nil {
+		if !gowebdav.IsErrNotFound(err) {
+			return Error(err)
+		}
+		// 文件不存在
+		return Error(fmt.Errorf("未找到可同步的数据源"))
+	}
+	// 文件存在
+	remote_last_operation_time_byte, err := client.Read(remote_last_operation_time_filepath)
+	if err != nil {
+		return Error(err)
+	}
+	remote_last_operation_time := string(remote_last_operation_time_byte)
+	remote_millis, err := strconv.ParseInt(remote_last_operation_time, 10, 64)
+	if err != nil {
+		return Error(err)
+	}
+	_remote_last_operation_time := time.Unix(0, remote_millis*int64(time.Millisecond))
+	// _remote_last_operation_time, err := time.Parse("20060102", remote_last_operation_time)
+	// 如果本地数据库，最新的记录时间在 webdav 之前，说明需要 同步到本地，而不能 同步到远端
+	var records []map[string]interface{}
+	result := s.Biz.DB.Table(table_name).Order("last_operation_time DESC").Find(&records)
+	if result.Error != nil {
+		return Error(fmt.Errorf("查询记录失败: %v", result.Error))
+	}
+	if len(records) != 0 {
+		table_last_record := records[0]
+		table_last_operation_time := table_last_record["last_operation_time"].(string)
+		millis, err := strconv.ParseInt(table_last_operation_time, 10, 64)
+		// _record_last_operation_time, err := time.Parse("20060102", table_last_operation_time)
+		if err != nil {
+			return Error(err)
+		}
+		_record_last_operation_time := time.Unix(0, millis*int64(time.Millisecond))
+		if _record_last_operation_time.Before(_remote_last_operation_time) {
+			return Ok(nil)
+		}
+	}
+
+	entries, err := client.ReadDir(table_out_dir)
 	if err != nil {
 		fmt.Printf("读取目录失败: %v\n", err)
 		// return
@@ -230,25 +338,7 @@ func (s *SyncService) ImportFileList() *Result {
 	}
 
 	for _, entry := range entries {
-		// if entry.IsDir() {
-		// 	fmt.Printf("子目录: %s\n", entry.Name())
-		// } else {
-		// 	info, _ := entry.Info()
-		// 	fmt.Printf("文件: %s (大小: %d bytes)\n", entry.Name(), info.Size())
-		// }
-		// path := entry.Name()
-		// if path == out_dir {
-		// 	return nil
-		// }
-		// if err != nil {
-		// 	fmt.Printf("访问 %q 失败: %v\n", path, err)
-		// 	return Error(err)
-		// }
-		path := filepath.Join(out_dir, entry.Name())
-		info, err := entry.Info()
-		if err != nil {
-			return Error(err)
-		}
+		path := filepath.Join(table_out_dir, entry.Name())
 		if entry.IsDir() {
 			var latest_record models.PasteEvent
 			day_start, day_end, err := get_day_timestamp_range(entry.Name())
@@ -269,14 +359,18 @@ func (s *SyncService) ImportFileList() *Result {
 				return Error(err)
 			}
 			local_last_operation_time := string(content)
-			_local_last_operation_time, err := time.Parse("20060102", local_last_operation_time)
+			local_millis, err := strconv.ParseInt(local_last_operation_time, 10, 64)
+			// _local_last_operation_time, err := time.Parse("20060102", local_last_operation_time)
+			_local_last_operation_time := time.Unix(0, local_millis*int64(time.Millisecond))
 			if err != nil {
 				return Error(err)
 			}
-			_record_last_operation_time, err := time.Parse("20060102", latest_record.LastOperationTime)
+			// _record_last_operation_time, err := time.Parse("20060102", latest_record.LastOperationTime)
+			record_millis, err := strconv.ParseInt(latest_record.LastOperationTime, 10, 64)
 			if err != nil {
 				return Error(err)
 			}
+			_record_last_operation_time := time.Unix(0, record_millis*int64(time.Millisecond))
 			if _record_last_operation_time.Before(_local_last_operation_time) {
 				fmt.Println("need sync the whole data from here", entry.Name())
 				fmt.Println("a", latest_record)
@@ -284,7 +378,7 @@ func (s *SyncService) ImportFileList() *Result {
 			}
 			// if latest_record.LastOperationTime
 		} else {
-			fmt.Printf("文件: %s (大小: %d bytes)\n", path, info.Size())
+			// fmt.Printf("文件: %s (大小: %d bytes)\n", path, info.Size())
 		}
 	}
 
