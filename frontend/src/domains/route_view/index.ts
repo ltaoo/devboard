@@ -1,7 +1,8 @@
 /**
  * @file 根据路由判断是否可见的视图块
  */
-import { BaseDomain, Handler } from "@/domains/base";
+import { base, BaseDomain, Handler } from "@/domains/base";
+import { BizError } from "@/domains/error";
 import { PresenceCore } from "@/domains/ui/presence/index";
 import { NavigatorCore } from "@/domains/navigator/index";
 import { query_stringify } from "@/utils/index";
@@ -451,4 +452,64 @@ function emitViewCreated(view: RouteViewCore) {
     return;
   }
   handler(view);
+}
+
+export function RouteMenusModel<T extends { title: string; url?: unknown; onClick?: (m: T) => void }>(props: {
+  route: T["url"];
+  menus: T[];
+}) {
+  const methods = {
+    refresh() {
+      bus.emit(Events.StateChange, { ..._state });
+    },
+    setCurMenu(name: T["url"]) {
+      // const name = props.history.$router.name as PageKeys;
+      _route_name = name;
+      const keys = [
+        // "root.home_layout.workout_plan_layout.mine",
+        // "root.home_layout.workout_plan_layout.interval",
+        // "root.home_layout.workout_plan_layout.single",
+      ] as T["url"][];
+      if (keys.includes(name)) {
+        // _route_name = "root.home_layout.workout_plan_layout.recommend";
+      }
+      methods.refresh();
+    },
+  };
+  const ui = {};
+
+  let _route_name = props.route;
+  let _state = {
+    get menus() {
+      return props.menus;
+    },
+    get route_name() {
+      return _route_name;
+    },
+  };
+  enum Events {
+    StateChange,
+    Error,
+  }
+  type TheTypesOfEvents = {
+    [Events.StateChange]: typeof _state;
+    [Events.Error]: BizError;
+  };
+  const bus = base<TheTypesOfEvents>();
+
+  return {
+    methods,
+    ui,
+    state: _state,
+    ready() {},
+    destroy() {
+      bus.destroy();
+    },
+    onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
+      return bus.on(Events.StateChange, handler);
+    },
+    onError(handler: Handler<TheTypesOfEvents[Events.Error]>) {
+      return bus.on(Events.Error, handler);
+    },
+  };
 }

@@ -1,3 +1,5 @@
+import { JSX } from "solid-js/jsx-runtime";
+
 import { PageKeysType, build } from "@/domains/route_view/utils";
 
 /**
@@ -77,3 +79,9 @@ export const routesWithPathname = result.routesWithPathname;
 export function mapPathnameWithPageKey(key: PageKeys) {
   return routes[key].pathname;
 }
+
+export type RouteMenu = {
+  title: string;
+  url?: PageKeys;
+  icon?: JSX.Element;
+};

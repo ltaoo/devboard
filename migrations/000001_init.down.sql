@@ -1,3 +1,2 @@
 DROP TABLE IF EXISTS setting;
 DROP TABLE IF EXISTS paste_event;
-DROP TABLE IF EXISTS paste_content;

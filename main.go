@@ -7,13 +7,16 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
-	"gorm.io/gorm"
 
 	"devboard/config"
 	"devboard/db"
+	"devboard/internal/biz"
 	"devboard/internal/service"
 	"devboard/models"
 	"devboard/pkg/clipboard"
@@ -31,16 +34,12 @@ var assets embed.FS
 //go:embed all:migrations
 var migrations embed.FS
 
-type BizApplication struct {
-	DB *gorm.DB
-}
-
 // main function serves as the application's entry point. It initializes the application, creates a window,
 // and starts a goroutine that emits a time-based event every second. It subsequently runs the application and
 // logs any error that might occur.
 func main() {
 	// var database *gorm.DB
-	biz_app := BizApplication{}
+	biz := biz.New()
 
 	// Create a new Wails application by providing the necessary options.
 	// Variables 'Name' and 'Description' are for application metadata.
@@ -67,15 +66,23 @@ func main() {
 	})
 	common_service := application.NewService(&service.CommonService{
 		App: app,
+		Biz: biz,
 	})
-	v := service.NewPasteService(app, biz_app.DB)
-	paste_service := application.NewService(&v)
+	paste_service := application.NewService(&service.PasteService{
+		App: app,
+		Biz: biz,
+	})
 	system_service := application.NewService(&service.SystemService{})
+	sync_service := application.NewService(&service.SyncService{
+		App: app,
+		Biz: biz,
+	})
 	app.RegisterService(greet_service)
 	app.RegisterService(fs_service)
 	app.RegisterService(common_service)
 	app.RegisterService(paste_service)
 	app.RegisterService(system_service)
+	app.RegisterService(sync_service)
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.
 	// 'Mac' options tailor the window when running on macOS.
@@ -129,6 +136,7 @@ func main() {
 		// }
 		for data := range ch {
 			fmt.Println(data.Type)
+			now := time.Now()
 			if data.Type == "public.file-url" {
 				if files, ok := data.Data.([]string); ok {
 					for _, f := range files {
@@ -145,20 +153,15 @@ func main() {
 					// 		return
 					// 	}
 					// }
-					created_paste_content := models.PasteContent{
-						ContentType: "text",
-						Text:        text,
-					}
-					if err := biz_app.DB.Create(&created_paste_content).Error; err != nil {
-						log.Fatalf("Failed to create paste content: %v", err)
-						return
-					}
 					created_paste_event = models.PasteEvent{
-						ContentType: "text",
-						ContentId:   created_paste_content.Id,
+						Id:                uuid.New().String(),
+						ContentType:       "text",
+						Text:              text,
+						LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+						LastOperationType: 1,
 					}
-					created_paste_event.Content = created_paste_content
-					if err := biz_app.DB.Create(&created_paste_event).Error; err != nil {
+					// created_paste_event.Content = created_paste_content
+					if err := biz.DB.Create(&created_paste_event).Error; err != nil {
 						log.Fatalf("Failed to create paste event: %v", err)
 						return
 					}
@@ -174,20 +177,15 @@ func main() {
 					// 		return
 					// 	}
 					// }
-					created_paste_content := models.PasteContent{
-						ContentType: "image",
-						ImageBase64: encoded,
-					}
-					if err := biz_app.DB.Create(&created_paste_content).Error; err != nil {
-						log.Fatalf("Failed to create paste content: %v", err)
-						return
-					}
 					created_paste_event = models.PasteEvent{
-						ContentType: "image",
-						ContentId:   created_paste_content.Id,
+						Id:                uuid.New().String(),
+						ContentType:       "image",
+						ImageBase64:       encoded,
+						LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+						LastOperationType: 1,
 					}
-					created_paste_event.Content = created_paste_content
-					if err := biz_app.DB.Create(&created_paste_event).Error; err != nil {
+					// created_paste_event.Content = created_paste_content
+					if err := biz.DB.Create(&created_paste_event).Error; err != nil {
 						log.Fatalf("Failed to create paste event: %v", err)
 						return
 					}
@@ -231,8 +229,7 @@ func main() {
 			error_win.Show()
 			return
 		}
-		biz_app.DB = database
-		v.SetDatabase(database)
+		biz.Set(database, cfg)
 		win.Show()
 	}()
 
