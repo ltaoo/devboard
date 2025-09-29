@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
+	"github.com/adrg/xdg"
 	"github.com/spf13/viper"
 )
 
@@ -49,6 +51,12 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	data_dir := filepath.Join(xdg.DataHome, "devboard")
+	database_filename := "myapi"
+	database_filepath := filepath.Join(data_dir, database_filename)
+
+	fmt.Println("database", database_filepath)
+
 	// 设置默认值
 	viper.SetDefault("SERVER_ADDRESS", ":8080")
 	viper.SetDefault("ENVIRONMENT", "development")
@@ -58,8 +66,8 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("DB_PORT", "5432")
 	viper.SetDefault("DB_USER", "postgres")
 	viper.SetDefault("DB_PASSWORD", "postgres")
-	viper.SetDefault("DB_NAME", "myapi")
-	viper.SetDefault("DB_PATH", "./myapi.db")
+	viper.SetDefault("DB_NAME", database_filename)
+	viper.SetDefault("DB_PATH", database_filepath)
 	viper.SetDefault("MIGRATIONS_PATH", "file:///migrations")
 	viper.SetDefault("QINIU_ACCESS_KEY", "")
 	viper.SetDefault("QINIU_SECRET_KEY", "")

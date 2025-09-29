@@ -5,10 +5,10 @@ version: '3'
 
 # This information is used to generate the build assets.
 info:
-  companyName: "My Company" # The name of the company
-  productName: "DevTools" # The name of the application
-  productIdentifier: "com.mycompany.myproduct" # The unique product identifier
-  description: "A Tool that base on clipboard" # The application description
+  companyName: "devboard.funzm.com" # The name of the company
+  productName: "Devboard" # The name of the application
+  productIdentifier: "com.funzm.devboard" # The unique product identifier
+  description: "A Development Tool base on clipboard" # The application description
   copyright: "(c) 2025, My Company" # Copyright text
   comments: "Some Product Comments" # Comments
   version: "0.0.1" # The application version
