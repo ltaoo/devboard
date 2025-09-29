@@ -7,11 +7,18 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
 import { fetchSystemInfo } from "@/biz/system/service";
+import { Button } from "@/components/ui";
+import { ButtonCore } from "@/domains/ui";
+import { exportRecordListToFileList, importFileListToRecordList } from "@/biz/sync/service";
 
 function SystemInfoModel(props: ViewComponentProps) {
   const request = {
     system: {
       info: new RequestCore(fetchSystemInfo, { client: props.client }),
+    },
+    sync: {
+      export: new RequestCore(exportRecordListToFileList, { client: props.client }),
+      import: new RequestCore(importFileListToRecordList, { client: props.client }),
     },
   };
   const methods = {
@@ -22,7 +29,18 @@ function SystemInfoModel(props: ViewComponentProps) {
       request.system.info.run();
     },
   };
-  const ui = {};
+  const ui = {
+    $btn_export: new ButtonCore({
+      onClick() {
+        request.sync.export.run();
+      },
+    }),
+    $btn_import: new ButtonCore({
+      onClick() {
+        request.sync.import.run();
+      },
+    }),
+  };
   let _state = {
     get profile() {
       return request.system.info.response;
@@ -68,6 +86,8 @@ export function SystemInfoView(props: ViewComponentProps) {
         <div>
           <div>{state().profile?.hostname}</div>
         </div>
+        <Button store={vm.ui.$btn_export}>导出</Button>
+        <Button store={vm.ui.$btn_import}>导入</Button>
       </Show>
     </div>
   );

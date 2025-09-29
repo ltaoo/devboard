@@ -64,7 +64,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("QINIU_ACCESS_KEY", "")
 	viper.SetDefault("QINIU_SECRET_KEY", "")
 	viper.SetDefault("QINIU_BUCKET", "")
-	viper.SetDefault("TOKEN_SECRET_KEY", "fithub")
+	viper.SetDefault("TOKEN_SECRET_KEY", "")
 
 	config := &Config{
 		ServerAddress:  viper.GetString("SERVER_ADDRESS"),

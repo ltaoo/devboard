@@ -33,10 +33,14 @@ function Application() {
 
   app.onTip((msg) => {
     const { icon, text } = msg;
-    request.show_error.run({
-      title: "发生错误",
-      content: text.join("\n"),
+    toast.show({
+      icon,
+      texts: text,
     });
+    // request.show_error.run({
+    //   title: "发生错误",
+    //   content: text.join("\n"),
+    // });
   });
   app.onLoading((msg) => {
     const { text } = msg;

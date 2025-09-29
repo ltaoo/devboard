@@ -9,12 +9,14 @@ import { ViewComponent, ViewComponentProps } from "@/store/types";
 import { mapPathnameWithPageKey, PageKeys, routes, routesWithPathname } from "@/store/routes";
 import { useViewModel } from "@/hooks";
 import { Show } from "@/packages/ui/show";
+import { RouteChildren } from "@/components/route-children";
 import { KeepAliveRouteView } from "@/components/ui";
 
 import { base, Handler } from "@/domains/base";
 import { RequestCore } from "@/domains/request";
 import { openWindow } from "@/biz/services";
 import { cn } from "@/utils/index";
+import { RouteMenusModel } from "@/domains/route_view";
 
 function HomeLayoutViewModel(props: ViewComponentProps) {
   const request = {
@@ -29,52 +31,46 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
     gotoWorkoutPrepareView() {
       // props.history.push("root.workout_day_prepare");
     },
-    setCurMenu() {
-      const name = props.history.$router.name as PageKeys;
-      _route_name = name;
-      const keys = [
-        // "root.home_layout.workout_plan_layout.mine",
-        // "root.home_layout.workout_plan_layout.interval",
-        // "root.home_layout.workout_plan_layout.single",
-      ] as PageKeys[];
-      if (keys.includes(name)) {
-        // _route_name = "root.home_layout.workout_plan_layout.recommend";
-      }
-      methods.refresh();
-    },
+  };
+  const ui = {
+    $menu: RouteMenusModel({
+      route: "root.home_layout.index" as PageKeys,
+      menus: [
+        {
+          title: "首页",
+          icon: <ClipboardList class="w-6 h-6" />,
+          url: "root.home_layout.index",
+        },
+        {
+          title: "工具",
+          icon: <Boxes class="w-6 h-6" />,
+          // url: "root.home_layout.tools",
+        },
+        {
+          title: "设置",
+          icon: <Settings class="w-6 h-6" />,
+          // url: "root.home_layout.mine",
+          // url: "root.settings_layout.system",
+          onClick() {
+            request.common.open_window.run({
+              title: "设置",
+              route: "root.settings_layout.system",
+            });
+          },
+        },
+      ] as { title: string; icon: JSX.Element; badge?: boolean; url?: PageKeys; onClick?: () => void }[],
+    }),
   };
 
-  const _menus: { text: string; icon: JSX.Element; badge?: boolean; url?: PageKeys; onClick?: () => void }[] = [
-    {
-      text: "首页",
-      icon: <ClipboardList class="w-6 h-6" />,
-      url: "root.home_layout.index",
-    },
-    {
-      text: "工具",
-      icon: <Boxes class="w-6 h-6" />,
-      // url: "root.home_layout.tools",
-    },
-    {
-      text: "设置",
-      icon: <Settings class="w-6 h-6" />,
-      // url: "root.home_layout.mine",
-      onClick() {
-        request.common.open_window.run({
-          title: "设置",
-          route: "root.settings_layout.system",
-        });
-      },
-    },
-  ];
-
-  let _route_name: PageKeys = "root.home_layout.index";
   let _state = {
     get views() {
       return props.view.subViews;
     },
+    get menus() {
+      return ui.$menu.state.menus;
+    },
     get cur_route_name() {
-      return _route_name;
+      return ui.$menu.state.route_name;
     },
   };
   enum Events {
@@ -85,6 +81,7 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
   };
   const bus = base<TheTypesOfEvents>();
 
+  ui.$menu.onStateChange(() => methods.refresh());
   props.view.onSubViewsChange((v) => {
     bus.emit(Events.StateChange, { ..._state });
     // setSubViews(nextSubViews);
@@ -94,17 +91,14 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
     // setCurSubView(nextCurView);
   });
   props.history.onRouteChange(({ name }) => {
-    methods.setCurMenu();
+    ui.$menu.methods.setCurMenu(name as PageKeys);
   });
 
   return {
     methods,
     state: _state,
-    get menus() {
-      return _menus;
-    },
     ready() {
-      methods.setCurMenu();
+      // methods.setCurMenu();
       bus.emit(Events.StateChange, { ..._state });
     },
     destroy() {
@@ -122,18 +116,15 @@ export const HomeLayout: ViewComponent = (props) => {
   return (
     <div class="flex w-full h-full">
       <div class="relative z-10 p-2 space-y-2 border-r border-w-fg-3 bg-w-bg-1">
-        <For each={vm.menus}>
+        <For each={state().menus}>
           {(menu) => {
-            const { icon, text, url, badge, onClick } = menu;
+            const { icon, url, badge, onClick } = menu;
             return (
               <Menu
                 class=""
                 app={props.app}
-                // icon={icon}
                 history={props.history}
-                highlight={(() => {
-                  return state().cur_route_name === url;
-                })()}
+                highlight={state().cur_route_name === url}
                 url={url}
                 badge={badge}
                 onClick={onClick}
@@ -145,33 +136,14 @@ export const HomeLayout: ViewComponent = (props) => {
         </For>
       </div>
       <div class="z-0 flex-1 relative w-0 h-full">
-        <For each={state().views}>
-          {(subView, i) => {
-            const routeName = subView.name;
-            const PageContent = pages[routeName as Exclude<PageKeys, "root">];
-            return (
-              <KeepAliveRouteView
-                class={cn(
-                  "absolute inset-0",
-                  "data-[state=open]:animate-in data-[state=open]:fade-in",
-                  "data-[state=closed]:animate-out data-[state=closed]:fade-out"
-                )}
-                app={props.app}
-                store={subView}
-                index={i()}
-              >
-                <PageContent
-                  app={props.app}
-                  client={props.client}
-                  storage={props.storage}
-                  pages={pages}
-                  history={props.history}
-                  view={subView}
-                />
-              </KeepAliveRouteView>
-            );
-          }}
-        </For>
+        <RouteChildren
+          app={props.app}
+          client={props.client}
+          storage={props.storage}
+          pages={pages}
+          history={props.history}
+          view={props.view}
+        />
       </div>
     </div>
   );
@@ -199,7 +171,8 @@ function Menu(
           <div
             classList={{
               "text-w-fg-0": props.highlight,
-              "text-w-fg-1": !props.highlight,
+              "text-w-fg-2": !props.highlight,
+              "hover:text-w-fg-1": true,
             }}
           >
             {props.children}

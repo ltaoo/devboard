@@ -77,7 +77,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
           <Switch
             fallback={
               <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
-                <div class="break-all">{state().profile?.content.text!}</div>
+                <div class="break-all">{state().profile?.text!}</div>
               </div>
             }
           >
@@ -87,12 +87,12 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
               </Show>
             </Match>
             <Match when={state().profile?.type === "json"}>
-              <JSONContentPreview text={state().profile?.content.text!} />
+              <JSONContentPreview text={state().profile?.text!} />
             </Match>
             <Match when={isCodeContent(state().profile?.type)}>
               <div class="">
                 <pre>
-                  <code>{state().profile?.content.text!}</code>
+                  <code>{state().profile?.text!}</code>
                 </pre>
               </div>
             </Match>

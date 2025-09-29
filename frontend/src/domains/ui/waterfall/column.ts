@@ -199,7 +199,8 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       _start = 0;
       _end = _size + _buffer_size;
       _$items = _$total_items.slice(_start, _end);
-      methods.calcVisibleRange(0);
+      methods.refresh();
+      // methods.calcVisibleRange(0);
     },
     calcVisibleRange(scroll_top: number) {
       console.log("[BIZ]waterfall/column - calcVisibleRange", scroll_top, _start, _end, _$items);
@@ -237,7 +238,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
           const item = _$total_items[i];
           if (item.state.top >= scroll_top) {
             // 这个 -1 是为什么？
-            start = i - 1;
+            start = i;
             end = start + _size;
             return;
           }

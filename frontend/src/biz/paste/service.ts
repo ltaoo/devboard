@@ -131,7 +131,7 @@ function text_content_detector(text: string) {
   if (text.match(/^17([0-9]{8}|[0-9]{11})/)) {
     return "timestamp";
   }
-  if (text.match(/^{[\s\n]{1,}"[a-zA-Z0-9]{1,}":/)) {
+  if (text.match(/^{[\s\n]{0,}"[a-zA-Z0-9_-]{1,}":/)) {
     return "JSON";
   }
   const lang = detectCodeLanguage(text);
@@ -149,13 +149,10 @@ export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types
     ListResponse<{
       id: number;
       content_type: string;
-      content: {
-        id: number;
-        content_type: string;
-        text: string;
-        image_base64: string;
-      };
+      text: string;
+      image_base64: string;
       created_at: string;
+      last_modified_time: string;
     }>
   >(FetchPasteEventList, body);
 }
@@ -164,8 +161,8 @@ export function processPartialPasteEvent(
   v: UnpackedRequestPayload<ReturnType<typeof fetchPasteEventList>>["list"][number]
 ) {
   const t = (() => {
-    if (v.content_type === "text" && v.content.text) {
-      const t = text_content_detector(v.content.text);
+    if (v.content_type === "text" && v.text) {
+      const t = text_content_detector(v.text);
       if (t) {
         return t;
       }
@@ -174,16 +171,16 @@ export function processPartialPasteEvent(
   })();
   return {
     ...v,
-    origin_text: v.content.text,
+    origin_text: v.text,
     text: (() => {
-      const tt = v.content.text;
+      const tt = v.text;
       if (t === "timestamp") {
         const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
         return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
       }
       return tt;
     })(),
-    image_url: v.content.image_base64 ? `data:image/png;base64,${v.content.image_base64}` : null,
+    image_url: v.image_base64 ? `data:image/png;base64,${v.image_base64}` : null,
     height: (() => {
       // @todo 根据内容类型及所需空间（文本、图片）估算大概值
       return 84;
@@ -209,13 +206,10 @@ export function fetchPasteEventProfile(body: { id: number }) {
   return request.post<{
     id: number;
     content_type: string;
-    content: {
-      id: number;
-      content_type: string;
-      text: string;
-      image_base64: string;
-    };
+    text: string;
+    image_base64: string;
     created_at: string;
+    last_modified_time: string;
   }>(FetchPasteEventProfile, { event_id: body.id });
 }
 export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPasteEventProfile>) {

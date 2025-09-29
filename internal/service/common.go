@@ -4,10 +4,13 @@ import (
 	"fmt"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+
+	"devboard/internal/biz"
 )
 
 type CommonService struct {
 	App *application.App
+	Biz *biz.App
 }
 
 type OpenWindowBody struct {
