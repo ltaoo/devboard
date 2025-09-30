@@ -38,7 +38,7 @@ import { LocalVideo } from "./components/LazyVideo";
 import { LocalImage } from "./components/LocalImage";
 import { CodeCard } from "@/components/code-card";
 
-function HomeIndexPageViewModel(props: ViewComponentProps) {
+function HomeIndexViewModel(props: ViewComponentProps) {
   const request = {
     file: {
       open_file: new RequestCore(openLocalFile, { client: props.client }),
@@ -344,15 +344,15 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
   };
 }
 
-export const HomeIndexPage = (props: ViewComponentProps) => {
-  const [state, vm] = useViewModel(HomeIndexPageViewModel, [props]);
+export const HomeIndexView = (props: ViewComponentProps) => {
+  const [state, vm] = useViewModel(HomeIndexViewModel, [props]);
 
   return (
     <div class="relative w-full h-full">
       <Show when={!!state().show_refresh_tip}>
         <div class="z-[99] absolute top-4 left-1/2 -translate-x-1/2">
-          <div class="p-4 bg-w-bg-3 rounded-md cursor-pointer" onClick={vm.methods.loadAddedRecords}>
-            <div>{state().show_refresh_tip}条新内容</div>
+          <div class="py-2 px-4 bg-w-bg-3 rounded-full cursor-pointer" onClick={vm.methods.loadAddedRecords}>
+            <div class="text-sm">{state().show_refresh_tip}条新内容</div>
           </div>
         </div>
       </Show>
@@ -479,7 +479,7 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                       <RelativeTime time={v.created_at}></RelativeTime>
                     </div>
                   </div>
-                  <div class="operations flex justify-between">
+                  <div class="operations flex justify-between hidden group-hover:block">
                     <div class="flex items-center gap-1">
                       <div
                         class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
@@ -487,7 +487,7 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                           vm.methods.handleClickTrashBtn(v);
                         }}
                       >
-                        <Trash class="w-4 h-4" />
+                        <Trash class="w-4 h-4 text-w-fg-0" />
                       </div>
                       <div
                         class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
@@ -498,7 +498,7 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                         <DynamicContentWithClick
                           options={[
                             {
-                              content: <Copy class="w-4 h-4" />,
+                              content: <Copy class="w-4 h-4 text-w-fg-0" />,
                             },
                             {
                               content: <Check class="w-4 h-4 text-green-500" />,
@@ -513,7 +513,7 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                             vm.methods.handleClickFileBtn(v);
                           }}
                         >
-                          <File class="w-4 h-4" />
+                          <File class="w-4 h-4 text-w-fg-0" />
                         </div>
                       </Show>
                     </div>

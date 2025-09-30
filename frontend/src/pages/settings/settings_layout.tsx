@@ -76,7 +76,7 @@ export function SettingsView(props: ViewComponentProps) {
 
   return (
     <div class="flex w-full h-full">
-      <div class="p-4 w-[120px] bg-w-bg-5 h-full">
+      <div class="p-2 w-[120px] h-full border-r border-w-fg-3 bg-w-bg-1">
         <div class="space-y-1">
           <For each={state().menus}>
             {(menu) => {
@@ -84,8 +84,8 @@ export function SettingsView(props: ViewComponentProps) {
                 <div
                   class=""
                   classList={{
-                    "px-4 py-2 rounded-md cursor-pointer hover:bg-w-bg-3": true,
-                    "bg-w-bg-2": menu.url === state().route,
+                    "px-4 py-2 rounded-md cursor-pointer hover:bg-w-bg-4": true,
+                    "bg-w-bg-4": menu.url === state().route,
                   }}
                   onClick={() => {
                     props.history.push(menu.url);

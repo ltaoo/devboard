@@ -16,7 +16,7 @@ export function FieldV2(props: { store: SingleFieldCore<any> } & JSX.HTMLAttribu
             <div class="field__title ml-2 text-sm text-w-fg-0">{state().label}</div>
           </div>
           <div class="field__content mt-1">
-            <div class="field__value p-1">{props.children}</div>
+            <div class="field__value">{props.children}</div>
           </div>
         </div>
       </div>

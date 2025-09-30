@@ -2,7 +2,7 @@ import { JSXElement, lazy } from "solid-js";
 
 import { ViewComponent } from "@/store/types";
 import { HomeLayout } from "@/pages/home/layout";
-import { HomeIndexPage } from "@/pages/home";
+import { HomeIndexView } from "@/pages/home";
 import { NotFoundPage } from "@/pages/notfound";
 import { ErrorTipView } from "@/pages/error";
 
@@ -17,7 +17,7 @@ export const pages: Omit<Record<PageKeys, ViewComponent>, "root"> = {
   // "root.home_layout": lazy(async () => ({ default: (await import("@/pages/home/layout")).HomeLayout })),
   "root.home_layout": HomeLayout,
   // "root.home_layout.index": lazy(async () => ({ default: (await import("@/pages/home")).HomeIndexPage })),
-  "root.home_layout.index": HomeIndexPage,
+  "root.home_layout.index": HomeIndexView,
   "root.video_preview": lazy(async () => ({
     default: (await import("@/pages/file_preview/video_preview")).VideoFilePreviewView,
   })),

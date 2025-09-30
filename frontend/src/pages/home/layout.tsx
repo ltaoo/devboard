@@ -41,11 +41,10 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
           icon: <ClipboardList class="w-6 h-6" />,
           url: "root.home_layout.index",
         },
-        {
-          title: "工具",
-          icon: <Boxes class="w-6 h-6" />,
-          // url: "root.home_layout.tools",
-        },
+        // {
+        //   title: "工具",
+        //   icon: <Boxes class="w-6 h-6" />,
+        // },
         {
           title: "设置",
           icon: <Settings class="w-6 h-6" />,
