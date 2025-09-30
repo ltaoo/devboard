@@ -5,6 +5,7 @@ import { base, BaseDomain, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { PresenceCore } from "@/domains/ui/presence/index";
 import { NavigatorCore } from "@/domains/navigator/index";
+import { HistoryCore } from "@/domains/history";
 import { query_stringify } from "@/utils/index";
 
 import { buildUrl } from "./utils";
@@ -457,6 +458,7 @@ function emitViewCreated(view: RouteViewCore) {
 export function RouteMenusModel<T extends { title: string; url?: unknown; onClick?: (m: T) => void }>(props: {
   route: T["url"];
   menus: T[];
+  $history: HistoryCore<any, any>;
 }) {
   const methods = {
     refresh() {
@@ -497,12 +499,17 @@ export function RouteMenusModel<T extends { title: string; url?: unknown; onClic
   };
   const bus = base<TheTypesOfEvents>();
 
+  const unlisten = props.$history.onRouteChange(({ name }) => {
+    methods.setCurMenu(name);
+  });
+
   return {
     methods,
     ui,
     state: _state,
     ready() {},
     destroy() {
+      unlisten();
       bus.destroy();
     },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {

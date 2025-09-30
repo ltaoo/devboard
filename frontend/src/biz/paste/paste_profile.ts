@@ -19,7 +19,11 @@ export function PasteEventProfileModel(props: { client: HttpClientCore }) {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    load(id: number) {
+    load(id?: string) {
+      if (!id) {
+        request.paste.profile.setError(new BizError(["id 参数不正确"]));
+        return;
+      }
       request.paste.profile.run({ id });
     },
   };
@@ -27,6 +31,9 @@ export function PasteEventProfileModel(props: { client: HttpClientCore }) {
   let _state = {
     get profile() {
       return request.paste.profile.response;
+    },
+    get error() {
+      return request.paste.profile.error;
     },
   };
   enum Events {

@@ -59,13 +59,14 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
           },
         },
       ] as { title: string; icon: JSX.Element; badge?: boolean; url?: PageKeys; onClick?: () => void }[],
+      $history: props.history,
     }),
   };
 
   let _state = {
-    get views() {
-      return props.view.subViews;
-    },
+    // get views() {
+    //   return props.view.subViews;
+    // },
     get menus() {
       return ui.$menu.state.menus;
     },
@@ -82,17 +83,14 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
   const bus = base<TheTypesOfEvents>();
 
   ui.$menu.onStateChange(() => methods.refresh());
-  props.view.onSubViewsChange((v) => {
-    bus.emit(Events.StateChange, { ..._state });
-    // setSubViews(nextSubViews);
-  });
-  props.view.onCurViewChange((nextCurView) => {
-    bus.emit(Events.StateChange, { ..._state });
-    // setCurSubView(nextCurView);
-  });
-  props.history.onRouteChange(({ name }) => {
-    ui.$menu.methods.setCurMenu(name as PageKeys);
-  });
+  // props.view.onSubViewsChange((v) => {
+  //   bus.emit(Events.StateChange, { ..._state });
+  //   // setSubViews(nextSubViews);
+  // });
+  // props.view.onCurViewChange((nextCurView) => {
+  //   bus.emit(Events.StateChange, { ..._state });
+  //   // setCurSubView(nextCurView);
+  // });
 
   return {
     methods,

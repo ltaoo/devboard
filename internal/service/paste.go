@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"net/url"
-	"strconv"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -60,14 +59,14 @@ func (s *PasteService) FetchPasteEventList(body FetchPasteEventListBody) *Result
 }
 
 type PasteEventProfileBody struct {
-	EventId int `json:"event_id"`
+	EventId string `json:"event_id"`
 }
 
 func (s *PasteService) FetchPasteEventProfile(body PasteEventProfileBody) *Result {
 	if s.Biz.DB == nil {
 		return Error(fmt.Errorf("请先初始化数据库"))
 	}
-	if body.EventId == 0 {
+	if body.EventId == "" {
 		return Error(fmt.Errorf("缺少 id 参数"))
 	}
 	var record models.PasteEvent
@@ -78,11 +77,11 @@ func (s *PasteService) FetchPasteEventProfile(body PasteEventProfileBody) *Resul
 }
 
 type PasteEventBody struct {
-	EventId int `json:"event_id"`
+	EventId string `json:"event_id"`
 }
 
 func (s *PasteService) DeletePasteEvent(body PasteEventBody) *Result {
-	if body.EventId == 0 {
+	if body.EventId == "" {
 		return Error(fmt.Errorf("缺少 id 参数"))
 	}
 	var record models.PasteEvent
@@ -93,11 +92,11 @@ func (s *PasteService) DeletePasteEvent(body PasteEventBody) *Result {
 }
 
 type PasteEventPreviewBody struct {
-	EventId int `json:"event_id"`
+	EventId string `json:"event_id"`
 }
 
 func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
-	if body.EventId == 0 {
+	if body.EventId == "" {
 		return Error(fmt.Errorf("缺少 event_id 参数"))
 	}
 	s.App.Window.NewWithOptions(application.WebviewWindowOptions{
@@ -110,7 +109,7 @@ func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 		Width:            980,
 		Height:           680,
 		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/preview?id=" + url.QueryEscape(strconv.Itoa(body.EventId)),
+		URL:              "/preview?id=" + url.QueryEscape(body.EventId),
 	})
 	return Ok(map[string]interface{}{})
 }

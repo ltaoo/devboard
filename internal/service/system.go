@@ -1,15 +1,16 @@
 package service
 
 import (
+	"devboard/internal/biz"
 	"os"
 	"runtime"
 )
 
 type SystemService struct {
+	Biz *biz.App
 }
 
 func (s *SystemService) FetchComputeInfo() *Result {
-	// 获取主机名
 	hostname, _ := os.Hostname()
 
 	return Ok(map[string]interface{}{

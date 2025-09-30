@@ -13,6 +13,7 @@ import { toNumber } from "@/utils/primitive";
 import { PasteEventProfileModel } from "@/biz/paste/paste_profile";
 import { ImageContentPreview } from "@/components/preview-panels/image";
 import { isCodeContent } from "@/biz/paste/utils";
+import { CodeCard } from "@/components/code-card";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
@@ -22,11 +23,7 @@ function PreviewPasteEventModel(props: ViewComponentProps) {
       bus.emit(Events.StateChange, { ..._state });
     },
     async ready() {
-      const id = toNumber(props.view.query.id);
-      if (id === null) {
-        return;
-      }
-      $profile.methods.load(id);
+      $profile.methods.load(props.view.query.id);
     },
   };
   const ui = {};
@@ -34,6 +31,9 @@ function PreviewPasteEventModel(props: ViewComponentProps) {
   let _state = {
     get profile() {
       return $profile.state.profile;
+    },
+    get error() {
+      return $profile.state.error;
     },
   };
   enum Events {
@@ -72,34 +72,34 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
 
   return (
     <div class="relative w-full h-full">
-      <Show when={state().profile}>
-        <div class="content">
-          <Switch
-            fallback={
-              <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
-                <div class="break-all">{state().profile?.text!}</div>
-              </div>
-            }
-          >
-            <Match when={state().profile?.type === "image"}>
-              <Show when={state().profile!.image_url}>
-                <ImageContentPreview url={state().profile!.image_url!} />
-              </Show>
-            </Match>
-            <Match when={state().profile?.type === "json"}>
-              <JSONContentPreview text={state().profile?.text!} />
-            </Match>
-            <Match when={isCodeContent(state().profile?.type)}>
-              <div class="">
-                <pre>
-                  <code>{state().profile?.text!}</code>
-                </pre>
-              </div>
-            </Match>
-          </Switch>
-        </div>
-        {/* <div>{state().profile?.created_at_text}</div> */}
-      </Show>
+      <Switch>
+        <Match when={state().error}>
+          <div>{state().error?.message}</div>
+        </Match>
+        <Match when={state().profile}>
+          <div class="content">
+            <Switch
+              fallback={
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
+                  <div class="break-all">{state().profile?.text!}</div>
+                </div>
+              }
+            >
+              <Match when={state().profile?.type === "image"}>
+                <Show when={state().profile!.image_url}>
+                  <ImageContentPreview url={state().profile!.image_url!} />
+                </Show>
+              </Match>
+              <Match when={state().profile?.type === "json"}>
+                <JSONContentPreview text={state().profile?.text!} />
+              </Match>
+              <Match when={state().profile?.type && isCodeContent(state().profile?.type)}>
+                <CodeCard language={state().profile?.type!} code={state().profile?.text!} />
+              </Match>
+            </Switch>
+          </div>
+        </Match>
+      </Switch>
     </div>
   );
 }
