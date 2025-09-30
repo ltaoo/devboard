@@ -16,7 +16,14 @@ export function FieldObjV2(props: { store: ObjectFieldCore<any> } & JSX.HTMLAttr
             <div class="field__title ml-2">{state().label}</div>
           </div>
           <div class="field__content mt-1">
-            <div class="field__value p-1">{props.children}</div>
+            <div
+              class="field__value"
+              classList={{
+                [props.class ?? ""]: true,
+              }}
+            >
+              {props.children}
+            </div>
           </div>
         </div>
       </div>

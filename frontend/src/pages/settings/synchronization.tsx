@@ -34,6 +34,9 @@ function SynchronizationViewModel(props: ViewComponentProps) {
       async onClick() {
         const r = await ui.$form_webdav.validate();
         if (r.error) {
+          props.app.tip({
+            text: r.error.messages,
+          });
           return;
         }
         const body = {
@@ -48,6 +51,9 @@ function SynchronizationViewModel(props: ViewComponentProps) {
       async onClick() {
         const r = await ui.$form_webdav.validate();
         if (r.error) {
+          props.app.tip({
+            text: r.error.messages,
+          });
           return;
         }
         const body = {
@@ -63,6 +69,9 @@ function SynchronizationViewModel(props: ViewComponentProps) {
       async onClick() {
         const r = await ui.$form_webdav.validate();
         if (r.error) {
+          props.app.tip({
+            text: r.error.messages,
+          });
           return;
         }
         const body = {
@@ -148,21 +157,23 @@ export function SynchronizationView(props: ViewComponentProps) {
     <div>
       <div>
         <div class="text-2xl">Webdav</div>
-        <FieldObjV2 store={vm.ui.$form_webdav}>
-          <FieldV2 store={vm.ui.$form_webdav.fields.url}>
-            <Input store={vm.ui.$form_webdav.fields.url.input} />
-          </FieldV2>
-          <FieldV2 store={vm.ui.$form_webdav.fields.username}>
-            <Input store={vm.ui.$form_webdav.fields.username.input} />
-          </FieldV2>
-          <FieldV2 store={vm.ui.$form_webdav.fields.password}>
-            <Input store={vm.ui.$form_webdav.fields.password.input} />
-          </FieldV2>
-          <FieldV2 store={vm.ui.$form_webdav.fields.root_dir}>
-            <Input store={vm.ui.$form_webdav.fields.root_dir.input} />
-          </FieldV2>
-        </FieldObjV2>
-        <div class="space-x-1">
+        <div class="mt-4">
+          <FieldObjV2 class="space-y-2" store={vm.ui.$form_webdav}>
+            <FieldV2 store={vm.ui.$form_webdav.fields.url}>
+              <Input store={vm.ui.$form_webdav.fields.url.input} />
+            </FieldV2>
+            <FieldV2 store={vm.ui.$form_webdav.fields.username}>
+              <Input store={vm.ui.$form_webdav.fields.username.input} />
+            </FieldV2>
+            <FieldV2 store={vm.ui.$form_webdav.fields.password}>
+              <Input store={vm.ui.$form_webdav.fields.password.input} />
+            </FieldV2>
+            <FieldV2 store={vm.ui.$form_webdav.fields.root_dir}>
+              <Input store={vm.ui.$form_webdav.fields.root_dir.input} />
+            </FieldV2>
+          </FieldObjV2>
+        </div>
+        <div class="mt-4 space-x-1">
           <Button store={vm.ui.$btn_validate}>
             <div class="flex items-center space-x-1">
               <Show when={state().ping?.ok}>
