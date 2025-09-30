@@ -13,10 +13,16 @@ function isGolang(code: string) {
   if (code.match(/:=/)) {
     return true;
   }
-  if (code.match(/type [a-zA-Z] struct/)) {
+  if (code.match(/type [a-zA-Z]{1,} struct {0,1}\{/)) {
     return true;
   }
   if (code.match(/fmt\./)) {
+    return true;
+  }
+  if (code.match(/func [a-zA-Z]{1,} {0,1}\(/)) {
+    return true;
+  }
+  if (code.match(/func\(/)) {
     return true;
   }
   return false;
@@ -183,7 +189,7 @@ export function processPartialPasteEvent(
     image_url: v.image_base64 ? `data:image/png;base64,${v.image_base64}` : null,
     height: (() => {
       // @todo 根据内容类型及所需空间（文本、图片）估算大概值
-      return 84;
+      return 92;
     })(),
     type: t,
     created_at: dayjs(v.created_at),
@@ -202,7 +208,7 @@ export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEv
   });
 }
 
-export function fetchPasteEventProfile(body: { id: number }) {
+export function fetchPasteEventProfile(body: { id: string }) {
   return request.post<{
     id: number;
     content_type: string;

@@ -89,7 +89,10 @@ func main() {
 	// 'BackgroundColour' is the background colour of the window.
 	// 'URL' is the URL that will be loaded into the webview.
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Tool",
+		Title:               "Tool",
+		MaximiseButtonState: application.ButtonHidden,
+		MinimiseButtonState: application.ButtonHidden,
+		DisableResize:       true,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,

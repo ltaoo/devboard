@@ -27,6 +27,7 @@
     "@wailsio/runtime": "latest",
     "class-variance-authority": "^0.5.2",
     "dayjs": "^1.11.7",
+    "highlight.js": "^11.11.1",
     "hls.js": "^1.6.12",
     "lucide-solid": "^0.487.0",
     "mitt": "^3.0.0",

@@ -50,6 +50,10 @@ const configure = {
             title: "系统信息",
             pathname: "/settings_system",
           },
+          synchronization: {
+            title: "同步配置",
+            pathname: "/settings_synchronization",
+          },
         },
       },
       login: {

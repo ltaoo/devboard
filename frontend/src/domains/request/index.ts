@@ -277,6 +277,10 @@ export class RequestCore<F extends FetchFunction, P = UnpackedRequestPayload<Ret
     this.emit(Events.StateChange, { ...this.state });
     this.emit(Events.ResponseChange, this.response);
   }
+  setError(err: BizError) {
+    this.error = err;
+    this.emit(Events.StateChange, { ...this.state });
+  }
   modifyResponse(fn: (resp: P) => P) {
     if (this.response === null) {
       return;

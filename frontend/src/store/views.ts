@@ -36,4 +36,7 @@ export const pages: Omit<Record<PageKeys, ViewComponent>, "root"> = {
   "root.settings_layout.system": lazy(async () => ({
     default: (await import("@/pages/settings/system")).SystemInfoView,
   })),
+  "root.settings_layout.synchronization": lazy(async () => ({
+    default: (await import("@/pages/settings/synchronization")).SynchronizationView,
+  })),
 };

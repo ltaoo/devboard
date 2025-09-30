@@ -3,7 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,9 +11,9 @@ import (
 	"github.com/samber/lo"
 	"github.com/studio-b12/gowebdav"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"gorm.io/gorm"
 
 	"devboard/internal/biz"
-	"devboard/models"
 )
 
 type SyncService struct {
@@ -48,7 +47,7 @@ type WebDavSyncConfigBody struct {
 	Password string `json:"password"`
 }
 
-func (s *SyncService) ExportRecordList(body WebDavSyncConfigBody) *Result {
+func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
 	err := client.Connect()
 	if err != nil {
@@ -278,7 +277,19 @@ func get_day_timestamp_range(dateStr string) (start_time, end_time int64, err er
 	return day_start.Unix(), day_end.Unix(), nil
 }
 
-func (s *SyncService) ImportFileList(body WebDavSyncConfigBody) *Result {
+type ActionsNeedApply struct {
+	Action  int // 1新增 2编辑 3删除
+	Id      string
+	Content string
+}
+
+func WithTable(table string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Table(table)
+	}
+}
+
+func (s *SyncService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
 	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
 	err := client.Connect()
 	if err != nil {
@@ -287,10 +298,9 @@ func (s *SyncService) ImportFileList(body WebDavSyncConfigBody) *Result {
 
 	table_name := "paste_event"
 	table_out_dir := filepath.Join(body.RootDir, table_name)
-	remote_last_operation_time_filename := "last_operation_time"
-	remote_last_operation_time_filepath := filepath.Join(table_out_dir, remote_last_operation_time_filename)
-
-	_, err = client.Stat(remote_last_operation_time_filepath)
+	remote_table_lot_file_path := filepath.Join(table_out_dir, "last_operation_time")
+	fmt.Println("check existing the ", remote_table_lot_file_path)
+	_, err = client.Stat(remote_table_lot_file_path)
 	if err != nil {
 		if !gowebdav.IsErrNotFound(err) {
 			return Error(err)
@@ -299,7 +309,7 @@ func (s *SyncService) ImportFileList(body WebDavSyncConfigBody) *Result {
 		return Error(fmt.Errorf("未找到可同步的数据源"))
 	}
 	// 文件存在
-	remote_last_operation_time_byte, err := client.Read(remote_last_operation_time_filepath)
+	remote_last_operation_time_byte, err := client.Read(remote_table_lot_file_path)
 	if err != nil {
 		return Error(err)
 	}
@@ -337,59 +347,164 @@ func (s *SyncService) ImportFileList(body WebDavSyncConfigBody) *Result {
 		return Error(err)
 	}
 
-	for _, entry := range entries {
-		path := filepath.Join(table_out_dir, entry.Name())
-		if entry.IsDir() {
-			var latest_record models.PasteEvent
-			day_start, day_end, err := get_day_timestamp_range(entry.Name())
+	var records_prepare_apply []ActionsNeedApply
+
+	for _, remote_day_folder := range entries {
+		remote_day_folder_path := filepath.Join(table_out_dir, remote_day_folder.Name())
+		if remote_day_folder.IsDir() {
+			day_start, day_end, err := get_day_timestamp_range(remote_day_folder.Name())
 			if err != nil {
 				return Error(err)
 			}
-			if err := s.Biz.DB.Table(table_name).Where("last_operation_time >= ? AND last_operation_time <= ?", day_start, day_end).Order("last_operation_time DESC").First(&latest_record).Error; err != nil {
+			var latest_records []map[string]interface{}
+			if err := s.Biz.DB.Table(table_name).Where("last_operation_time >= ? AND last_operation_time <= ?", day_start, day_end).Order("last_operation_time DESC").Limit(1).Find(&latest_records).Error; err != nil {
 				return Error(err)
 			}
-			local_time_filename := "last_operation_time"
-			local_time_filepath := filepath.Join(path, local_time_filename)
-			// _, err = os.Stat(local_time_filepath)
-			// if err != nil {
-			// 	return nil
-			// }
-			content, err := os.ReadFile(local_time_filepath)
+			if len(latest_records) == 0 {
+				// 远端存在文件，但本地没有找到记录，说明整个文件夹内的文件都是新增的
+				remote_records, err := client.ReadDir(remote_day_folder_path)
+				if err != nil {
+					fmt.Printf("读取目录失败: %v\n", err)
+					return Error(err)
+				}
+				for _, remote_record := range remote_records {
+					if remote_record.IsDir() {
+						id := remote_record.Name()
+						remote_record_file_path := filepath.Join(remote_day_folder_path, id)
+						remote_record_data_file_path := filepath.Join(remote_record_file_path, "data")
+						fmt.Println("0", remote_record_data_file_path)
+						remote_record_byte, err := client.Read(remote_record_data_file_path)
+						if err != nil {
+							return Error(err)
+						}
+						records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
+							Id:      id,
+							Action:  1,
+							Content: string(remote_record_byte),
+						})
+					}
+				}
+				continue
+			}
+			latest_record := latest_records[0]
+			// 检查该天远端最新修改时间，和本地该天范围内的最新记录修改时间
+			remote_record_lot_file_path := filepath.Join(remote_day_folder_path, "last_operation_time")
+			remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
 			if err != nil {
 				return Error(err)
 			}
-			local_last_operation_time := string(content)
-			local_millis, err := strconv.ParseInt(local_last_operation_time, 10, 64)
-			// _local_last_operation_time, err := time.Parse("20060102", local_last_operation_time)
-			_local_last_operation_time := time.Unix(0, local_millis*int64(time.Millisecond))
+			remote_record_lot_millis, err := strconv.ParseInt(string(remote_record_lot_byte), 10, 64)
+			// remote_record_last_operation_time, err := time.Parse("20060102", local_last_operation_time)
+			remote_record_last_operation_time := time.Unix(0, remote_record_lot_millis*int64(time.Millisecond))
 			if err != nil {
 				return Error(err)
 			}
 			// _record_last_operation_time, err := time.Parse("20060102", latest_record.LastOperationTime)
-			record_millis, err := strconv.ParseInt(latest_record.LastOperationTime, 10, 64)
+			local_record_lot_millis, err := strconv.ParseInt(latest_record["last_operation_time"].(string), 10, 64)
 			if err != nil {
 				return Error(err)
 			}
-			_record_last_operation_time := time.Unix(0, record_millis*int64(time.Millisecond))
-			if _record_last_operation_time.Before(_local_last_operation_time) {
-				fmt.Println("need sync the whole data from here", entry.Name())
-				fmt.Println("a", latest_record)
-				fmt.Println("b", local_last_operation_time)
+			local_record_last_operation_time := time.Unix(0, local_record_lot_millis*int64(time.Millisecond))
+			if local_record_last_operation_time.Before(remote_record_last_operation_time) {
+				remote_record_list, err := client.ReadDir(remote_day_folder_path)
+				if err != nil {
+					fmt.Printf("读取目录失败: %v\n", err)
+					return Error(err)
+				}
+				for _, remote_record_folder := range remote_record_list {
+					id := remote_record_folder.Name()
+					remote_record_folder_path := filepath.Join(remote_day_folder_path, id)
+					var local_record map[string]interface{}
+					if err := s.Biz.DB.Table(table_name).Where("id = ?", id).First(&local_record).Error; err != nil {
+						if err != gorm.ErrRecordNotFound {
+							return Error(err)
+						}
+						// 远端存在文件但本地没有对应记录，说明文件是 新增
+						remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
+						fmt.Println("1", remote_record_data_file_path)
+						remote_record_byte, err := client.Read(remote_record_data_file_path)
+						if err != nil {
+							return Error(err)
+						}
+						records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
+							Id:      id,
+							Action:  1,
+							Content: string(remote_record_byte),
+						})
+						continue
+					}
+					// 有匹配的记录，说明需要处理冲突，以最新的记录为准
+					remote_record_lot_file_path := filepath.Join(remote_record_folder_path, "last_operation_time")
+					fmt.Println("2", remote_record_lot_file_path)
+					remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
+					if err != nil {
+						return Error(err)
+					}
+					remote_record_lot_content := string(remote_record_lot_byte)
+					remote_record_lot_millis, err := strconv.ParseInt(remote_record_lot_content, 10, 64)
+					if err != nil {
+						return Error(err)
+					}
+					remote_record_last_operation_time := time.Unix(0, remote_record_lot_millis*int64(time.Millisecond))
+
+					local_record_lot_content := local_record["last_operation_time"].(string)
+					local_record_lot_millis, err := strconv.ParseInt(local_record_lot_content, 10, 64)
+					if err != nil {
+						return Error(err)
+					}
+					local_record_last_operation_time := time.Unix(0, local_record_lot_millis*int64(time.Millisecond))
+					if remote_record_last_operation_time.Before(local_record_last_operation_time) {
+						continue
+					}
+					remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
+					fmt.Println("3", remote_record_data_file_path)
+					remote_record_data_byte, err := client.Read(remote_record_data_file_path)
+					if err != nil {
+						return Error(err)
+					}
+					records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
+						Id:      id,
+						Action:  2,
+						Content: string(remote_record_data_byte),
+					})
+				}
 			}
-			// if latest_record.LastOperationTime
-		} else {
-			// fmt.Printf("文件: %s (大小: %d bytes)\n", path, info.Size())
 		}
 	}
 
-	// err := filepath.Walk(out_dir, func(path string, info os.FileInfo, err error) error {
-	// 	fmt.Println(path, info.Name())
+	var errors []error
 
-	// })
+	for _, r := range records_prepare_apply {
+		fmt.Println(r.Id, r.Action)
+		var d map[string]interface{}
+		if err := json.Unmarshal([]byte(r.Content), &d); err != nil {
+			continue
+		}
+		if r.Action == 1 {
+			if err := s.Biz.DB.Table(table_name).Create(d); err != nil {
+				continue
+			}
+		}
+		if r.Action == 2 {
+			result := s.Biz.DB.Table(table_name).Where("id = ?", r.Id).Updates(d)
+			if result.Error != nil {
+				errors = append(errors, fmt.Errorf("更新记录失败: %v", result.Error))
+				continue
+			}
+			if result.RowsAffected == 0 {
+				errors = append(errors, fmt.Errorf("未找到要更新的记录ID: %s", r.Id))
+			}
+		}
+		// if r.Action == 3 {
+		// 	result := s.Biz.DB.Table(table_name).Where("id = ?", r.Id).Delete(nil)
+		// 	if result.Error != nil {
+		// 		return fmt.Errorf("删除记录失败: %v", result.Error)
+		// 	}
+		// 	if result.RowsAffected == 0 {
+		// 		return fmt.Errorf("未找到要删除的记录ID: %s", action.Id)
+		// 	}
+		// }
+	}
 
-	// if err != nil {
-	// 	fmt.Printf("遍历目录出错: %v\n", err)
-	// }
-
-	return Ok(nil)
+	return Ok(records_prepare_apply)
 }

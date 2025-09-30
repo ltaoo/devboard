@@ -22,10 +22,15 @@ function SettingsViewModel(props: ViewComponentProps) {
           title: "系统",
           url: "root.settings_layout.system",
         },
+        {
+          title: "同步",
+          url: "root.settings_layout.synchronization",
+        },
       ] as {
         title: string;
         url: PageKeys;
       }[],
+      $history: props.history,
     }),
   };
   let _state = {
@@ -45,6 +50,8 @@ function SettingsViewModel(props: ViewComponentProps) {
     [Events.Error]: BizError;
   };
   const bus = base<TheTypesOfEvents>();
+
+  ui.$menu.onStateChange(() => methods.refresh());
 
   return {
     methods,
@@ -68,8 +75,8 @@ export function SettingsView(props: ViewComponentProps) {
   // const [routeName, setRouteName] = createSignal<PageKeys>("root.home_layout.index");
 
   return (
-    <div class="flex">
-      <div class="p-4 w-[120px]">
+    <div class="flex w-full h-full">
+      <div class="p-4 w-[120px] bg-w-bg-5 h-full">
         <div class="space-y-1">
           <For each={state().menus}>
             {(menu) => {
@@ -79,6 +86,9 @@ export function SettingsView(props: ViewComponentProps) {
                   classList={{
                     "px-4 py-2 rounded-md cursor-pointer hover:bg-w-bg-3": true,
                     "bg-w-bg-2": menu.url === state().route,
+                  }}
+                  onClick={() => {
+                    props.history.push(menu.url);
                   }}
                 >
                   {menu.title}

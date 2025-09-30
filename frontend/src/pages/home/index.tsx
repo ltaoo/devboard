@@ -36,6 +36,7 @@ import {
 
 import { LocalVideo } from "./components/LazyVideo";
 import { LocalImage } from "./components/LocalImage";
+import { CodeCard } from "@/components/code-card";
 
 function HomeIndexPageViewModel(props: ViewComponentProps) {
   const request = {
@@ -277,7 +278,7 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
   request.paste.list.onDataSourceChange(({ dataSource, reason }) => {
     // const isNewRequest = dataSource.length !== 0 && dataSource.length <= request.paste.list.response.dataSource.length;
     // console.log("[]onDataSourceChange", dataSource.length, request.paste.list.response.dataSource.length);
-    JSON.stringify(request.paste.list.response.dataSource);
+    // JSON.stringify(request.paste.list.response.dataSource);
     if (["init", "reload", "refresh", "search"].includes(reason)) {
       ui.$waterfall.methods.cleanColumns();
       ui.$waterfall.methods.appendItems(dataSource);
@@ -380,20 +381,28 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
             return (
               <div
                 classList={{
-                  "relative rounded-md": true,
-                  "hover:bg-w-bg-3": true,
+                  "paste-event-card group relative rounded-md": true,
+                  // "hover:bg-w-bg-3": true,
                 }}
               >
                 <div
-                  class="p-2 max-h-[120px] overflow-hidden rounded-md bg-w-bg-5"
+                  classList={{
+                    "relative min-h-[40px] max-h-[120px] overflow-hidden rounded-md bg-w-bg-5 cursor-pointer": true,
+                  }}
                   onClick={() => {
                     vm.methods.handleClickPasteContent(v);
                   }}
                 >
+                  {/* <div
+                    classList={{
+                      "absolute left-0 top-0 h-full w-[4px] bg-green-300 hidden": true,
+                      "group-hover:block": true,
+                    }}
+                  ></div> */}
                   {/* <div class="absolute right-0">{idx}</div> */}
-                  <Switch fallback={<div>{v.text}</div>}>
+                  <Switch fallback={<div class="p-2">{v.text}</div>}>
                     <Match when={v.type === "url"}>
-                      <div class="w-full overflow-auto whitespace-nowrap scroll--hidden">
+                      <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
                         <div class="flex items-center gap-1 cursor-pointer">
                           <Link class="w-4 h-4" />
                           <div class="flex-1 w-0 underline">{v.text}</div>
@@ -401,29 +410,29 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                       </div>
                     </Match>
                     <Match when={v.type === "color"}>
-                      <div class="flex items-center gap-1">
+                      <div class="flex items-center gap-1 p-2">
                         <div class="w-[16px] h-[16px]" style={{ "background-color": v.text }}></div>
                         <div>{v.text}</div>
                       </div>
                     </Match>
                     <Match when={v.type === "timestamp"}>
-                      <div class="flex items-center gap-1">
+                      <div class="flex items-center gap-1 p-2">
                         <div>{v.origin_text}</div>
                         <div class="text-w-fg-1">{v.text}</div>
                       </div>
                     </Match>
                     <Match when={isCodeContent(v.type)}>
                       <div class="w-full overflow-auto cursor-pointer">
-                        <pre>{v.text}</pre>
+                        <CodeCard language={v.type} code={v.text} />
                       </div>
                     </Match>
                     <Match when={v.type === "code"}>
-                      <div class="w-full overflow-auto">
+                      <div class="w-full overflow-auto p-2">
                         <pre>{v.text}</pre>
                       </div>
                     </Match>
                     <Match when={v.type === "text"}>
-                      <div>{v.text}</div>
+                      <div class=" p-2">{v.text}</div>
                     </Match>
                     <Match when={v.type === "image" && v.image_url}>
                       <div class="cursor-pointer">
@@ -432,12 +441,14 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                     </Match>
                   </Switch>
                 </div>
-                <Flex items="center" justify="between">
+                <Flex class="mt-2" items="center" justify="between">
                   <div>
                     <div class="flex space-x-1 tags">
-                      <div>#{v.type}</div>
+                      <div class="px-2 bg-w-bg-5 rounded-full">
+                        <div class="text-w-fg-0 text-sm">#{v.type}</div>
+                      </div>
                     </div>
-                    <div class="text-sm text-w-fg-1">
+                    <div class="mt-1 text-sm text-w-fg-1" title={v.created_at_text}>
                       <RelativeTime time={v.created_at}></RelativeTime>
                     </div>
                   </div>
