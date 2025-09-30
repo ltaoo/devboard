@@ -309,36 +309,35 @@ func (s *SyncService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
 		return Error(fmt.Errorf("未找到可同步的数据源"))
 	}
 	// 文件存在
-	remote_last_operation_time_byte, err := client.Read(remote_table_lot_file_path)
-	if err != nil {
-		return Error(err)
-	}
-	remote_last_operation_time := string(remote_last_operation_time_byte)
-	remote_millis, err := strconv.ParseInt(remote_last_operation_time, 10, 64)
-	if err != nil {
-		return Error(err)
-	}
-	_remote_last_operation_time := time.Unix(0, remote_millis*int64(time.Millisecond))
+	// remote_lot_byte, err := client.Read(remote_table_lot_file_path)
+	// if err != nil {
+	// 	return Error(err)
+	// }
+	// remote_millis, err := strconv.ParseInt(string(remote_lot_byte), 10, 64)
+	// if err != nil {
+	// 	return Error(err)
+	// }
+	// remote_last_operation_time := time.Unix(0, remote_millis*int64(time.Millisecond))
 	// _remote_last_operation_time, err := time.Parse("20060102", remote_last_operation_time)
 	// 如果本地数据库，最新的记录时间在 webdav 之前，说明需要 同步到本地，而不能 同步到远端
 	var records []map[string]interface{}
-	result := s.Biz.DB.Table(table_name).Order("last_operation_time DESC").Find(&records)
+	result := s.Biz.DB.Table(table_name).Order("last_operation_time DESC").Limit(1).Find(&records)
 	if result.Error != nil {
 		return Error(fmt.Errorf("查询记录失败: %v", result.Error))
 	}
-	if len(records) != 0 {
-		table_last_record := records[0]
-		table_last_operation_time := table_last_record["last_operation_time"].(string)
-		millis, err := strconv.ParseInt(table_last_operation_time, 10, 64)
-		// _record_last_operation_time, err := time.Parse("20060102", table_last_operation_time)
-		if err != nil {
-			return Error(err)
-		}
-		_record_last_operation_time := time.Unix(0, millis*int64(time.Millisecond))
-		if _record_last_operation_time.Before(_remote_last_operation_time) {
-			return Ok(nil)
-		}
-	}
+	// if len(records) != 0 {
+	// 	local_record := records[0]
+	// 	local_record_lot_content := local_record["last_operation_time"].(string)
+	// 	local_millis, err := strconv.ParseInt(local_record_lot_content, 10, 64)
+	// 	// _record_last_operation_time, err := time.Parse("20060102", table_last_operation_time)
+	// 	if err != nil {
+	// 		return Error(err)
+	// 	}
+	// 	local_last_operation_time := time.Unix(0, local_millis*int64(time.Millisecond))
+	// 	if remote_last_operation_time.Before(local_last_operation_time) {
+	// 		return Error(fmt.Errorf("本地记录晚于远端"))
+	// 	}
+	// }
 
 	entries, err := client.ReadDir(table_out_dir)
 	if err != nil {
@@ -412,61 +411,64 @@ func (s *SyncService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
 					return Error(err)
 				}
 				for _, remote_record_folder := range remote_record_list {
-					id := remote_record_folder.Name()
-					remote_record_folder_path := filepath.Join(remote_day_folder_path, id)
-					var local_record map[string]interface{}
-					if err := s.Biz.DB.Table(table_name).Where("id = ?", id).First(&local_record).Error; err != nil {
-						if err != gorm.ErrRecordNotFound {
+					if remote_record_folder.IsDir() {
+						id := remote_record_folder.Name()
+						remote_record_folder_path := filepath.Join(remote_day_folder_path, id)
+						var local_records []map[string]interface{}
+						if err := s.Biz.DB.Table(table_name).Where("id = ?", id).Limit(1).Find(&local_records).Error; err != nil {
 							return Error(err)
 						}
-						// 远端存在文件但本地没有对应记录，说明文件是 新增
+						if len(local_records) == 0 {
+							// 远端存在文件但本地没有对应记录，说明文件是 新增
+							remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
+							fmt.Println("1", remote_record_data_file_path)
+							remote_record_byte, err := client.Read(remote_record_data_file_path)
+							if err != nil {
+								return Error(err)
+							}
+							records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
+								Id:      id,
+								Action:  1,
+								Content: string(remote_record_byte),
+							})
+							continue
+						}
+						// 有匹配的记录，说明需要处理冲突，以最新的记录为准
+						remote_record_lot_file_path := filepath.Join(remote_record_folder_path, "last_operation_time")
+						fmt.Println("2", remote_record_lot_file_path)
+						remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
+						if err != nil {
+							return Error(err)
+						}
+						remote_record_lot_content := string(remote_record_lot_byte)
+						remote_record_lot_millis, err := strconv.ParseInt(remote_record_lot_content, 10, 64)
+						if err != nil {
+							return Error(err)
+						}
+						remote_record_last_operation_time := time.Unix(0, remote_record_lot_millis*int64(time.Millisecond))
+
+						local_record := local_records[0]
+						local_record_lot_content := local_record["last_operation_time"].(string)
+						local_record_lot_millis, err := strconv.ParseInt(local_record_lot_content, 10, 64)
+						if err != nil {
+							return Error(err)
+						}
+						local_record_last_operation_time := time.Unix(0, local_record_lot_millis*int64(time.Millisecond))
+						if remote_record_last_operation_time.Before(local_record_last_operation_time) {
+							continue
+						}
 						remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
-						fmt.Println("1", remote_record_data_file_path)
-						remote_record_byte, err := client.Read(remote_record_data_file_path)
+						fmt.Println("3", remote_record_data_file_path)
+						remote_record_data_byte, err := client.Read(remote_record_data_file_path)
 						if err != nil {
 							return Error(err)
 						}
 						records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
 							Id:      id,
-							Action:  1,
-							Content: string(remote_record_byte),
+							Action:  2,
+							Content: string(remote_record_data_byte),
 						})
-						continue
 					}
-					// 有匹配的记录，说明需要处理冲突，以最新的记录为准
-					remote_record_lot_file_path := filepath.Join(remote_record_folder_path, "last_operation_time")
-					fmt.Println("2", remote_record_lot_file_path)
-					remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
-					if err != nil {
-						return Error(err)
-					}
-					remote_record_lot_content := string(remote_record_lot_byte)
-					remote_record_lot_millis, err := strconv.ParseInt(remote_record_lot_content, 10, 64)
-					if err != nil {
-						return Error(err)
-					}
-					remote_record_last_operation_time := time.Unix(0, remote_record_lot_millis*int64(time.Millisecond))
-
-					local_record_lot_content := local_record["last_operation_time"].(string)
-					local_record_lot_millis, err := strconv.ParseInt(local_record_lot_content, 10, 64)
-					if err != nil {
-						return Error(err)
-					}
-					local_record_last_operation_time := time.Unix(0, local_record_lot_millis*int64(time.Millisecond))
-					if remote_record_last_operation_time.Before(local_record_last_operation_time) {
-						continue
-					}
-					remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
-					fmt.Println("3", remote_record_data_file_path)
-					remote_record_data_byte, err := client.Read(remote_record_data_file_path)
-					if err != nil {
-						return Error(err)
-					}
-					records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
-						Id:      id,
-						Action:  2,
-						Content: string(remote_record_data_byte),
-					})
 				}
 			}
 		}
