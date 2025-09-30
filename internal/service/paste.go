@@ -113,3 +113,23 @@ func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 	})
 	return Ok(map[string]interface{}{})
 }
+
+type PasteboardWriteBody struct {
+	EventId string `json:"event_id"`
+	// ContentType string `json:"content_type"`
+	// Text        string `json:"text"`
+}
+
+func (s *PasteService) Write(body PasteboardWriteBody) *Result {
+	if s.Biz.DB == nil {
+		return Error(fmt.Errorf("请先初始化数据库"))
+	}
+	if body.EventId == "" {
+		return Error(fmt.Errorf("缺少 id 参数"))
+	}
+	var record models.PasteEvent
+	if err := s.Biz.DB.Where("id = ?", body.EventId).First(&record).Error; err != nil {
+		return Error(err)
+	}
+	return Ok(nil)
+}

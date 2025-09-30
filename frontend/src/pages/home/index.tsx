@@ -32,6 +32,7 @@ import {
   fetchPasteEventListProcess,
   openPasteEventPreviewWindow,
   processPartialPasteEvent,
+  writePasteEvent,
 } from "@/biz/paste/service";
 
 import { LocalVideo } from "./components/LazyVideo";
@@ -52,6 +53,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ),
       delete: new RequestCore(deletePasteEvent, { client: props.client }),
       preview: new RequestCore(openPasteEventPreviewWindow, { client: props.client }),
+      write: new RequestCore(writePasteEvent, { client: props.client }),
     },
   };
   type SelectedFile = TheResponseOfRequestCore<typeof request.file.open_file>["files"][number];
@@ -125,8 +127,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }
       request.paste.preview.run({ id: v.id });
     },
-    handleClickCopyBtn(v: PasteRecord) {
-      props.app.copy(v.text);
+    async handleClickCopyBtn(v: PasteRecord) {
+      const r = await request.paste.write.run({ id: v.id });
+      // props.app.copy(v.text);
     },
     handleClickUpBtn() {
       ui.$view.setScrollTop(0);
