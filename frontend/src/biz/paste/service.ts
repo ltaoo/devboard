@@ -1,6 +1,12 @@
 import dayjs from "dayjs";
 
-import { DeletePasteEvent, FetchPasteEventList, FetchPasteEventProfile, PreviewPasteEvent } from "~/pasteservice";
+import {
+  DeletePasteEvent,
+  FetchPasteEventList,
+  FetchPasteEventProfile,
+  PreviewPasteEvent,
+  Write,
+} from "~/pasteservice";
 
 import { FetchParams } from "@/domains/list/typing";
 import { request } from "@/biz/requests";
@@ -154,7 +160,7 @@ function text_content_detector(text: string) {
 export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types: string[]; keyword: string }>) {
   return request.post<
     ListResponse<{
-      id: number;
+      id: string;
       content_type: string;
       text: string;
       image_base64: string;
@@ -228,7 +234,7 @@ export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEv
 
 export function fetchPasteEventProfile(body: { id: string }) {
   return request.post<{
-    id: number;
+    id: string;
     content_type: string;
     text: string;
     image_base64: string;
@@ -250,10 +256,14 @@ export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPast
   });
 }
 
-export function deletePasteEvent(body: { id: number }) {
+export function deletePasteEvent(body: { id: string }) {
   return request.post(DeletePasteEvent, { event_id: body.id });
 }
 
-export function openPasteEventPreviewWindow(body: { id: number }) {
+export function openPasteEventPreviewWindow(body: { id: string }) {
   return request.post(PreviewPasteEvent, { event_id: body.id });
+}
+
+export function writePasteEvent(body: { id: string }) {
+  return request.post(Write, { event_id: body.id });
 }
