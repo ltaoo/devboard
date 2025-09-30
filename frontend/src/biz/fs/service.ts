@@ -1,4 +1,4 @@
-import { OpenFileDialog, OpenPreviewWindow, SaveFileTo } from "~/fileservice";
+import { OpenFileDialog, OpenFolderAndHighlightFile, OpenPreviewWindow, SaveFileTo } from "~/fileservice";
 
 import { request } from "@/biz/requests";
 import { BizResponse } from "@/biz/requests/types";
@@ -24,6 +24,10 @@ export function saveFileTo(body: { filename: string; content: string }) {
       content: body.content,
     })
   );
+}
+
+export function highlightFileInFolder(body: { file_path: string }) {
+  return request.post<void>(OpenFolderAndHighlightFile, body);
 }
 
 export function openFilePreview(body: { mime_type: string; filepath: string }) {

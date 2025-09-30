@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -161,6 +163,34 @@ func (f *FileService) SaveFileTo(body SaveFileToBody) *Result {
 		}
 	}
 	return Ok(map[string]interface{}{})
+}
+
+type OpenFolderAndHighlightFileBody struct {
+	FilePath string `json:"file_path"`
+}
+
+func (s *FileService) OpenFolderAndHighlightFile(body OpenFolderAndHighlightFileBody) *Result {
+	if body.FilePath == "" {
+		return Error(fmt.Errorf("缺少 file_path 参数"))
+	}
+	file_path := body.FilePath
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", "/select,", file_path)
+	case "darwin":
+		cmd = exec.Command("open", "-R", file_path)
+	case "linux":
+		cmd = exec.Command("xdg-open", file_path)
+	default:
+		return Error(fmt.Errorf("Unsupported operating system"))
+	}
+	err := cmd.Start()
+	if err != nil {
+		return Error(err)
+	}
+	return Ok("Success")
 }
 
 type OpenPreviewWindowBody struct {

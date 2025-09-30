@@ -5,9 +5,14 @@ import (
 	"embed"
 	_ "embed"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
+	"mime"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,6 +38,12 @@ var assets embed.FS
 
 //go:embed all:migrations
 var migrations embed.FS
+
+type FileInPasteBoard struct {
+	Name         string `json:"name"`
+	AbsolutePath string `json:"absolute_path"`
+	MimeType     string `json:"mime_type"`
+}
 
 // main function serves as the application's entry point. It initializes the application, creates a window,
 // and starts a goroutine that emits a time-based event every second. It subsequently runs the application and
@@ -90,8 +101,8 @@ func main() {
 	// 'URL' is the URL that will be loaded into the webview.
 	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:               "Tool",
-		MaximiseButtonState: application.ButtonHidden,
-		MinimiseButtonState: application.ButtonHidden,
+		MaximiseButtonState: application.ButtonDisabled,
+		MinimiseButtonState: application.ButtonDisabled,
 		DisableResize:       true,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
@@ -142,8 +153,52 @@ func main() {
 			now := time.Now()
 			if data.Type == "public.file-url" {
 				if files, ok := data.Data.([]string); ok {
+					var results []FileInPasteBoard
 					for _, f := range files {
-						fmt.Println(f)
+						info, err := os.Stat(f)
+						if err != nil {
+							continue
+						}
+						name := info.Name()
+						if info.IsDir() {
+							results = append(results, FileInPasteBoard{
+								Name:         name,
+								AbsolutePath: f,
+								MimeType:     "folder",
+							})
+							continue
+						}
+						mime_type := mime.TypeByExtension(filepath.Ext(name))
+						if mime_type == "" {
+							// 如果无法通过扩展名确定，使用 application/octet-stream 作为默认值
+							mime_type = "application/octet-stream"
+						} else {
+							// 去除可能的参数（如 charset=utf-8）
+							mime_type = strings.Split(mime_type, ";")[0]
+						}
+						results = append(results, FileInPasteBoard{
+							Name:         name,
+							AbsolutePath: f,
+							MimeType:     mime_type,
+						})
+					}
+					if len(results) != 0 {
+						content, err := json.Marshal(&results)
+						if err != nil {
+							return
+						}
+						created_paste_event = models.PasteEvent{
+							Id:                uuid.New().String(),
+							ContentType:       "file",
+							FileListJSON:      string(content),
+							LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+							LastOperationType: 1,
+						}
+						// created_paste_event.Content = created_paste_content
+						if err := biz.DB.Create(&created_paste_event).Error; err != nil {
+							log.Fatalf("Failed to create paste event: %v", err)
+							return
+						}
 					}
 				}
 			}
@@ -194,7 +249,9 @@ func main() {
 					}
 				}
 			}
-			app.Event.Emit("clipboard:update", created_paste_event)
+			if created_paste_event.Id != "" {
+				app.Event.Emit("clipboard:update", created_paste_event)
+			}
 		}
 	}()
 	app.Event.On("m:show-error", func(event *application.CustomEvent) {

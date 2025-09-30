@@ -2,7 +2,7 @@
  * @file 首页
  */
 import { For, Match, Show, Switch } from "solid-js";
-import { Bird, Check, ChevronUp, Copy, Earth, Eye, File, Link, Trash } from "lucide-solid";
+import { Bird, Check, ChevronUp, Copy, Earth, Eye, File, Folder, Link, Trash } from "lucide-solid";
 import { Browser, Events } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
@@ -24,7 +24,7 @@ import { WaterfallCellModel } from "@/domains/ui/waterfall/cell";
 import { ListCore } from "@/domains/list";
 import { TheItemTypeFromListCore } from "@/domains/list/typing";
 import { BackToTopModel } from "@/domains/ui/back-to-top";
-import { openLocalFile, openFilePreview, saveFileTo } from "@/biz/fs/service";
+import { openLocalFile, openFilePreview, saveFileTo, highlightFileInFolder } from "@/biz/fs/service";
 import { isCodeContent } from "@/biz/paste/utils";
 import {
   deletePasteEvent,
@@ -44,6 +44,7 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       open_file: new RequestCore(openLocalFile, { client: props.client }),
       save_file: new RequestCore(saveFileTo, { client: props.client }),
       open_preview_window: new RequestCore(openFilePreview, { client: props.client }),
+      highlight: new RequestCore(highlightFileInFolder, { client: props.client }),
     },
     paste: {
       list: new ListCore(
@@ -110,13 +111,12 @@ function HomeIndexPageViewModel(props: ViewComponentProps) {
       _added_records = [];
       ui.$waterfall.methods.resetRange();
     },
-    async handleClickFile(file: SelectedFile) {
-      console.log("[]handleClickVideo", file.name);
-      const r = await request.file.open_preview_window.run({ mime_type: file.mine_type, filepath: file.full_path });
+    async handleClickFile(file: { mime_type: string; absolute_path: string }) {
+      console.log("[]handleClickFile", file);
+      const r = await request.file.highlight.run({ file_path: file.absolute_path });
       if (r.error) {
         return;
       }
-      console.log("[]handleClickVideo", r);
     },
     async handleClickPasteContent(v: PasteRecord) {
       if (v.type === "url") {
@@ -401,6 +401,33 @@ export const HomeIndexPage = (props: ViewComponentProps) => {
                   ></div> */}
                   {/* <div class="absolute right-0">{idx}</div> */}
                   <Switch fallback={<div class="p-2">{v.text}</div>}>
+                    <Match when={v.type === "file" && v.files}>
+                      <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
+                        <For each={v.files}>
+                          {(f) => {
+                            return (
+                              <div
+                                class="flex items-center gap-1"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  vm.methods.handleClickFile(f);
+                                }}
+                              >
+                                <Switch>
+                                  <Match when={f.mime_type === "folder"}>
+                                    <Folder class="w-4 h-4 text-w-fg-1" />
+                                  </Match>
+                                  <Match when={f.mime_type !== "folder"}>
+                                    <File class="w-4 h-4 text-w-fg-1" />
+                                  </Match>
+                                </Switch>
+                                <div class="text-w-fg-0">{f.name}</div>
+                              </div>
+                            );
+                          }}
+                        </For>
+                      </div>
+                    </Match>
                     <Match when={v.type === "url"}>
                       <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
                         <div class="flex items-center gap-1 cursor-pointer">

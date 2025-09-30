@@ -8,6 +8,7 @@ import { ListResponse } from "@/biz/requests/types";
 import { TmpRequestResp, UnpackedRequestPayload } from "@/domains/request/utils";
 import { Result } from "@/domains/result";
 import { Unpacked } from "@/types";
+import { parseJSONStr } from "@/utils";
 
 function isGolang(code: string) {
   if (code.match(/:=/)) {
@@ -157,6 +158,8 @@ export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types
       content_type: string;
       text: string;
       image_base64: string;
+      file_list_json: string;
+      html: string;
       created_at: string;
       last_modified_time: string;
     }>
@@ -187,6 +190,21 @@ export function processPartialPasteEvent(
       return tt;
     })(),
     image_url: v.image_base64 ? `data:image/png;base64,${v.image_base64}` : null,
+    files: (() => {
+      if (v.file_list_json) {
+        const r = parseJSONStr<
+          {
+            name: string;
+            absolute_path: string;
+            mime_type: string;
+          }[]
+        >(v.file_list_json);
+        if (r.error) {
+          return null;
+        }
+        return r.data;
+      }
+    })(),
     height: (() => {
       // @todo 根据内容类型及所需空间（文本、图片）估算大概值
       return 92;
@@ -214,6 +232,8 @@ export function fetchPasteEventProfile(body: { id: string }) {
     content_type: string;
     text: string;
     image_base64: string;
+    file_list_json: string;
+    html: string;
     created_at: string;
     last_modified_time: string;
   }>(FetchPasteEventProfile, { event_id: body.id });
