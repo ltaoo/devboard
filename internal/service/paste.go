@@ -3,11 +3,13 @@ package service
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"devboard/internal/biz"
 	"devboard/models"
+	"devboard/pkg/clipboard"
 )
 
 type PasteService struct {
@@ -130,6 +132,18 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 	var record models.PasteEvent
 	if err := s.Biz.DB.Where("id = ?", body.EventId).First(&record).Error; err != nil {
 		return Error(err)
+	}
+	if record.ContentType == "text" {
+		s.Biz.ManuallyWriteClipboardTime = time.Now()
+		if err := clipboard.WriteText(record.Text); err != nil {
+			return Error(err)
+		}
+	}
+	if record.ContentType == "image" {
+		s.Biz.ManuallyWriteClipboardTime = time.Now()
+		if err := clipboard.WriteImage([]byte(record.ImageBase64)); err != nil {
+			return Error(err)
+		}
 	}
 	return Ok(nil)
 }

@@ -100,35 +100,52 @@ function isHTML(code: string) {
   }
   return false;
 }
+function isJSON(code: string) {
+  if (code.match(/^{[\s\n]{0,}"[a-zA-Z0-9_-]{1,}":/)) {
+    return true;
+  }
+  return false;
+}
+function isSQL(code: string) {
+  if (code.match(/^SELECT|INSERT|UPDATE|DELETE|CREATE TABLE|DROP TABLE|ALTER TABLE/)) {
+    return true;
+  }
+  return false;
+}
 /**
  * 改进的编程语言和框架检测功能
  * @param {string} code - 要检测的代码
  * @returns {string} - 检测到的语言或框架类型
  */
 function detectCodeLanguage(code: string) {
-  const lowerCode = code.toLowerCase();
-  if (isGolang(lowerCode)) {
+  if (isJSON(code)) {
+    return "JSON";
+  }
+  if (isSQL(code)) {
+    return "SQL";
+  }
+  if (isGolang(code)) {
     return "Go";
   }
-  if (isPython(lowerCode)) {
+  if (isPython(code)) {
     return "Python";
   }
-  if (isRust(lowerCode)) {
+  if (isRust(code)) {
     return "Rust";
   }
-  if (isReactJSX(lowerCode)) {
+  if (isReactJSX(code)) {
     return "React";
   }
-  if (isVueFile(lowerCode)) {
+  if (isVueFile(code)) {
     return "Vue";
   }
-  if (isHTML(lowerCode)) {
+  if (isHTML(code)) {
     return "HTML";
   }
-  if (isTypeScript(lowerCode)) {
+  if (isTypeScript(code)) {
     return "TypeScript";
   }
-  if (isJavaScript(lowerCode)) {
+  if (isJavaScript(code)) {
     return "JavaScript";
   }
   return null;
@@ -143,9 +160,6 @@ function text_content_detector(text: string) {
   }
   if (text.match(/^17([0-9]{8}|[0-9]{11})/)) {
     return "timestamp";
-  }
-  if (text.match(/^{[\s\n]{0,}"[a-zA-Z0-9_-]{1,}":/)) {
-    return "JSON";
   }
   const lang = detectCodeLanguage(text);
   if (lang) {

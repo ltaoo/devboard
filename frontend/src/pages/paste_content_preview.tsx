@@ -77,7 +77,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
           <div>{state().error?.message}</div>
         </Match>
         <Match when={state().profile}>
-          <div class="content">
+          <div class="content w-full h-full">
             <Switch
               fallback={
                 <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
