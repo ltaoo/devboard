@@ -151,9 +151,6 @@ function text_content_detector(text: string) {
   if (lang) {
     return lang;
   }
-  //   if (text.match(/<[a-z]{1,}/)) {
-  //     return "code";
-  //   }
   return null;
 }
 
