@@ -4,13 +4,22 @@ export function CodeCard(props: { language: string; code: string }) {
   // import "highlight.js/styles/github.css";
   import("highlight.js/styles/base16/solarized-dark.css");
   import("highlight.js/lib/core").then(async (hljs) => {
+    const language = props.language.toLowerCase();
+    console.log("load language", language, $code);
     if (!$code) {
       return;
     }
-    const language = props.language.toLowerCase();
     try {
       if (language === "go") {
         const { default: language_package } = await import("highlight.js/lib/languages/go");
+        hljs.default.registerLanguage(language, language_package);
+      }
+      if (language === "sql") {
+        const { default: language_package } = await import("highlight.js/lib/languages/sql");
+        hljs.default.registerLanguage(language, language_package);
+      }
+      if (language === "json") {
+        const { default: language_package } = await import("highlight.js/lib/languages/json");
         hljs.default.registerLanguage(language, language_package);
       }
       if (language === "python") {
@@ -45,8 +54,8 @@ export function CodeCard(props: { language: string; code: string }) {
   });
 
   return (
-    <pre>
-      <code ref={$code}>{props.code}</code>
+    <pre class="w-full h-full">
+      <code ref={$code} class="w-full h-full">{props.code}</code>
     </pre>
   );
 }

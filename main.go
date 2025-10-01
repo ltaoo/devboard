@@ -151,6 +151,9 @@ func main() {
 		for data := range ch {
 			fmt.Println(data.Type)
 			now := time.Now()
+			if now.Sub(biz.ManuallyWriteClipboardTime) < time.Second*3 {
+				continue
+			}
 			if data.Type == "public.file-url" {
 				if files, ok := data.Data.([]string); ok {
 					var results []FileInPasteBoard

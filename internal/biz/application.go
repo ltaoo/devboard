@@ -2,6 +2,7 @@ package biz
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -13,9 +14,10 @@ func New() *App {
 }
 
 type App struct {
-	DB     *gorm.DB
-	Config *config.Config
-	Name   string
+	DB                         *gorm.DB
+	Config                     *config.Config
+	Name                       string
+	ManuallyWriteClipboardTime time.Time
 }
 
 func (a *App) Set(db *gorm.DB, config *config.Config) {
