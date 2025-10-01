@@ -403,7 +403,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                     }}
                   ></div> */}
                   {/* <div class="absolute right-0">{idx}</div> */}
-                  <Switch fallback={<div class="p-2">{v.text}</div>}>
+                  <Switch fallback={<div class="p-2 text-w-fg-0">{v.text}</div>}>
                     <Match when={v.type === "file" && v.files}>
                       <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
                         <For each={v.files}>
@@ -462,7 +462,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       </div>
                     </Match>
                     <Match when={v.type === "text"}>
-                      <div class=" p-2">{v.text}</div>
+                      <div class="p-2 text-w-fg-0">{v.text}</div>
                     </Match>
                     <Match when={v.type === "image" && v.image_url}>
                       <div class="cursor-pointer">

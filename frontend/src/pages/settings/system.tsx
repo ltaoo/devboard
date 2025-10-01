@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 import { Check } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
@@ -68,10 +68,16 @@ export function SystemInfoView(props: ViewComponentProps) {
       <Show when={state().profile}>
         <div>
           <div class="text-2xl">本机信息</div>
-          <div class="field text-w-fg-0">
-            <div>主机名</div>
-            <div>{state().profile?.hostname}</div>
-          </div>
+          <For each={state().profile?.fields}>
+            {(field) => {
+              return (
+                <div class="field text-w-fg-0">
+                  <div>{field.label}</div>
+                  <div>{field.text}</div>
+                </div>
+              );
+            }}
+          </For>
         </div>
       </Show>
     </div>
