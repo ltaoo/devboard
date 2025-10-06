@@ -1,6 +1,16 @@
-import { RemoteToLocal, LocalToRemote, PingWebDav } from "~/syncservice";
+import { RemoteToLocal, LocalToRemote, PingWebDav, FetchDatabaseDirs } from "~/syncservice";
 
 import { request } from "@/biz/requests";
+
+export function fetchDatabaseDirs() {
+  return request.post<{
+    fields: {
+      key: string;
+      label: string;
+      text: string;
+    }[];
+  }>(FetchDatabaseDirs, {});
+}
 
 export function pingWebDav(body: { url: string; username: string; password: string }) {
   return request.post<{ ok: boolean }>(PingWebDav, body);

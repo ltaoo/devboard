@@ -35,19 +35,19 @@ func (s *PasteService) FetchPasteEventList(body FetchPasteEventListBody) *Result
 	if err := s.Biz.Ensure(); err != nil {
 		return Error(err)
 	}
-	query := s.Biz.DB
+	query := s.Biz.DB.Model(&models.PasteEvent{})
 	if body.Keyword != "" {
 		query = query.Where("paste_event.text LIKE ?", "%"+body.Keyword+"%")
 	}
 	if len(body.Types) != 0 {
-		query = query.Where("paste_event.content_type in (?)", body.Types)
+		query = query.Joins("JOIN paste_event_category_mapping ON paste_event_category_mapping.paste_event_id = paste_event.id").Where("paste_event_category_mapping.category_id IN ?", body.Types).Distinct("paste_event.*")
 	}
 	pb := models.NewPaginationBuilder[models.PasteEvent](query).
 		SetLimit(body.PageSize).
 		SetPage(body.Page).
 		SetOrderBy("paste_event.created_at DESC")
 	var list1 []models.PasteEvent
-	if err := pb.Build().Find(&list1).Error; err != nil {
+	if err := pb.Build().Preload("Categories").Find(&list1).Error; err != nil {
 		return Error(err)
 	}
 	list2, has_more, next_marker := pb.ProcessResults(list1)

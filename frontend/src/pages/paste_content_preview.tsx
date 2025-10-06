@@ -90,7 +90,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                   <ImageContentPreview url={state().profile!.image_url!} />
                 </Show>
               </Match>
-              <Match when={state().profile?.type === "json"}>
+              <Match when={state().profile?.type === "JSON"}>
                 <JSONContentPreview text={state().profile?.text!} />
               </Match>
               <Match when={state().profile?.type && isCodeContent(state().profile?.type)}>

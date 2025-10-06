@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { For, Show } from "solid-js";
 import { Check } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
@@ -12,12 +12,17 @@ import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
 import { ButtonCore, InputCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
-import { syncToRemote, syncFromRemote, pingWebDav } from "@/biz/sync/service";
+import { syncToRemote, syncFromRemote, pingWebDav, fetchDatabaseDirs } from "@/biz/synchronize/service";
 import { fetchSystemInfo } from "@/biz/system/service";
+import { highlightFileInFolder } from "@/biz/fs/service";
 
 function SynchronizationViewModel(props: ViewComponentProps) {
   const request = {
+    file: {
+      highlight: new RequestCore(highlightFileInFolder, { client: props.client }),
+    },
     sync: {
+      database: new RequestCore(fetchDatabaseDirs, { client: props.client }),
       ping: new RequestCore(pingWebDav, { client: props.client }),
       uploadToWebdav: new RequestCore(syncToRemote, { client: props.client }),
       downloadFromWebdav: new RequestCore(syncFromRemote, { client: props.client }),
@@ -27,7 +32,12 @@ function SynchronizationViewModel(props: ViewComponentProps) {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    ready() {},
+    ready() {
+      request.sync.database.run();
+    },
+    handleClickDir(dir: { text: string }) {
+      request.file.highlight.run({ file_path: dir.text });
+    },
   };
   const ui = {
     $btn_validate: new ButtonCore({
@@ -115,6 +125,9 @@ function SynchronizationViewModel(props: ViewComponentProps) {
     }),
   };
   let _state = {
+    get database() {
+      return request.sync.database.response;
+    },
     get ping() {
       return request.sync.ping.response;
     },
@@ -129,6 +142,7 @@ function SynchronizationViewModel(props: ViewComponentProps) {
   };
   const bus = base<TheTypesOfEvents>();
 
+  request.sync.database.onStateChange(() => methods.refresh());
   request.sync.ping.onStateChange(() => methods.refresh());
 
   return {
@@ -154,8 +168,28 @@ export function SynchronizationView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(SynchronizationViewModel, [props]);
 
   return (
-    <div>
-      <div>
+    <div class="space-y-8">
+      <div class="block">
+        <div class="text-2xl">数据</div>
+        <div class="mt-4">
+          <For each={state().database?.fields}>
+            {(field) => {
+              return (
+                <div
+                  class="field text-w-fg-0"
+                  onClick={() => {
+                    vm.methods.handleClickDir(field);
+                  }}
+                >
+                  <div>{field.label}</div>
+                  <div>{field.text}</div>
+                </div>
+              );
+            }}
+          </For>
+        </div>
+      </div>
+      <div class="block">
         <div class="text-2xl">Webdav</div>
         <div class="mt-4">
           <FieldObjV2 class="space-y-2" store={vm.ui.$form_webdav}>

@@ -42,7 +42,7 @@ export const Toast = (props: { store: ToastCore }) => {
             }}
           >
             <div class="z-0 absolute inset-0 rounded-xl bg-black opacity-90"></div>
-            <div class="z-10 relative space-y-4 p-6 w-120 h-120">
+            <div class="z-10 relative space-y-4 p-6 w-80">
               <Show when={state().icon === "loading"}>
                 <div class="relative left-1/2 w-6 h-6 -translate-x-1/2">
                   <Loader class="w-full h-full animate-spin" />
@@ -52,7 +52,7 @@ export const Toast = (props: { store: ToastCore }) => {
                 <div class="">
                   <For each={state().texts}>
                     {(text) => {
-                      return <div class="whitespace-nowrap text-center text-white">{text}</div>;
+                      return <div class="text-center text-white">{text}</div>;
                     }}
                   </For>
                 </div>

@@ -21,6 +21,24 @@ type SyncService struct {
 	Biz *biz.App
 }
 
+type DatabaseField struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Text  string `json:"text"`
+}
+
+func (s *SyncService) FetchDatabaseDirs() *Result {
+	fields := [...]DatabaseField{{
+		Key:   "database_dir",
+		Label: "数据库路径",
+		Text:  s.Biz.Config.DBPath,
+	}}
+
+	return Ok(map[string]interface{}{
+		"fields": fields,
+	})
+}
+
 type FileNode struct {
 	Name     string      `json:"name"`
 	Filepath string      `json:"filepath"`
@@ -163,7 +181,7 @@ func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 			uid := fmt.Sprintf("%v", record["id"])
 			// last_operation_time := fmt.Sprintf("%d", _last_operation_time.Unix())
 			last_operation_time := strconv.FormatInt(_last_operation_time.UnixMilli(), 10)
-			last_operation_type := fmt.Sprintf("%d", record["last_operation_type"])
+			// last_operation_type := fmt.Sprintf("%d", record["last_operation_type"])
 
 			record_filepath := filepath.Join(day_dir, uid)
 			files = append(files, &FileNode{
@@ -198,14 +216,14 @@ func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 			// if err := os.WriteFile(last_time_filepath, []byte(last_operation_time), 0644); err != nil {
 			// 	return Error(fmt.Errorf("写入操作时间文件失败: %v", err))
 			// }
-			last_operation_type_filename := "last_operation_type"
-			last_type_filepath := filepath.Join(record_filepath, last_operation_type_filename)
-			files = append(files, &FileNode{
-				Name:     last_operation_type_filename,
-				Filepath: last_type_filepath,
-				Type:     "file",
-				Content:  last_operation_type,
-			})
+			// last_operation_type_filename := "last_operation_type"
+			// last_type_filepath := filepath.Join(record_filepath, last_operation_type_filename)
+			// files = append(files, &FileNode{
+			// 	Name:     last_operation_type_filename,
+			// 	Filepath: last_type_filepath,
+			// 	Type:     "file",
+			// 	Content:  last_operation_type,
+			// })
 			// if err := os.WriteFile(last_type_filepath, []byte(last_operation_type), 0644); err != nil {
 			// 	return Error(fmt.Errorf("写入操作类型文件失败: %v", err))
 			// }
