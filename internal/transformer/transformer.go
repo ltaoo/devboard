@@ -2,7 +2,6 @@ package transformer
 
 import (
 	"regexp"
-	"strings"
 )
 
 func isGolang(code string) bool {
@@ -86,7 +85,12 @@ func isVueFile(code string) bool {
 	}
 	return false
 }
-
+func isJSON(code string) bool {
+	if match, _ := regexp.MatchString(`^{[\s\n]{0,}"[a-zA-Z0-9_-]{1,}":`, code); match {
+		return true
+	}
+	return false
+}
 func isHTML(code string) bool {
 	if match, _ := regexp.MatchString(`<!doctype\s+html>`, code); match {
 		return true
@@ -99,58 +103,51 @@ func isHTML(code string) bool {
 
 // DetectCodeLanguage 检测代码语言或框架类型
 func DetectCodeLanguage(code string) string {
-	lowerCode := strings.ToLower(code)
-	if isGolang(lowerCode) {
+	if isJSON(code) {
+		return "JSON"
+	}
+	if isGolang(code) {
 		return "Go"
 	}
-	if isPython(lowerCode) {
+	if isPython(code) {
 		return "Python"
 	}
-	if isRust(lowerCode) {
+	if isRust(code) {
 		return "Rust"
 	}
-	if isTypeScript(lowerCode) {
+	if isTypeScript(code) {
 		return "TypeScript"
 	}
-	if isJavaScript(lowerCode) {
+	if isJavaScript(code) {
 		return "JavaScript"
 	}
-	if isHTML(lowerCode) {
+	if isHTML(code) {
 		return "HTML"
 	}
-	if isReactJSX(lowerCode) {
+	if isReactJSX(code) {
 		return "React"
 	}
-	if isVueFile(lowerCode) {
+	if isVueFile(code) {
 		return "Vue"
 	}
 	return ""
 }
 
 // TextContentDetector 检测文本内容类型
-func TextContentDetector(text string) string {
+func TextContentDetector(text string) []string {
 	if match, _ := regexp.MatchString(`^https{0,1}://`, text); match {
-		return "url"
+		return []string{"url"}
 	}
 	if match, _ := regexp.MatchString(`^#[a-f0-9]{3,6}`, text); match {
-		return "color"
+		return []string{"color"}
 	}
 	if match, _ := regexp.MatchString(`^17([0-9]{8}|[0-9]{11})`, text); match {
-		return "time"
-	}
-	if match, _ := regexp.MatchString(`^{[\s\n]{0,}"[a-zA-Z0-9_-]{1,}":`, text); match {
-		return "JSON"
+		return []string{"time"}
 	}
 	if lang := DetectCodeLanguage(text); lang != "" {
-		return lang
+		return []string{lang, "code"}
 	}
-	return ""
-}
-
-func PasteEventTextBuild(text string) string {
-	t := TextContentDetector(text)
-	if t == "" {
-		return "text"
+	return []string{
+		"text",
 	}
-	return t
 }

@@ -20,8 +20,7 @@ type PasteEvent struct {
 	CreatedAt         time.Time      `json:"created_at"`
 	DeletedAt         gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
-	// ContentId int          `json:"content_id"`
-	// Content   PasteContent `json:"content"`
+	Categories []CategoryNode `json:"categories" gorm:"many2many:paste_event_category_mapping;joinForeignKey:paste_event_id;JoinReferences:category_id"`
 }
 
 func (PasteEvent) TableName() string {

@@ -151,7 +151,23 @@ function detectCodeLanguage(code: string) {
   return null;
 }
 
-function text_content_detector(text: string) {
+function text_content_detector(
+  text: string
+):
+  | "url"
+  | "color"
+  | "timestamp"
+  | "JSON"
+  | "SQL"
+  | "Go"
+  | "Python"
+  | "Rust"
+  | "React"
+  | "Vue"
+  | "HTML"
+  | "TypeScript"
+  | "JavaScript"
+  | null {
   if (text.match(/^https{0,1}:\/\//)) {
     return "url";
   }
@@ -172,13 +188,17 @@ export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types
   return request.post<
     ListResponse<{
       id: string;
-      content_type: string;
+      content_type: "text" | "image" | "file" | "html";
       text: string;
       image_base64: string;
       file_list_json: string;
       html: string;
       created_at: string;
       last_modified_time: string;
+      categories: {
+        id: string;
+        label: string;
+      }[];
     }>
   >(FetchPasteEventList, body);
 }
@@ -246,13 +266,17 @@ export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEv
 export function fetchPasteEventProfile(body: { id: string }) {
   return request.post<{
     id: string;
-    content_type: string;
+    content_type: "text" | "image" | "file" | "html";
     text: string;
     image_base64: string;
     file_list_json: string;
     html: string;
     created_at: string;
     last_modified_time: string;
+    categories: {
+      id: string;
+      label: string;
+    }[];
   }>(FetchPasteEventProfile, { event_id: body.id });
 }
 export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPasteEventProfile>) {

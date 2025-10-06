@@ -23,6 +23,7 @@ import (
 	"devboard/db"
 	"devboard/internal/biz"
 	"devboard/internal/service"
+	"devboard/internal/transformer"
 	"devboard/models"
 	"devboard/pkg/clipboard"
 	"devboard/pkg/logger"
@@ -84,6 +85,10 @@ func main() {
 		Biz: biz,
 	})
 	system_service := application.NewService(&service.SystemService{})
+	category_service := application.NewService(&service.CategoryService{
+		App: app,
+		Biz: biz,
+	})
 	sync_service := application.NewService(&service.SyncService{
 		App: app,
 		Biz: biz,
@@ -94,6 +99,7 @@ func main() {
 	app.RegisterService(paste_service)
 	app.RegisterService(system_service)
 	app.RegisterService(sync_service)
+	app.RegisterService(category_service)
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.
 	// 'Mac' options tailor the window when running on macOS.
@@ -202,6 +208,19 @@ func main() {
 							log.Fatalf("Failed to create paste event: %v", err)
 							return
 						}
+						categories := []string{"file"}
+						for _, c := range categories {
+							created_map := models.PasteEventCategoryMapping{
+								Id:                uuid.New().String(),
+								PasteEventId:      created_paste_event.Id,
+								CategoryId:        c,
+								LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+								LastOperationType: 1,
+								CreatedAt:         now,
+							}
+							if err := biz.DB.Create(&created_map).Error; err != nil {
+							}
+						}
 					}
 				}
 			}
@@ -221,10 +240,22 @@ func main() {
 						LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
 						LastOperationType: 1,
 					}
-					// created_paste_event.Content = created_paste_content
 					if err := biz.DB.Create(&created_paste_event).Error; err != nil {
 						log.Fatalf("Failed to create paste event: %v", err)
 						return
+					}
+					categories := transformer.TextContentDetector(text)
+					for _, c := range categories {
+						created_map := models.PasteEventCategoryMapping{
+							Id:                uuid.New().String(),
+							PasteEventId:      created_paste_event.Id,
+							CategoryId:        c,
+							LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+							LastOperationType: 1,
+							CreatedAt:         now,
+						}
+						if err := biz.DB.Create(&created_map).Error; err != nil {
+						}
 					}
 				}
 			}
@@ -249,6 +280,19 @@ func main() {
 					if err := biz.DB.Create(&created_paste_event).Error; err != nil {
 						log.Fatalf("Failed to create paste event: %v", err)
 						return
+					}
+					categories := []string{"image"}
+					for _, c := range categories {
+						created_map := models.PasteEventCategoryMapping{
+							Id:                uuid.New().String(),
+							PasteEventId:      created_paste_event.Id,
+							CategoryId:        c,
+							LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+							LastOperationType: 1,
+							CreatedAt:         now,
+						}
+						if err := biz.DB.Create(&created_map).Error; err != nil {
+						}
 					}
 				}
 			}
@@ -292,8 +336,9 @@ func main() {
 			error_win.Show()
 			return
 		}
+		db.Seed(database)
 		biz.Set(database, cfg)
-		win.Show()
+		// win.Show()
 	}()
 
 	// Run the application. This blocks until the application has been exited.

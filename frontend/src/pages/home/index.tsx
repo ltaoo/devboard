@@ -15,6 +15,7 @@ import { Flex } from "@/components/flex/flex";
 import { WithTagsInput, WithTagsInputModel } from "@/components/with-tags-input";
 import { DynamicContent } from "@/components/dynamic-content";
 import { DynamicContentWithClick } from "@/components/dynamic-content/with-click";
+import { CodeCard } from "@/components/code-card";
 
 import { RequestCore, TheResponseOfRequestCore } from "@/domains/request";
 import { base, Handler } from "@/domains/base";
@@ -37,7 +38,6 @@ import {
 
 import { LocalVideo } from "./components/LazyVideo";
 import { LocalImage } from "./components/LocalImage";
-import { CodeCard } from "@/components/code-card";
 
 function HomeIndexViewModel(props: ViewComponentProps) {
   const request = {
@@ -49,7 +49,8 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     paste: {
       list: new ListCore(
-        new RequestCore(fetchPasteEventList, { process: fetchPasteEventListProcess, client: props.client })
+        new RequestCore(fetchPasteEventList, { process: fetchPasteEventListProcess, client: props.client }),
+        {}
       ),
       delete: new RequestCore(deletePasteEvent, { client: props.client }),
       preview: new RequestCore(openPasteEventPreviewWindow, { client: props.client }),
@@ -265,23 +266,8 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     [EventNames.StateChange]: typeof _state;
   };
   const bus = base<TheTypesOfEvents>();
-  // request.file.open_dialog.onStateChange(() => methods.refresh());
-  // request.paste.list.onStateChange(() => methods.refresh());
-  // request.paste.list.onStateChange((v) => {
-  //   console.log("[PAGE]home/index - onStateChange", v);
-  //   for (let i = 0; i < v.dataSource.length; i += 1) {
-  //     const record = v.dataSource[i];
-  //     ui.$waterfall.methods.appendItems(added);
-  //     console.log("[PAGE]home/index - handle added items", ui.$waterfall.state.columns.length);
-  //   }
-  // });
-  // request.paste.list.onStateChange(() => {
-  //   JSON.stringify(request.paste.list.response.dataSource);
-  // })
+
   request.paste.list.onDataSourceChange(({ dataSource, reason }) => {
-    // const isNewRequest = dataSource.length !== 0 && dataSource.length <= request.paste.list.response.dataSource.length;
-    // console.log("[]onDataSourceChange", dataSource.length, request.paste.list.response.dataSource.length);
-    // JSON.stringify(request.paste.list.response.dataSource);
     if (["init", "reload", "refresh", "search"].includes(reason)) {
       ui.$waterfall.methods.cleanColumns();
       ui.$waterfall.methods.appendItems(dataSource);
@@ -299,9 +285,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     }
     ui.$waterfall.methods.appendItems(added_items);
   });
-  ui.$waterfall.onStateChange(() => {
-    methods.refresh();
-  });
+  ui.$waterfall.onStateChange(() => methods.refresh());
   ui.$back_to_top.onStateChange(() => methods.refresh());
   // setTimeout(appendMockData, 5000);
 
@@ -312,22 +296,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     }
     const vv = processPartialPasteEvent(created_paste_event);
     methods.prepareLoadRecord(vv);
-
-    // const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
-    // const changed_height = height_of_new_paste_event;
-    // ui.$waterfall.$columns[0].methods.addHeight(changed_height);
-    // const current_scroll_top = ui.$view.getScrollTop();
-    // ui.$view.setScrollTop(current_scroll_top + changed_height);
-    // const $created_items = ui.$waterfall.methods.unshiftItems([vv]);
-    // const $first = $created_items[0];
-    // if (!$first) {
-    //   return;
-    // }
-    // $first.onHeightChange(([height, difference]) => {
-    //   console.log(difference);
-    //   const current_scroll_top = ui.$view.getScrollTop();
-    //   ui.$view.setScrollTop(current_scroll_top + difference);
-    // });
   });
 
   return {
@@ -456,11 +424,6 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                         <CodeCard language={v.type} code={v.text} />
                       </div>
                     </Match>
-                    <Match when={v.type === "code"}>
-                      <div class="w-full overflow-auto p-2">
-                        <pre>{v.text}</pre>
-                      </div>
-                    </Match>
                     <Match when={v.type === "text"}>
                       <div class="p-2 text-w-fg-0">{v.text}</div>
                     </Match>
@@ -474,9 +437,15 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                 <Flex class="mt-2" items="center" justify="between">
                   <div>
                     <div class="flex space-x-1 tags">
-                      <div class="px-2 bg-w-bg-5 rounded-full">
-                        <div class="text-w-fg-0 text-sm">#{v.type}</div>
-                      </div>
+                      <For each={v.categories}>
+                        {(c) => {
+                          return (
+                            <div class="px-2 bg-w-bg-5 rounded-full">
+                              <div class="text-w-fg-0 text-sm">#{c.label}</div>
+                            </div>
+                          );
+                        }}
+                      </For>
                     </div>
                     <div class="mt-1 text-sm text-w-fg-1" title={v.created_at_text}>
                       <RelativeTime time={v.created_at}></RelativeTime>

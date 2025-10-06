@@ -46,6 +46,10 @@ const configure = {
         title: "设置",
         pathname: "/settings",
         children: {
+          category: {
+            title: "分类",
+            pathname: "/category",
+          },
           system: {
             title: "系统信息",
             pathname: "/settings_system",
