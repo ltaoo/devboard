@@ -58,9 +58,9 @@ const Input = (props: { store: InputCore<any> } & JSX.HTMLAttributes<HTMLInputEl
       //   store.handleChange(event);
       // }}
       onKeyDown={(event) => {
-        store.handleKeyDown({
-          key: event.key,
-        });
+        // event.stopPropagation();
+        // event.preventDefault();
+        store.handleKeyDown(event);
       }}
       onBlur={() => {
         store.handleBlur();

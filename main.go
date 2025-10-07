@@ -210,6 +210,10 @@ func main() {
 						}
 						categories := []string{"file"}
 						for _, c := range categories {
+							created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
+								Id:    c,
+								Label: c,
+							})
 							created_map := models.PasteEventCategoryMapping{
 								Id:                uuid.New().String(),
 								PasteEventId:      created_paste_event.Id,
@@ -246,6 +250,10 @@ func main() {
 					}
 					categories := transformer.TextContentDetector(text)
 					for _, c := range categories {
+						created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
+							Id:    c,
+							Label: c,
+						})
 						created_map := models.PasteEventCategoryMapping{
 							Id:                uuid.New().String(),
 							PasteEventId:      created_paste_event.Id,
@@ -254,7 +262,7 @@ func main() {
 							LastOperationType: 1,
 							CreatedAt:         now,
 						}
-						if err := biz.DB.Create(&created_map).Error; err != nil {
+						if err := biz.DB.Create(&created_map).Error; err == nil {
 						}
 					}
 				}
@@ -283,6 +291,10 @@ func main() {
 					}
 					categories := []string{"image"}
 					for _, c := range categories {
+						created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
+							Id:    c,
+							Label: c,
+						})
 						created_map := models.PasteEventCategoryMapping{
 							Id:                uuid.New().String(),
 							PasteEventId:      created_paste_event.Id,

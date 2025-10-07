@@ -17,7 +17,7 @@ type TheTypesOfEvents<T> = {
   [Events.Change]: T;
   [Events.Blur]: T;
   [Events.Enter]: T;
-  [Events.KeyDown]: { key: string };
+  [Events.KeyDown]: { key: string; preventDefault: () => void };
   [Events.Focus]: void;
   [Events.Clear]: void;
   [Events.Click]: { x: number; y: number };
@@ -33,8 +33,9 @@ export type InputProps<T> = {
   type?: string;
   autoFocus?: boolean;
   autoComplete?: boolean;
+  ignoreEnterEvent?: boolean;
   onChange?: (v: T) => void;
-  onKeyDown?: (v: { key: string }) => void;
+  onKeyDown?: (v: { key: string; preventDefault: () => void }) => void;
   onEnter?: (v: T) => void;
   onBlur?: (v: T) => void;
   onClear?: () => void;
@@ -62,6 +63,7 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
   allowClear: boolean = true;
   autoComplete: boolean = false;
   autoFocus: boolean = false;
+  ignoreEnterEvent = false;
   isFocus = false;
   type: string;
   loading = false;
@@ -95,6 +97,7 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
       disabled = false,
       autoFocus = false,
       autoComplete = false,
+      ignoreEnterEvent = false,
       onChange,
       onBlur,
       onEnter,
@@ -108,6 +111,7 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
     this.type = type;
     this.disabled = disabled;
     this.autoComplete = autoComplete;
+    this.ignoreEnterEvent = ignoreEnterEvent;
     this.autoFocus = autoFocus;
     this.defaultValue = defaultValue;
     this.value = defaultValue;
@@ -135,8 +139,8 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
   setMounted() {
     this.emit(Events.Mounted);
   }
-  handleKeyDown(event: { key: string }) {
-    if (event.key === "Enter") {
+  handleKeyDown(event: { key: string; preventDefault: () => void }) {
+    if (!this.ignoreEnterEvent && event.key === "Enter") {
       this.handleEnter();
       return;
     }

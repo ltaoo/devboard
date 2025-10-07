@@ -23,6 +23,7 @@ type TheTypesOfEvents = {
 };
 type PopoverState = {
   isPlaced: boolean;
+  closeable: boolean;
   x: number;
   y: number;
   visible: boolean;
@@ -33,6 +34,7 @@ type PopoverProps = {
   side?: Side;
   align?: Align;
   strategy?: "fixed" | "absolute";
+  closeable?: boolean;
 };
 
 export class PopoverCore extends BaseDomain<TheTypesOfEvents> {
@@ -42,6 +44,7 @@ export class PopoverCore extends BaseDomain<TheTypesOfEvents> {
 
   _side: Side;
   _align: Align;
+  _closeable: boolean;
 
   visible = false;
   enter = false;
@@ -52,6 +55,7 @@ export class PopoverCore extends BaseDomain<TheTypesOfEvents> {
       // enter: this.enter,
       // exit: this.exit,
       isPlaced: this.popper.state.isPlaced,
+      closeable: this._closeable,
       x: this.popper.state.x,
       y: this.popper.state.y,
 
@@ -64,9 +68,10 @@ export class PopoverCore extends BaseDomain<TheTypesOfEvents> {
   constructor(props: { _name?: string } & PopoverProps = {}) {
     super();
 
-    const { side = "bottom", align = "end", strategy } = props;
+    const { side = "bottom", align = "end", strategy, closeable = true } = props;
     this._side = side;
     this._align = align;
+    this._closeable = closeable;
 
     this.popper = new PopperCore({
       side,

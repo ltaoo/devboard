@@ -64,14 +64,16 @@ export function Popover(props: { store: PopoverCore } & JSX.HTMLAttributes<HTMLE
               }}
             >
               {props.children}
-              <div
-                class="absolute top-2 right-2 inline-flex items-center justify-center rounded-full h-6 w-6 text-w-fg-1 font-inherit"
-                onClick={() => {
-                  vm.hide();
-                }}
-              >
-                <X class="w-4 h-4" />
-              </div>
+              <Show when={state().closeable}>
+                <div
+                  class="absolute top-2 right-2 inline-flex items-center justify-center rounded-full h-6 w-6 text-w-fg-1 font-inherit"
+                  onClick={() => {
+                    vm.hide();
+                  }}
+                >
+                  <X class="w-4 h-4" />
+                </div>
+              </Show>
             </div>
           </div>
         </div>
