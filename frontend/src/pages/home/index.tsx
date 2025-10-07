@@ -38,6 +38,7 @@ import {
 
 import { LocalVideo } from "./components/LazyVideo";
 import { LocalImage } from "./components/LocalImage";
+import { fetchCategoryTree } from "@/biz/category/service";
 
 function HomeIndexViewModel(props: ViewComponentProps) {
   const request = {
@@ -55,6 +56,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       delete: new RequestCore(deletePasteEvent, { client: props.client }),
       preview: new RequestCore(openPasteEventPreviewWindow, { client: props.client }),
       write: new RequestCore(writePasteEvent, { client: props.client }),
+    },
+    category: {
+      tree: new RequestCore(fetchCategoryTree, { client: props.client }),
     },
   };
   type SelectedFile = TheResponseOfRequestCore<typeof request.file.open_file>["files"][number];
@@ -227,12 +231,13 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       },
     }),
     $input_search: WithTagsInputModel({
+      app: props.app,
       defaultValue: "",
       onEnter() {
         // await ui.$waterfall.methods.cleanColumns();
         request.paste.list.search({
-          types: ui.$input_search.state.tags.map((tag) => tag.replace(/^#/, "")),
-          keyword: ui.$input_search.state.value,
+          keyword: ui.$input_search.state.value.keyword,
+          types: ui.$input_search.state.value.tags.map((tag) => tag.id),
         });
       },
     }),
@@ -304,6 +309,13 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     ui,
     state: _state,
     async ready() {
+      (async () => {
+        const r = await request.category.tree.run();
+        if (r.error) {
+          return;
+        }
+        ui.$input_search.methods.setOptions(r.data);
+      })();
       const r = await request.paste.list.init();
     },
     destroy() {
@@ -335,9 +347,9 @@ export const HomeIndexView = (props: ViewComponentProps) => {
           "w-full": !props.app.env.pc,
         }}
       >
-        {/* <div class="p-4 pb-0">
+        <div class="p-4 pb-0">
           <WithTagsInput store={vm.ui.$input_search} />
-        </div> */}
+        </div>
         <WaterfallView
           class="p-4"
           store={vm.ui.$waterfall}

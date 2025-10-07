@@ -41,6 +41,10 @@ var BuiltinCategories = []models.CategoryNode{
 		Label: "snippet",
 	},
 	{
+		Id:    "url",
+		Label: "url",
+	},
+	{
 		Id:    "time",
 		Label: "time",
 	},
