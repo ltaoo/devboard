@@ -144,10 +144,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // ui.$waterfall.methods.resetRange();
       // ui.$view.setScrollTop(0);
       // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
-      // const r = await request.paste.delete.run({ id: v.id });
-      // if (r.error) {
-      //   return;
-      // }
       request.paste.list.deleteItem((record) => {
         return record.id === v.id;
       });
@@ -157,6 +153,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       if (request.paste.list.response.dataSource.length < 10 && !request.paste.list.response.noMore) {
         request.paste.list.loadMore();
       }
+      const r = await request.paste.delete.run({ id: v.id });
+      // if (r.error) {
+      //   return;
+      // }
     },
     handleClickFileBtn(v: PasteRecord) {
       const time = parseInt(String(new Date().valueOf() / 1000));

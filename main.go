@@ -84,7 +84,9 @@ func main() {
 		App: app,
 		Biz: biz,
 	})
-	system_service := application.NewService(&service.SystemService{})
+	system_service := application.NewService(&service.SystemService{
+		Biz: biz,
+	})
 	category_service := application.NewService(&service.CategoryService{
 		App: app,
 		Biz: biz,

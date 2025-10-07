@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/adrg/xdg"
 	"github.com/spf13/viper"
@@ -11,6 +10,8 @@ import (
 
 // Config 存储所有配置
 type Config struct {
+	ProductName    string
+	ProductVersion string
 	// 服务器配置
 	ServerAddress string
 	Environment   string
@@ -39,11 +40,11 @@ type Config struct {
 
 // LoadConfig 从环境变量或配置文件加载配置
 func LoadConfig() (*Config, error) {
-	viper.SetConfigName(".env")
-	viper.SetConfigType("env")
-	viper.AddConfigPath(".")
-	viper.AutomaticEnv()
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("./build")
+	// viper.AutomaticEnv()
+	// viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -57,6 +58,8 @@ func LoadConfig() (*Config, error) {
 
 	fmt.Println("database", database_filepath)
 
+	viper.SetDefault("info.version", "0.0.1")
+	viper.SetDefault("info.productName", "Devboard")
 	// 设置默认值
 	viper.SetDefault("SERVER_ADDRESS", ":8080")
 	viper.SetDefault("ENVIRONMENT", "development")
@@ -75,6 +78,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("TOKEN_SECRET_KEY", "")
 
 	config := &Config{
+		ProductVersion: viper.GetString("info.version"),
 		ServerAddress:  viper.GetString("SERVER_ADDRESS"),
 		Environment:    viper.GetString("ENVIRONMENT"),
 		LogLevel:       viper.GetString("LOG_LEVEL"),

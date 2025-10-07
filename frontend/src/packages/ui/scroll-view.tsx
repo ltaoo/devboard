@@ -24,7 +24,7 @@ export const Root = (props: { store: ScrollViewCore } & JSX.HTMLAttributes<HTMLD
   });
 
   return (
-    <div ref={$elm} class={props.class} style={props.style} onClick={props.onClick}>
+    <div ref={$elm} class={props.class} classList={props.classList} style={props.style} onClick={props.onClick}>
       {props.children}
     </div>
   );

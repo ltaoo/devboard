@@ -171,7 +171,7 @@ export function CategorySettingsView(props: ViewComponentProps) {
                 {v.level}-{v.idx}
               </div> */}
               <div class="ml-2 w-[80px]">{v.node.label}</div>
-              <div class="flex items-center space-x-1 ml-4">
+              {/* <div class="flex items-center space-x-1 ml-4">
                 <Edit
                   class="w-4 h-4 cursor-pointer"
                   onClick={(event) => {
@@ -195,7 +195,7 @@ export function CategorySettingsView(props: ViewComponentProps) {
                     vm.ui.$edit.methods.handleDelete({});
                   }}
                 />
-              </div>
+              </div> */}
             </div>
           );
         }}
