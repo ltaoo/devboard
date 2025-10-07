@@ -24,7 +24,11 @@ export const ScrollView = (
 
   return (
     <ScrollViewPrimitive.Root
-      class={cn("scroll-view w-full h-full overflow-y-auto", props.class)}
+      classList={{
+        "scroll-view w-full h-full overflow-y-auto": true,
+        [props.class ?? ""]: true,
+        ...props.classList,
+      }}
       style={props.style}
       store={props.store}
       // onClick={rest.onClick}

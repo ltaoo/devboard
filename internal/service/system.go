@@ -25,6 +25,11 @@ func (s *SystemService) FetchComputeInfo() *Result {
 
 	fields := [...]SystemInfoField{
 		{
+			Key:   "app_version",
+			Label: "应用版本",
+			Text:  s.Biz.Config.ProductVersion,
+		},
+		{
 			Key:   "host_id",
 			Label: "主机 id",
 			Text:  info.HostID,
