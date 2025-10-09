@@ -3,6 +3,8 @@ package db
 import (
 	"devboard/models"
 	"fmt"
+	"strconv"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -182,13 +184,18 @@ var BuiltinCategoryHierarchy = []models.CategoryHierarchy{
 }
 
 func Seed(db *gorm.DB) {
+	now := time.Now()
 	for _, category := range BuiltinCategories {
-		if err := db.FirstOrCreate(&category).Error; err != nil {
+		category.LastOperationTime = strconv.FormatInt(now.UnixMilli(), 10)
+		category.LastOperationType = 1
+		if err := db.Save(&category).Error; err != nil {
 			fmt.Println("create failed", err.Error())
 		}
 	}
 	for _, hierarchy := range BuiltinCategoryHierarchy {
-		if err := db.FirstOrCreate(&hierarchy).Error; err != nil {
+		hierarchy.LastOperationTime = strconv.FormatInt(now.UnixMilli(), 10)
+		hierarchy.LastOperationType = 1
+		if err := db.Save(&hierarchy).Error; err != nil {
 			fmt.Println("create failed", err.Error())
 		}
 	}
