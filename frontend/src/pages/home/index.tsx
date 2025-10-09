@@ -126,7 +126,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }
     },
     async handleClickPasteContent(v: PasteRecord) {
-      if (v.type === "url") {
+      if (v.types.includes("url")) {
         Browser.OpenURL(v.text);
         return;
       }
@@ -241,7 +241,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         });
       },
     }),
-    $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 12, size: 10, buffer: 4 }),
+    $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 6, size: 10, buffer: 4 }),
   };
 
   let _selected_files = [] as SelectedFile[];
@@ -272,6 +272,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   };
   const bus = base<TheTypesOfEvents>();
 
+  request.paste.list.onStateChange(() => methods.refresh());
   request.paste.list.onDataSourceChange(({ dataSource, reason }) => {
     if (["init", "reload", "refresh", "search"].includes(reason)) {
       ui.$waterfall.methods.cleanColumns();
@@ -292,7 +293,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   });
   ui.$waterfall.onStateChange(() => methods.refresh());
   ui.$back_to_top.onStateChange(() => methods.refresh());
-  // setTimeout(appendMockData, 5000);
 
   Events.On("clipboard:update", (event) => {
     const created_paste_event = event.data[0];
@@ -351,21 +351,24 @@ export const HomeIndexView = (props: ViewComponentProps) => {
           <WithTagsInput store={vm.ui.$input_search} />
         </div> */}
         <WaterfallView
-          class="p-4"
+          class="p-2"
           store={vm.ui.$waterfall}
+          // showFallback={state().paste_event.empty}
           fallback={
-            <div class="flex flex-col items-center justify-center pt-12">
-              <Bird class="text-w-fg-2 w-36 h-36" />
-              <div class="mt-2 text-center text-w-fg-1">没有数据</div>
-            </div>
+            <Show when={state().paste_event.empty}>
+              <div class="flex flex-col items-center justify-center pt-12">
+                <Bird class="text-w-fg-2 w-36 h-36" />
+                <div class="mt-2 text-center text-w-fg-1">没有数据</div>
+              </div>
+            </Show>
           }
           render={(payload, idx) => {
             const v = payload;
             return (
               <div
                 classList={{
-                  "paste-event-card group relative rounded-md": true,
-                  // "hover:bg-w-bg-3": true,
+                  "paste-event-card group relative p-2 rounded-md": true,
+                  "hover:bg-w-bg-3": true,
                 }}
               >
                 <div
@@ -411,7 +414,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                         </For>
                       </div>
                     </Match>
-                    <Match when={v.type === "url"}>
+                    <Match when={v.types.includes("url")}>
                       <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
                         <div class="flex items-center gap-1 cursor-pointer">
                           <Link class="w-4 h-4" />
@@ -419,21 +422,21 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                         </div>
                       </div>
                     </Match>
-                    <Match when={v.type === "color"}>
+                    <Match when={v.types.includes("color")}>
                       <div class="flex items-center gap-1 p-2">
                         <div class="w-[16px] h-[16px]" style={{ "background-color": v.text }}></div>
                         <div>{v.text}</div>
                       </div>
                     </Match>
-                    <Match when={v.type === "timestamp"}>
+                    <Match when={v.types.includes("timestamp")}>
                       <div class="flex items-center gap-1 p-2">
                         <div>{v.origin_text}</div>
                         <div class="text-w-fg-1">{v.text}</div>
                       </div>
                     </Match>
-                    <Match when={isCodeContent(v.type)}>
+                    <Match when={isCodeContent(v.types)}>
                       <div class="w-full overflow-auto cursor-pointer">
-                        <CodeCard language={v.type} code={v.text} />
+                        <CodeCard language={v.language} code={v.text} />
                       </div>
                     </Match>
                     <Match when={v.type === "text"}>

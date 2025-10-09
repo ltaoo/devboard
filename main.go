@@ -45,12 +45,6 @@ var assets embed.FS
 //go:embed all:migrations
 var migrations embed.FS
 
-type FileInPasteBoard struct {
-	Name         string `json:"name"`
-	AbsolutePath string `json:"absolute_path"`
-	MimeType     string `json:"mime_type"`
-}
-
 func NotFoundMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rw := &ResponseRecorder{ResponseWriter: w}
@@ -252,7 +246,7 @@ func main() {
 			}
 			if data.Type == "public.file-url" {
 				if files, ok := data.Data.([]string); ok {
-					var results []FileInPasteBoard
+					var results []service.FileInPasteBoard
 					for _, f := range files {
 						info, err := os.Stat(f)
 						if err != nil {
@@ -260,7 +254,7 @@ func main() {
 						}
 						name := info.Name()
 						if info.IsDir() {
-							results = append(results, FileInPasteBoard{
+							results = append(results, service.FileInPasteBoard{
 								Name:         name,
 								AbsolutePath: f,
 								MimeType:     "folder",
@@ -275,7 +269,7 @@ func main() {
 							// 去除可能的参数（如 charset=utf-8）
 							mime_type = strings.Split(mime_type, ";")[0]
 						}
-						results = append(results, FileInPasteBoard{
+						results = append(results, service.FileInPasteBoard{
 							Name:         name,
 							AbsolutePath: f,
 							MimeType:     mime_type,

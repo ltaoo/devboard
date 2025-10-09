@@ -1,9 +1,15 @@
-export function CodeCard(props: { language: string; code: string }) {
+import { initLineNumberPlugin } from "./code-card-util";
+
+export function CodeCard(props: { language?: string | null; linenumber?: boolean; code: string }) {
   let $code: HTMLDivElement | undefined;
 
+  // console.log("[COMPONENT]code-card - load language", props.language, $code);
   // import "highlight.js/styles/github.css";
   import("highlight.js/styles/base16/solarized-dark.css");
   import("highlight.js/lib/core").then(async (hljs) => {
+    if (!props.language) {
+      return;
+    }
     const language = props.language.toLowerCase();
     console.log("load language", language, $code);
     if (!$code) {
@@ -51,11 +57,23 @@ export function CodeCard(props: { language: string; code: string }) {
       console.log("load language", language, "failed", err);
     }
     hljs.default.highlightElement($code);
+    // @ts-ignore
+    window.hljs = hljs.default;
+    if (props.linenumber) {
+      initLineNumberPlugin(window, document);
+      // @ts-ignore
+      if (typeof hljs.default.initLineNumbersOnLoad === "function") {
+        // @ts-ignore
+        hljs.default.initLineNumbersOnLoad();
+      }
+    }
   });
 
   return (
     <pre class="w-full h-full">
-      <code ref={$code} class="w-full h-full">{props.code}</code>
+      <code ref={$code} class="w-full h-full">
+        {props.code}
+      </code>
     </pre>
   );
 }

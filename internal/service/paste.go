@@ -1,8 +1,11 @@
 package service
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -72,7 +75,7 @@ func (s *PasteService) FetchPasteEventProfile(body PasteEventProfileBody) *Resul
 		return Error(fmt.Errorf("缺少 id 参数"))
 	}
 	var record models.PasteEvent
-	if err := s.Biz.DB.Where("id = ?", body.EventId).First(&record).Error; err != nil {
+	if err := s.Biz.DB.Where("id = ?", body.EventId).Preload("Categories").First(&record).Error; err != nil {
 		return Error(err)
 	}
 	return Ok(&record)
@@ -122,6 +125,12 @@ type PasteboardWriteBody struct {
 	// Text        string `json:"text"`
 }
 
+type FileInPasteBoard struct {
+	Name         string `json:"name"`
+	AbsolutePath string `json:"absolute_path"`
+	MimeType     string `json:"mime_type"`
+}
+
 func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 	if s.Biz.DB == nil {
 		return Error(fmt.Errorf("请先初始化数据库"))
@@ -141,7 +150,34 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 	}
 	if record.ContentType == "image" {
 		s.Biz.ManuallyWriteClipboardTime = time.Now()
-		if err := clipboard.WriteImage([]byte(record.ImageBase64)); err != nil {
+		decoded_data, err := base64.StdEncoding.DecodeString(record.ImageBase64)
+		if err != nil {
+			return Error(err)
+		}
+		if err := clipboard.WriteImage(decoded_data); err != nil {
+			return Error(err)
+		}
+	}
+	if record.ContentType == "file" {
+		s.Biz.ManuallyWriteClipboardTime = time.Now()
+		var files []FileInPasteBoard
+		if err := json.Unmarshal([]byte(record.FileListJSON), &files); err != nil {
+			return Error(err)
+		}
+		var errors []string
+		var file_paths []string
+		for _, f := range files {
+			_, err := os.Stat(f.AbsolutePath)
+			if err != nil {
+				errors = append(errors, err.Error())
+				continue
+			}
+			file_paths = append(file_paths, f.AbsolutePath)
+		}
+		if len(file_paths) == 0 {
+			return Error(fmt.Errorf("There's no valid file can copy."))
+		}
+		if err := clipboard.WriteFiles(file_paths); err != nil {
 			return Error(err)
 		}
 	}
