@@ -67,7 +67,7 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 	remote_last_operation_time_filename := "last_operation_time"
 	remote_last_operation_time_filepath := filepath.Join(table_out_dir, remote_last_operation_time_filename)
 	var records []map[string]interface{}
-	r := db.Table(table_name).Order("last_operation_time DESC").Find(&records)
+	r := db.Table(table_name).Order("last_operation_time DESC").Limit(1).Find(&records)
 	if r.Error != nil {
 		// return Error(fmt.Errorf("查询记录失败: %v", r.Error))
 		result.Messages = append(result.Messages, SynchronizeMessage{
@@ -137,7 +137,7 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 			result.Messages = append(result.Messages, SynchronizeMessage{
 				Type:  1,
 				Scope: "format time",
-				Text:  err.Error(),
+				Text:  err.Error() + "[]" + remote_last_operation_time,
 			})
 			return &result
 			// return Error(err)
@@ -536,7 +536,8 @@ func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, clien
 				continue
 				// return Error(err)
 			}
-			remote_record_lot_millis, err := strconv.ParseInt(string(remote_record_lot_byte), 10, 64)
+			remote_record_lot_str := string(remote_record_lot_byte)
+			remote_record_lot_millis, err := strconv.ParseInt(remote_record_lot_str, 10, 64)
 			// remote_record_last_operation_time, err := time.Parse("20060102", local_last_operation_time)
 			remote_record_last_operation_time := time.Unix(0, remote_record_lot_millis*int64(time.Millisecond))
 			if err != nil {
