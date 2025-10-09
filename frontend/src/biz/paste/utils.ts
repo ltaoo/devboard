@@ -1,8 +1,6 @@
-export function isCodeContent(type?: null | string) {
-  if (!type) {
+export function isCodeContent(types?: string[]) {
+  if (!types || types.length === 0) {
     return false;
   }
-  return ["Go", "Rust", "Python", "JavaScript", "TypeScript", "HTML", "JSON", "SQL", "YAML", "React", "Vue"].includes(
-    type
-  );
+  return types.includes("code");
 }

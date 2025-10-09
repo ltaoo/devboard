@@ -85,16 +85,16 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                 </div>
               }
             >
-              <Match when={state().profile?.type === "image"}>
+              <Match when={state().profile?.types.includes("image")}>
                 <Show when={state().profile!.image_url}>
                   <ImageContentPreview url={state().profile!.image_url!} />
                 </Show>
               </Match>
-              <Match when={state().profile?.type === "JSON"}>
+              <Match when={state().profile?.types.includes("JSON")}>
                 <JSONContentPreview text={state().profile?.text!} />
               </Match>
-              <Match when={state().profile?.type && isCodeContent(state().profile?.type)}>
-                <CodeCard language={state().profile?.type!} code={state().profile?.text!} />
+              <Match when={isCodeContent(state().profile?.types)}>
+                <CodeCard language={state().profile?.language} linenumber code={state().profile?.text!} />
               </Match>
             </Switch>
           </div>

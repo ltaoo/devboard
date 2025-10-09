@@ -12,12 +12,15 @@ import { WaterfallCellModel } from "@/domains/ui/waterfall/cell";
 export function WaterfallView<T extends Record<string, unknown>>(
   props: {
     store: WaterfallModel<T>;
+    // showFallback?: boolean;
     fallback?: JSX.Element;
     extra?: JSX.Element;
     render: (payload: T, idx: number) => JSX.Element;
   } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
   const [state, vm] = useViewModelStore(props.store);
+
+  // console.log("[COMPONENT]ui/waterfall/waterfall - render", props.showFallback);
 
   return (
     <div

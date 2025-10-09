@@ -171,9 +171,15 @@ type OpenFolderAndHighlightFileBody struct {
 
 func (s *FileService) OpenFolderAndHighlightFile(body OpenFolderAndHighlightFileBody) *Result {
 	if body.FilePath == "" {
-		return Error(fmt.Errorf("缺少 file_path 参数"))
+		return Error(fmt.Errorf("Missing the `file_path`"))
 	}
 	file_path := body.FilePath
+
+	_, err := os.Stat(file_path)
+	if err != nil {
+		return Error(err)
+	}
+
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
@@ -186,7 +192,7 @@ func (s *FileService) OpenFolderAndHighlightFile(body OpenFolderAndHighlightFile
 	default:
 		return Error(fmt.Errorf("Unsupported operating system"))
 	}
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return Error(err)
 	}
