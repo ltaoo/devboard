@@ -6,9 +6,9 @@
         <key>CFBundleName</key>
             <string>My Product</string>
         <key>CFBundleExecutable</key>
-            <string>wails3_playground</string>
+            <string>devboard</string>
         <key>CFBundleIdentifier</key>
-            <string>com.wails.wails3_playground</string>
+            <string>com.funzm.devboard</string>
         <key>CFBundleVersion</key>
             <string>0.1.0</string>
         <key>CFBundleGetInfoString</key>

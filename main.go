@@ -7,8 +7,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"log"
 	"mime"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -49,6 +51,33 @@ type FileInPasteBoard struct {
 	MimeType     string `json:"mime_type"`
 }
 
+func NotFoundMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rw := &ResponseRecorder{ResponseWriter: w}
+		next.ServeHTTP(rw, r)
+		if rw.status == http.StatusNotFound {
+			data, err := fs.ReadFile(assets, "frontend/dist/index.html")
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(http.StatusOK)
+			w.Write(data)
+		}
+	})
+}
+
+type ResponseRecorder struct {
+	http.ResponseWriter
+	status int
+}
+
+func (r *ResponseRecorder) WriteHeader(status int) {
+	r.status = status
+	r.ResponseWriter.WriteHeader(status)
+}
+
 // main function serves as the application's entry point. It initializes the application, creates a window,
 // and starts a goroutine that emits a time-based event every second. It subsequently runs the application and
 // logs any error that might occur.
@@ -66,7 +95,8 @@ func main() {
 		Description: "A tools base on clipboard for developer",
 		Services:    []application.Service{},
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler:    application.AssetFileServerFS(assets),
+			Middleware: NotFoundMiddleware,
 		},
 		Windows: application.WindowsOptions{
 			DisableQuitOnLastWindowClosed: true,

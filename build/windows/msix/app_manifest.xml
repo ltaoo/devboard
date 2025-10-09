@@ -6,7 +6,7 @@
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10">
   
   <Identity 
-    Name="com.wails.wails3_playground"
+    Name="com.funzm.devboard"
     Publisher="CN=My Company"
     Version="0.1.0.0" 
     ProcessorArchitecture="x64" />
@@ -27,7 +27,7 @@
   </Resources>
   
   <Applications>
-    <Application Id="com.wails.wails3_playground" Executable="wails3_playground" EntryPoint="Windows.FullTrustApplication">
+    <Application Id="com.funzm.devboard" Executable="devboard" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="My Product"
         Description="My Product Description"
@@ -39,7 +39,7 @@
       </uap:VisualElements>
       
       <Extensions>
-        <desktop:Extension Category="windows.fullTrustProcess" Executable="wails3_playground" />
+        <desktop:Extension Category="windows.fullTrustProcess" Executable="devboard" />
         
       </Extensions>
     </Application>
