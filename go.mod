@@ -15,6 +15,7 @@ require (
 	github.com/studio-b12/gowebdav v0.11.0
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.27
 	go.uber.org/zap v1.27.0
+	golang.design/x/hotkey v0.4.1
 	golang.org/x/image v0.24.0
 	gorm.io/driver/mysql v1.5.4
 	gorm.io/driver/postgres v1.5.4

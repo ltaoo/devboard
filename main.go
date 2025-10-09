@@ -11,6 +11,7 @@ import (
 	"mime"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/icons"
+	"golang.design/x/hotkey"
 
 	"devboard/config"
 	"devboard/db"
@@ -65,10 +68,20 @@ func main() {
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
+		Windows: application.WindowsOptions{
+			DisableQuitOnLastWindowClosed: true,
+		},
+		KeyBindings: map[string]func(window application.Window){
+			"F12": func(window application.Window) {
+				fmt.Println("Press F12")
+			},
+		},
 		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
+			// ApplicationShouldTerminateAfterLastWindowClosed: true,
+			ActivationPolicy: application.ActivationPolicyAccessory,
 		},
 	})
+	system_tray := app.SystemTray.New()
 
 	greet_service := application.NewService(&service.GreetService{})
 	fs_service := application.NewServiceWithOptions(&service.FileService{
@@ -76,10 +89,11 @@ func main() {
 	}, application.ServiceOptions{
 		Route: "/file",
 	})
-	common_service := application.NewService(&service.CommonService{
+	_common_service := &service.CommonService{
 		App: app,
 		Biz: biz,
-	})
+	}
+	common_service := application.NewService(_common_service)
 	paste_service := application.NewService(&service.PasteService{
 		App: app,
 		Biz: biz,
@@ -111,17 +125,61 @@ func main() {
 		Title:               "Devboard",
 		MaximiseButtonState: application.ButtonDisabled,
 		MinimiseButtonState: application.ButtonDisabled,
-		DisableResize:       true,
+		// AlwaysOnTop:         true,
+		// Hidden:        true,
+		DisableResize: true,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
 			// TitleBar:                application.MacTitleBarHiddenInset,
+		},
+		Windows: application.WindowsWindow{
+			HiddenOnTaskbar: true,
+		},
+		KeyBindings: map[string]func(window application.Window){
+			"F12": func(window application.Window) {
+				system_tray.OpenMenu()
+			},
 		},
 		Width:            450,
 		Height:           680,
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
 	})
+	// Register a hook to hide the window when the window is closing
+	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		win.Hide()
+		e.Cancel()
+	})
+	if runtime.GOOS == "darwin" {
+		system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
+	}
+	// system_tray.AttachWindow(win).WindowOffset(5)
+	menu := app.NewMenu()
+	menu.Add("Open Devboard").OnClick(func(ctx *application.Context) {
+		win.Show()
+		win.Focus()
+		// println("Hello World!")
+		// q := application.QuestionDialog().SetTitle("Ready?").SetMessage("Are you feeling ready?")
+		// q.AddButton("Yes").OnClick(func() {
+		// 	println("Awesome!")
+		// })
+		// q.AddButton("No").SetAsDefault().OnClick(func() {
+		// 	println("Boo!")
+		// })
+		// q.Show()
+	})
+	menu.Add("Settings").OnClick(func(ctx *application.Context) {
+		_common_service.OpenWindow(service.OpenWindowBody{
+			Title: "Settings",
+			URL:   "/settings_system",
+		})
+	})
+	menu.Add("Quit").OnClick(func(ctx *application.Context) {
+		app.Quit()
+	})
+	system_tray.SetMenu(menu)
+	// system_tray.AttachWindow(win).WindowOffset(2)
 
 	error_win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "Error",
@@ -354,7 +412,9 @@ func main() {
 		biz.Set(database, cfg)
 		// win.Show()
 	}()
-
+	go func() {
+		register_shortcut(win)
+	}()
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()
 
@@ -362,4 +422,27 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func register_shortcut(win *application.WebviewWindow) {
+	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
+	err := hk.Register()
+	if err != nil {
+		log.Fatalf("hotkey: failed to register hotkey: %v", err)
+		return
+	}
+	// log.Printf("hotkey: %v is registered\n", hk)
+	<-hk.Keydown()
+	// log.Printf("hotkey: %v is down\n", hk)
+	<-hk.Keyup()
+	// log.Printf("hotkey: %v is up\n", hk)
+	hk.Unregister()
+	// log.Printf("hotkey: %v is unregistered\n", hk)
+	if win.IsVisible() {
+		win.Hide()
+	} else {
+		win.Show()
+		win.Focus()
+	}
+	register_shortcut(win)
 }
