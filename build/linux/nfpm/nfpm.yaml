@@ -3,7 +3,7 @@
 #
 # The lines below are called `modelines`. See `:help modeline`
 
-name: "wails3_playground"
+name: "devboard"
 arch: ${GOARCH}
 platform: "linux"
 version: "0.1.0"
@@ -17,12 +17,12 @@ license: "MIT"
 release: "1"
 
 contents:
-  - src: "./bin/wails3_playground"
-    dst: "/usr/local/bin/wails3_playground"
+  - src: "./bin/devboard"
+    dst: "/usr/local/bin/devboard"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/wails3_playground.png"
-  - src: "./build/linux/wails3_playground.desktop"
-    dst: "/usr/share/applications/wails3_playground.desktop"
+    dst: "/usr/share/icons/hicolor/128x128/apps/devboard.png"
+  - src: "./build/linux/devboard.desktop"
+    dst: "/usr/share/applications/devboard.desktop"
 
 # Default dependencies for Debian 12/Ubuntu 22.04+ with WebKit 4.1
 depends:
