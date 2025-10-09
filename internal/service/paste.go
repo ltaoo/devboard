@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"gorm.io/gorm"
 
 	"devboard/internal/biz"
 	"devboard/models"
@@ -90,7 +92,18 @@ func (s *PasteService) DeletePasteEvent(body PasteEventBody) *Result {
 		return Error(fmt.Errorf("缺少 id 参数"))
 	}
 	var record models.PasteEvent
-	if err := s.Biz.DB.Where("id = ?", body.EventId).Delete(&record).Error; err != nil {
+	err := s.Biz.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("id = ?", body.EventId).First(&record).Error; err != nil {
+			return err
+		}
+		record.LastOperationTime = strconv.FormatInt(time.Now().UnixMilli(), 10)
+		record.LastOperationType = 3
+		if err := tx.Save(&record).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&record).Error
+	})
+	if err != nil {
 		return Error(err)
 	}
 	return Ok(&record)
