@@ -31,6 +31,7 @@ func (s *CommonService) OpenWindow(body OpenWindowBody) *Result {
 	existing_win := windows[body.URL]
 	if existing_win != nil {
 		existing_win.Show()
+		existing_win.Focus()
 		return Ok(map[string]interface{}{
 			"ok": true,
 		})
@@ -60,6 +61,7 @@ func (s *CommonService) OpenWindow(body OpenWindowBody) *Result {
 	win.OnWindowEvent(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		delete(windows, body.URL)
 	})
+	win.Focus()
 	return Ok(map[string]interface{}{
 		"ok": true,
 	})

@@ -347,9 +347,9 @@ export const HomeIndexView = (props: ViewComponentProps) => {
           "w-full": !props.app.env.pc,
         }}
       >
-        <div class="p-4 pb-0">
+        {/* <div class="p-4 pb-0">
           <WithTagsInput store={vm.ui.$input_search} />
-        </div>
+        </div> */}
         <WaterfallView
           class="p-4"
           store={vm.ui.$waterfall}
