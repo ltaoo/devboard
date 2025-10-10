@@ -78,6 +78,15 @@ func ReadText() (string, error) {
 	}
 	return t, nil
 }
+func ReadHTML() (string, error) {
+	lock.Lock()
+	defer lock.Unlock()
+	t, err := read_html()
+	if err != nil {
+		return "", nil
+	}
+	return t, nil
+}
 func ReadImage() ([]byte, error) {
 	lock.Lock()
 	defer lock.Unlock()
@@ -129,8 +138,12 @@ func Watch(ctx context.Context) <-chan ClipboardContent {
 	return watch(ctx)
 }
 
-func GetTypes() []string {
-	return get_cur_types()
+type ContentTypeParams struct {
+	IsEnabled bool // 粘贴板已经处于可用状态
+}
+
+func GetContentTypes(params ContentTypeParams) []string {
+	return get_content_types(params)
 }
 
 func ByteToStrArray(b []byte) ([]string, error) {

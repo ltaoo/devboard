@@ -13,7 +13,9 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/jpeg"
 	"image/png"
+	"net/http"
 	"reflect"
 	"runtime"
 	"strings"
@@ -25,17 +27,37 @@ import (
 	"golang.org/x/image/bmp"
 )
 
+// https://github.com/lxn/win/blob/a377121e959e22055dd01ed4bb2383e5bd02c238/user32.go#L1295
 const (
-	CF_TEXT         = 1
-	CF_BITMAP       = 2
-	cFmtBitmap      = 2 // Win+PrintScreen
-	cFmtDIB         = 8
-	cFmtUnicodeText = 13
-	CF_ENHMETAFILE  = 14
-	CF_HDROP        = 15
-	cFmtFilepaths   = 15
-	cFmtDIBV5       = 17
-	CP_UTF8         = 65001
+	CF_TEXT            = 1
+	CF_BITMAP          = 2
+	CF_METAFILEPICT    = 3
+	CF_SYLK            = 4
+	CF_DIF             = 5
+	CF_TIFF            = 6
+	CF_OEMTEXT         = 7
+	CF_DIB             = 8
+	CF_PALETTE         = 9
+	CF_PENDATA         = 10
+	CF_RIFF            = 11
+	CF_WAVE            = 12
+	CF_UNICODETEXT     = 13
+	CF_ENHMETAFILE     = 14
+	CF_HDROP           = 15
+	CF_LOCALE          = 16
+	CF_DIBV5           = 17
+	CF_OWNERDISPLAY    = 0x0080
+	CF_DSPTEXT         = 0x0081
+	CF_DSPBITMAP       = 0x0082
+	CF_DSPMETAFILEPICT = 0x0083
+	CF_DSPENHMETAFILE  = 0x008E
+	CF_GDIOBJFIRST     = 0x0300
+	CF_GDIOBJLAST      = 0x03FF
+	CF_PRIVATEFIRST    = 0x0200
+	CF_PRIVATELAST     = 0x02FF
+)
+const (
+	CP_UTF8 = 65001
 	// Screenshot taken from special shortcut is in different format (why??), see:
 	// https://jpsoft.com/forums/threads/detecting-clipboard-format.5225/
 	cFmtDataObject = 49161 // Shift+Win+s, returned from enumClipboardFormats
@@ -236,6 +258,7 @@ var (
 	// Retrieves the clipboard sequence number for the current window station.
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getclipboardsequencenumber
 	getClipboardSequenceNumber = user32.MustFindProc("GetClipboardSequenceNumber")
+	getClipboardFormatNameA    = user32.MustFindProc("GetClipboardFormatNameA")
 	// Registers a new clipboard format. This format can then be used as
 	// a valid clipboard format.
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerclipboardformata
@@ -286,13 +309,13 @@ func read(t Format) (buf []byte, err error) {
 	var format uintptr
 	switch t {
 	// case FmtImage:
-	// 	format = cFmtDIBV5
+	// 	format = CF_DIBV5
 	// case FmtFilepath:
-	// 	format = cFmtFilepaths
+	// 	format = CF_HDROP
 	// case FmtText:
 	// 	fallthrough
 	// default:
-	// 	format = cFmtUnicodeText
+	// 	format = CF_UNICODETEXT
 	}
 
 	// check if clipboard is avaliable for the requested format
@@ -312,11 +335,11 @@ func read(t Format) (buf []byte, err error) {
 	defer closeClipboard.Call()
 
 	switch format {
-	// case cFmtDIBV5:
+	// case CF_DIBV5:
 	// 	return readImage()
-	// case cFmtFilepaths:
+	// case CF_HDROP:
 	// 	return readFilepaths()
-	// case cFmtUnicodeText:
+	// case CF_UNICODETEXT:
 	// 	fallthrough
 	// default:
 	// 	return readText()
@@ -361,7 +384,7 @@ func write(t Format, buf []byte) (<-chan struct{}, error) {
 		// case FmtText:
 		// 	fallthrough
 		// default:
-		// 	// param = cFmtUnicodeText
+		// 	// param = CF_UNICODETEXT
 		// 	err := write_text(buf)
 		// 	if err != nil {
 		// 		errch <- err
@@ -422,7 +445,7 @@ func watch(ctx context.Context) <-chan ClipboardContent {
 func read_content_with_type() ClipboardContent {
 	open_clipboard()
 	defer close_clipboard()
-	cur_types := get_cur_types()
+	cur_types := get_content_types(ContentTypeParams{IsEnabled: true})
 	var maybe_type string
 	for _, t := range cur_types {
 		if t == "public.utf8-plain-text" {
@@ -480,7 +503,7 @@ func read_content_with_type() ClipboardContent {
 func read_text() (text string, err error) {
 	open_clipboard()
 	defer close_clipboard()
-	hMem, _, err := getClipboardData.Call(cFmtUnicodeText)
+	hMem, _, err := getClipboardData.Call(CF_UNICODETEXT)
 	if hMem == 0 {
 		return "", err
 	}
@@ -529,7 +552,7 @@ func read_html() (text string, err error) {
 func read_image() ([]byte, error) {
 	open_clipboard()
 	defer close_clipboard()
-	hMem, _, err := getClipboardData.Call(cFmtBitmap)
+	hMem, _, err := getClipboardData.Call(CF_BITMAP)
 	if hMem == 0 {
 		return nil, fmt.Errorf("找不到数据")
 	}
@@ -621,96 +644,10 @@ func read_image() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// read_image reads the clipboard and returns PNG encoded image data
-// if presents. The caller is responsible for opening/closing the
-// clipboard before calling this function.
-// func read_image() ([]byte, error) {
-// 	open_clipboard()
-// 	defer close_clipboard()
-// 	// r, _, err := isClipboardFormatAvailable.Call(cFmtBitmap)
-// 	hMem, _, err := getClipboardData.Call(cFmtDIBV5)
-// 	// hMem, _, err := getClipboardData.Call(cFmtBitmap)
-// 	// fmt.Println("[]read_image after getClipboardData.Call(cFmtDIBV5)", hMem)
-// 	if hMem == 0 {
-// 		// second chance to try FmtDIB
-// 		return read_image_dib()
-// 	}
-// 	p, _, err := gLock.Call(hMem)
-// 	if p == 0 {
-// 		return nil, err
-// 	}
-// 	defer gUnlock.Call(hMem)
-
-// 	header := (*bitmapV5Header)(unsafe.Pointer(p))
-
-// 	var data []byte
-// 	sh := unsafe.SliceData(data)
-// 	*(*uintptr)(unsafe.Pointer(&sh)) = p
-// 	var length int
-// 	// var capacity int
-// 	if header.BitCount == 32 {
-// 		// capacity = int(header.Size + 4*uint32(header.Width)*uint32(header.Height))
-// 		length = int(header.Size + 4*uint32(header.Width)*uint32(header.Height))
-// 	} else if header.BitCount == 24 {
-// 		// capacity = int(header.Size + 3*uint32(header.Width)*uint32(header.Height))
-// 		length = int(header.Size + 3*uint32(header.Width)*uint32(header.Height))
-// 	} else {
-// 		return nil, err_unsupported
-// 	}
-// 	data = unsafe.Slice((*byte)(unsafe.Pointer(sh)), length)
-// 	fmt.Println(len(data), header.Size)
-
-// 	img := image.NewRGBA(image.Rect(0, 0, int(header.Width), int(header.Height)))
-// 	if header.BitCount == 32 {
-// 		offset := int(header.Size)
-// 		stride := int(header.Width)
-// 		for y := 0; y < int(header.Height); y++ {
-// 			for x := 0; x < int(header.Width); x++ {
-// 				idx := offset + 4*(y*stride+x)
-// 				// 移除水平方向的取模操作，直接使用原坐标
-// 				// xhat := x
-// 				// yhat := int(info.Height) - 1 - y
-// 				xhat := (x + int(header.Width)) % int(header.Width)
-// 				yhat := int(header.Height) - 1 - y
-// 				r := data[idx+2]
-// 				g := data[idx+1]
-// 				b := data[idx+0]
-// 				a := data[idx+3]
-// 				img.SetRGBA(xhat, yhat, color.RGBA{r, g, b, a})
-// 			}
-// 		}
-// 	} else if header.BitCount == 24 {
-// 		offset := int(header.Size)
-// 		stride := int(header.Width)
-// 		for y := 0; y < int(header.Height); y++ {
-// 			for x := 0; x < int(header.Width); x++ {
-// 				idx := offset + 3*(y*stride+x)
-// 				// 移除水平方向的取模操作，直接使用原坐标
-// 				// xhat := x
-// 				// yhat := int(info.Height) - 1 - y
-// 				xhat := (x + int(header.Width)) % int(header.Width)
-// 				yhat := int(header.Height) - 1 - y
-// 				// 调整颜色分量顺序，从 BGR 转换为 RGB
-// 				r := data[idx+2]
-// 				g := data[idx+1]
-// 				b := data[idx+0]
-// 				// 24 位位图无透明度，设为不透明
-// 				a := uint8(0xff)
-// 				img.SetRGBA(xhat, yhat, color.RGBA{r, g, b, a})
-// 			}
-// 		}
-// 	}
-
-// 	// always use PNG encoding.
-// 	var buf bytes.Buffer
-// 	png.Encode(&buf, img)
-// 	return buf.Bytes(), nil
-// }
-
 func read_image_dib() ([]byte, error) {
 	open_clipboard()
 	defer close_clipboard()
-	hMem, _, _ := getClipboardData.Call(cFmtDIB)
+	hMem, _, _ := getClipboardData.Call(CF_DIB)
 	if hMem != 0 {
 		return nil, fmt.Errorf("not dib format data")
 	}
@@ -745,14 +682,14 @@ func read_image_dib() ([]byte, error) {
 func read_files() ([]string, error) {
 	open_clipboard()
 	defer close_clipboard()
-	hMem, _, err := getClipboardData.Call(cFmtFilepaths)
+	hMem, _, err := getClipboardData.Call(CF_HDROP)
 	if hMem == 0 {
-		fmt.Println("f1", err.Error())
+		// fmt.Println("f1", err.Error())
 		return nil, err
 	}
 	p, _, err := gLock.Call(hMem)
 	if p == 0 {
-		fmt.Println("f2", err.Error())
+		// fmt.Println("f2", err.Error())
 		return nil, err
 	}
 	defer gUnlock.Call(hMem)
@@ -804,16 +741,15 @@ func read_files() ([]string, error) {
 // responsibility for opening/closing the clipboard before calling
 // this function.
 func write_text(text string) error {
+	if text == "" {
+		return fmt.Errorf("The text is empty")
+	}
 	open_clipboard()
 	defer close_clipboard()
 	r, _, err := emptyClipboard.Call()
 	if r == 0 {
 		return fmt.Errorf("failed to clear clipboard: %w", err)
 	}
-	// empty text, we are done here.
-	// if len(buf) == 0 {
-	// 	return nil
-	// }
 	s, err := syscall.UTF16FromString(text)
 	if err != nil {
 		return fmt.Errorf("failed to convert given string: %w", err)
@@ -830,11 +766,9 @@ func write_text(text string) error {
 	}
 	defer gUnlock.Call(hMem)
 
-	// no return value
-	memMove.Call(p, uintptr(unsafe.Pointer(&s[0])),
-		uintptr(len(s)*int(unsafe.Sizeof(s[0]))))
+	memMove.Call(p, uintptr(unsafe.Pointer(&s[0])), uintptr(len(s)*int(unsafe.Sizeof(s[0]))))
 
-	v, _, err := setClipboardData.Call(cFmtUnicodeText, hMem)
+	v, _, err := setClipboardData.Call(CF_UNICODETEXT, hMem)
 	if v == 0 {
 		gFree.Call(hMem)
 		return fmt.Errorf("failed to set text to clipboard: %w", err)
@@ -843,26 +777,42 @@ func write_text(text string) error {
 	return nil
 }
 
-func write_image(buf []byte) error {
+func write_image(image_bytes []byte) error {
 	open_clipboard()
 	defer close_clipboard()
-	// fmt.Println("[]write image", buf, len(buf))
 	r, _, err := emptyClipboard.Call()
 	if r == 0 {
 		return fmt.Errorf("failed to clear clipboard: %w", err)
 	}
-	// 检测 buf 文件类型，一律转换成 bmp 写入粘贴板
-	png_file, err := png.Decode(bytes.NewReader(buf))
-	if err != nil {
-		// fmt.Println(" :", err)
-		return fmt.Errorf("解码 Png 失败，%v", err.Error())
+	mimetype := http.DetectContentType(image_bytes)
+	var file image.Image
+	bmp_bytes := image_bytes
+	if mimetype == "image/png" {
+		file, err = png.Decode(bytes.NewReader(image_bytes))
+		if err != nil {
+			return fmt.Errorf("Decode PNG file failed, %v", err.Error())
+		}
+		var bmp_buf bytes.Buffer
+		err = bmp.Encode(&bmp_buf, file)
+		if err != nil {
+			return fmt.Errorf("Convert to BMP file failed, %v", err.Error())
+		}
+		bmp_bytes = bmp_buf.Bytes()
+	} else if mimetype == "image/jpeg" {
+		file, err = jpeg.Decode(bytes.NewReader(image_bytes))
+		if err != nil {
+			return fmt.Errorf("Decode JPEG file failed, %v", err.Error())
+		}
+		var bmp_buf bytes.Buffer
+		err = bmp.Encode(&bmp_buf, file)
+		if err != nil {
+			return fmt.Errorf("Convert to BMP file failed, %v", err.Error())
+		}
+		bmp_bytes = bmp_buf.Bytes()
+	} else if mimetype == "image/bmp" {
+	} else {
+		return fmt.Errorf("Unsupported file type %v", mimetype)
 	}
-	var bmp_buf bytes.Buffer
-	err = bmp.Encode(&bmp_buf, png_file)
-	if err != nil {
-		return fmt.Errorf("转换 bmp 失败，%v", err.Error())
-	}
-	buf = bmp_buf.Bytes()
 
 	// const FILE_HEADER_LENGTH = int(unsafe.Sizeof(BitmapFileHeader{}))
 	const FILE_HEADER_LENGTH = 14
@@ -870,37 +820,36 @@ func write_image(buf []byte) error {
 
 	// fmt.Println("the file header length and info header length", FILE_HEADER_LENGTH, INFO_HEADER_LENGTH)
 
-	if len(buf) < FILE_HEADER_LENGTH+INFO_HEADER_LENGTH {
-		return fmt.Errorf("数据大小不正确")
+	if len(bmp_bytes) < FILE_HEADER_LENGTH+INFO_HEADER_LENGTH {
+		return fmt.Errorf("The buffer content is incorrect")
 	}
 	var file_header BitmapFileHeader
 	file_header_data := (*[FILE_HEADER_LENGTH]byte)(unsafe.Pointer(&file_header))
-	copy(file_header_data[:], buf[:FILE_HEADER_LENGTH])
+	copy(file_header_data[:], bmp_bytes[:FILE_HEADER_LENGTH])
 	file_header.bfOffBits = 54
 	// fmt.Println("[]write image - after copy file header", len(buf), file_header)
-	// fmt.Println(buf)
-	if len(buf) <= int(file_header.bfOffBits) {
-		return fmt.Errorf("数据大小不正确2")
+	if len(bmp_bytes) <= int(file_header.bfOffBits) {
+		return fmt.Errorf("The file content is incorrect")
 	}
 
 	var info_header BitmapInfoHeader
 	info_header_data := (*[INFO_HEADER_LENGTH]byte)(unsafe.Pointer(&info_header))
-	copy(info_header_data[:], buf[FILE_HEADER_LENGTH:FILE_HEADER_LENGTH+INFO_HEADER_LENGTH])
-	fmt.Println("[]write image - after copy info header", info_header.SizeImage, info_header.Size)
+	copy(info_header_data[:], bmp_bytes[FILE_HEADER_LENGTH:FILE_HEADER_LENGTH+INFO_HEADER_LENGTH])
+	// fmt.Println("[]write image - after copy info header", info_header.SizeImage, info_header.Size)
 
-	bitmap := buf[file_header.bfOffBits:]
+	bitmap := bmp_bytes[file_header.bfOffBits:]
 	if len(bitmap) < int(info_header.SizeImage) {
-		return fmt.Errorf("数据大小不正确3")
+		return fmt.Errorf("The file content is incorrect")
 	}
 
 	hdc, _, err := getDC.Call(0)
 	if hdc == 0 {
-		return fmt.Errorf("GetDC failed: %v", err)
+		return fmt.Errorf("GetDC failed, %v", err)
 	}
 	defer func() {
 		r, _, err := releaseDC.Call(0, hdc)
 		if r == 0 {
-			fmt.Printf("ReleaseDC failed: %v\n", err)
+			fmt.Printf("ReleaseDC failed, %v\n", err)
 		}
 	}()
 
@@ -913,114 +862,17 @@ func write_image(buf []byte) error {
 		DIB_RGB_COLORS,
 	)
 	if r1 == 0 {
-		return fmt.Errorf("创建 DIB 位图失败，%v", err.Error())
+		return fmt.Errorf("Create DIB file failed, %v", err.Error())
 	}
 	// defer win.DeleteObject(handle)
 	r, _, err = setClipboardData.Call(CF_BITMAP, r1)
 	if r == 0 {
 		// return fmt.Errorf("设置剪贴板数据失败，错误码: %d", win.GetLastError())
-		return fmt.Errorf("写入图片失败，%v", err.Error())
+		return fmt.Errorf("Write image to clipboard failed, %v", err.Error())
 	}
 
 	return nil
 }
-
-// func write_image(buf []byte) error {
-// 	open_clipboard()
-// 	defer close_clipboard()
-// 	r, _, err := emptyClipboard.Call()
-// 	if r == 0 {
-// 		return fmt.Errorf("failed to clear clipboard: %w", err)
-// 	}
-// 	// empty text, we are done here.
-// 	if len(buf) == 0 {
-// 		return nil
-// 	}
-// 	reader := bytes.NewReader(buf)
-// 	img, err := jpeg.Decode(reader)
-
-// 	rgbaImg := image.NewRGBA(img.Bounds())
-// 	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
-// 		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
-// 			rgbaImg.Set(x, y, img.At(x, y))
-// 		}
-// 	}
-
-// 	// img, kind, err := image.Decode(bytes.NewReader(buf))
-// 	if err != nil {
-// 		return fmt.Errorf("解析图片失败，%v", err.Error())
-// 	}
-// 	// fmt.Printf("Source image format: %s\n", kind)
-
-// 	// 创建一个字节缓冲区用于存储PNG数据
-// 	var buffer bytes.Buffer
-// 	err = png.Encode(&buffer, rgbaImg)
-// 	// img, err = png.Decode(bytes.NewReader(buffer))
-// 	if err != nil {
-// 		return fmt.Errorf("input bytes is not PNG encoded: %w", err)
-// 	}
-
-// 	offset := unsafe.Sizeof(bitmapV5Header{})
-// 	width := img.Bounds().Dx()
-// 	height := img.Bounds().Dy()
-// 	image_size := 4 * width * height
-
-// 	data := make([]byte, int(offset)+image_size)
-// 	for y := 0; y < height; y++ {
-// 		for x := 0; x < width; x++ {
-// 			idx := int(offset) + 4*(y*width+x)
-// 			r, g, b, a := img.At(x, height-1-y).RGBA()
-// 			data[idx+2] = uint8(r)
-// 			data[idx+1] = uint8(g)
-// 			data[idx+0] = uint8(b)
-// 			data[idx+3] = uint8(a)
-// 		}
-// 	}
-
-// 	info := bitmapV5Header{}
-// 	info.Size = uint32(offset)
-// 	info.Width = int32(width)
-// 	info.Height = int32(height)
-// 	info.Planes = 1
-// 	info.Compression = 0 // BI_RGB
-// 	info.SizeImage = uint32(4 * info.Width * info.Height)
-// 	info.RedMask = 0xff0000 // default mask
-// 	info.GreenMask = 0xff00
-// 	info.BlueMask = 0xff
-// 	info.AlphaMask = 0xff000000
-// 	info.BitCount = 32 // we only deal with 32 bpp at the moment.
-// 	info.CSType = LCS_sRGB
-// 	info.Intent = LCS_GM_IMAGES
-
-// 	infob := make([]byte, int(unsafe.Sizeof(info)))
-// 	for i, v := range *(*[unsafe.Sizeof(info)]byte)(unsafe.Pointer(&info)) {
-// 		infob[i] = v
-// 	}
-// 	copy(data[:], infob[:])
-
-// 	hMem, _, err := gAlloc.Call(gmemMoveable,
-// 		uintptr(len(data)*int(unsafe.Sizeof(data[0]))))
-// 	if hMem == 0 {
-// 		return fmt.Errorf("failed to alloc global memory: %w", err)
-// 	}
-
-// 	p, _, err := gLock.Call(hMem)
-// 	if p == 0 {
-// 		return fmt.Errorf("failed to lock global memory: %w", err)
-// 	}
-// 	defer gUnlock.Call(hMem)
-
-// 	memMove.Call(p, uintptr(unsafe.Pointer(&data[0])),
-// 		uintptr(len(data)*int(unsafe.Sizeof(data[0]))))
-
-// 	v, _, err := setClipboardData.Call(cFmtDIBV5, hMem)
-// 	if v == 0 {
-// 		gFree.Call(hMem)
-// 		return fmt.Errorf("failed to set text to clipboard: %w", err)
-// 	}
-
-// 	return nil
-// }
 
 func write_files(files []string) error {
 	open_clipboard()
@@ -1102,7 +954,6 @@ func write_files(files []string) error {
 	// *(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(dataPtr)) + 2)) = 0
 	*(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(dataPtr)) + 2)) = uint16(0)
 
-	// 设置剪贴板数据
 	ret, _, err = setClipboardData.Call(CF_HDROP, hMem)
 	if ret == 0 {
 		return fmt.Errorf("SetClipboardData failed: %w", err)
@@ -1114,22 +965,73 @@ func get_change_count() uintptr {
 	cnt, _, _ := getClipboardSequenceNumber.Call()
 	return cnt
 }
-func get_cur_types() []string {
-	format := 1
+func get_content_types(params ContentTypeParams) []string {
+	if !params.IsEnabled {
+		open_clipboard()
+		defer close_clipboard()
+	}
+	format := uint(0)
 	var types []string
+	var format_list []uint
 	for {
-		one_type, _, err := enumClipboardFormats.Call(uintptr(format))
-		fmt.Println("cur type", one_type, uint(one_type))
-		if one_type == 0 {
+		tt, _, err := enumClipboardFormats.Call(uintptr(format))
+		// fmt.Println("after enumClipboardFormats", tt)
+		format = uint(tt)
+		format_list = append(format_list, format)
+		if tt == 0 {
 			if err.Error() != "The operation completed successfully." {
 				fmt.Println("EnumClipboardFormats error:", err)
 			}
 			break
 		}
-		if one_type == 7 {
+		// types = append(types, int(tt))
+		if tt == 1 {
 			types = append(types, "public.utf8-plain-text")
 		}
+		if tt == 2 {
+			types = append(types, "public.png")
+		}
+		if tt == 7 {
+			types = append(types, "public.utf8-plain-text")
+		}
+		if tt == 8 {
+			types = append(types, "public.png")
+		}
+		if tt == 13 {
+			types = append(types, "public.png")
+		}
+		if tt == 17 {
+			types = append(types, "public.png")
+		}
 	}
+	// const max_length = 256
+	// for _, f := range format_list {
+	// 	buf := make([]byte, max_length)
+	// 	ret, _, err := getClipboardFormatNameA.Call(uintptr(uint32(f)), uintptr(unsafe.Pointer(&buf[0])), uintptr(max_length))
+
+	// 	if ret == 0 {
+	// 		fmt.Println(err.Error())
+	// 		continue
+	// 	}
+	// 	// n := 0
+	// 	// for ptr := unsafe.Pointer(ret); *(*uint16)(ptr) != 0; n++ {
+	// 	// 	ptr = unsafe.Pointer(uintptr(ptr) + unsafe.Sizeof(*((*uint16)(unsafe.Pointer(ret)))))
+	// 	// }
+
+	// 	// var s []uint16
+	// 	// h := (*reflect.SliceHeader)(unsafe.Pointer(&s))
+	// 	// h.Data = ret
+	// 	// h.Len = n
+	// 	// h.Cap = n
+	// 	// text := string(utf16.Decode(s))
+	// 	// fmt.Println(text)
+	// 	n := 0
+	// 	for n < len(buf) && buf[n] != 0 {
+	// 		n++
+	// 	}
+	// 	str := string(buf[:n])
+	// 	fmt.Println(f, str)
+	// }
 	return types
 }
 func open_clipboard() {
