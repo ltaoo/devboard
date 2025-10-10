@@ -439,6 +439,11 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                         <CodeCard language={v.language} code={v.text} />
                       </div>
                     </Match>
+                    <Match when={v.type === "html"}>
+                      <div class="p-2 text-w-fg-0">
+                        <div innerHTML={v.text}></div>
+                      </div>
+                    </Match>
                     <Match when={v.type === "text"}>
                       <div class="p-2 text-w-fg-0">{v.text}</div>
                     </Match>

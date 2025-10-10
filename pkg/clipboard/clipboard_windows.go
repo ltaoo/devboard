@@ -240,6 +240,7 @@ var (
 	// a valid clipboard format.
 	// https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerclipboardformata
 	registerClipboardFormatA = user32.MustFindProc("RegisterClipboardFormatA")
+	registerClipboardFormatW = user32.MustFindProc("RegisterClipboardFormatW")
 	// lstrcpyW                 = user32.MustFindProc("lstrcpyW")
 	getDC     = user32.MustFindProc("GetDC")
 	releaseDC = user32.MustFindProc("ReleaseDC")
@@ -501,6 +502,28 @@ func read_text() (text string, err error) {
 	h.Len = n
 	h.Cap = n
 	return string(utf16.Decode(s)), nil
+}
+
+func read_html() (text string, err error) {
+	open_clipboard()
+	defer close_clipboard()
+	r := register_clipboard_format("HTML Format")
+	ret, _, _ := isClipboardFormatAvailable.Call(r)
+	if ret == 0 {
+		return "", fmt.Errorf("clipboard format not available")
+	}
+	hMem, _, err := getClipboardData.Call(r)
+	if hMem == 0 {
+		return "", err
+	}
+	ptr, _, err := gLock.Call(hMem)
+	if ptr == 0 {
+		return "", err
+	}
+	defer gUnlock.Call(hMem)
+	// 转换为 Go 字符串
+	data := byte_ptr_to_string((*byte)(unsafe.Pointer(ptr)))
+	return data, nil
 }
 
 func read_image() ([]byte, error) {
@@ -1122,6 +1145,12 @@ func close_clipboard() {
 	closeClipboard.Call()
 }
 
+func register_clipboard_format(format string) uintptr {
+	ptr, _ := syscall.UTF16PtrFromString(format)
+	ret, _, _ := registerClipboardFormatW.Call(uintptr(unsafe.Pointer(ptr)))
+	return ret
+}
+
 func bmp_to_png(bmpBuf *bytes.Buffer) (buf []byte, err error) {
 	var f bytes.Buffer
 	original_image, err := bmp.Decode(bmpBuf)
@@ -1139,4 +1168,18 @@ func byte_slice_to_string_slice(b []byte) ([]string, error) {
 	var strs []string
 	err := json.Unmarshal(b, &strs)
 	return strs, err
+}
+
+func byte_ptr_to_string(ptr *byte) string {
+	if ptr == nil {
+		return ""
+	}
+	var length int
+	for {
+		if *(*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(ptr)) + uintptr(length))) == 0 {
+			break
+		}
+		length++
+	}
+	return string((*[1 << 20]byte)(unsafe.Pointer(ptr))[:length:length])
 }
