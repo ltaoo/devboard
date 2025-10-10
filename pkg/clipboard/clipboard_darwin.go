@@ -148,7 +148,7 @@ func watch(ctx context.Context) <-chan ClipboardContent {
 				if prev_count != cur_count {
 					prev_count = cur_count
 
-					content := read_content_with_type()
+					content := read_content_with_type(ContentTypeParams{IsEnabled: false})
 					recv <- content
 				}
 			}
@@ -157,8 +157,8 @@ func watch(ctx context.Context) <-chan ClipboardContent {
 	return recv
 }
 
-func read_content_with_type() ClipboardContent {
-	cur_types := get_cur_types()
+func read_content_with_type(params ContentTypeParams) ClipboardContent {
+	cur_types := get_content_types(params)
 	var maybe_type string
 	for _, t := range cur_types {
 		if t == "public.html" {
@@ -377,7 +377,10 @@ func write_files(files []string) error {
 func get_change_count() int {
 	return int(objc.ID(_NSPasteboard).Send(_generalPasteboard).Send(_changeCount))
 }
-func get_cur_types() []string {
+func get_content_types(params ContentTypeParams) []string {
+	if !params.IsEnabled {
+		// ...
+	}
 	__data := objc.ID(_NSPasteboard).Send(_generalPasteboard).Send(_types)
 	__array := objc.ID(__data)
 	count := int(__array.Send(_count))
