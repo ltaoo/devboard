@@ -351,6 +351,38 @@ func main() {
 					}
 				}
 			}
+			if data.Type == "public.html" {
+				if text, ok := data.Data.(string); ok {
+					created_paste_event = models.PasteEvent{
+						Id:                uuid.New().String(),
+						ContentType:       "html",
+						Text:              text,
+						LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+						LastOperationType: 1,
+					}
+					if err := biz.DB.Create(&created_paste_event).Error; err != nil {
+						log.Fatalf("Failed to create paste event: %v", err)
+						return
+					}
+					categories := []string{"html"}
+					for _, c := range categories {
+						created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
+							Id:    c,
+							Label: c,
+						})
+						created_map := models.PasteEventCategoryMapping{
+							Id:                uuid.New().String(),
+							PasteEventId:      created_paste_event.Id,
+							CategoryId:        c,
+							LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+							LastOperationType: 1,
+							CreatedAt:         now,
+						}
+						if err := biz.DB.Create(&created_map).Error; err == nil {
+						}
+					}
+				}
+			}
 			if data.Type == "public.png" {
 				if f, ok := data.Data.([]byte); ok {
 					encoded := base64.StdEncoding.EncodeToString(f)

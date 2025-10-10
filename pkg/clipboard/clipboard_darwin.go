@@ -161,6 +161,19 @@ func read_content_with_type() ClipboardContent {
 	cur_types := get_cur_types()
 	var maybe_type string
 	for _, t := range cur_types {
+		if t == "public.html" {
+			maybe_type = t
+			text, err := read_html()
+			d := ClipboardContent{
+				Type:  maybe_type,
+				Data:  text,
+				Error: nil,
+			}
+			if err != nil {
+				d.Error = fmt.Errorf("读取类型为 %v 的内容时失败，因为%v", maybe_type, err.Error())
+			}
+			return d
+		}
 		if t == "public.utf8-plain-text" {
 			maybe_type = t
 			text, err := read_text()
@@ -214,6 +227,25 @@ func read_text() (string, error) {
 	__pasteboard := objc.ID(_NSPasteboard).Send(_generalPasteboard)
 	__data := __pasteboard.Send(_dataForType, _NSPasteboardTypeString)
 	// __data := __pasteboard.Send(_dataForType, _NSPasteboardTypeHTML)
+	if __data == 0 {
+		return "", fmt.Errorf("读取数据失败")
+	}
+	size := uint(__data.Send(_length))
+	if size == 0 {
+		return "", fmt.Errorf("获取文本长度失败")
+	}
+	out := make([]byte, size)
+	__r := __data.Send(_getBytesLength, unsafe.SliceData(out), size)
+	if __r == 0 {
+		return "", fmt.Errorf("转换数据失败")
+	}
+	text := string(out)
+	return text, nil
+}
+
+func read_html() (string, error) {
+	__pasteboard := objc.ID(_NSPasteboard).Send(_generalPasteboard)
+	__data := __pasteboard.Send(_dataForType, _NSPasteboardTypeHTML)
 	if __data == 0 {
 		return "", fmt.Errorf("读取数据失败")
 	}
