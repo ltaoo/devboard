@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"embed"
-	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -95,17 +94,11 @@ func main() {
 		Windows: application.WindowsOptions{
 			DisableQuitOnLastWindowClosed: true,
 		},
-		KeyBindings: map[string]func(window application.Window){
-			"F12": func(window application.Window) {
-				fmt.Println("Press F12")
-			},
-		},
 		Mac: application.MacOptions{
 			// ApplicationShouldTerminateAfterLastWindowClosed: true,
 			ActivationPolicy: application.ActivationPolicyAccessory,
 		},
 	})
-	system_tray := app.SystemTray.New()
 
 	greet_service := application.NewService(&service.GreetService{})
 	fs_service := application.NewServiceWithOptions(&service.FileService{
@@ -165,16 +158,34 @@ func main() {
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: true,
 		},
-		KeyBindings: map[string]func(window application.Window){
-			"F12": func(window application.Window) {
-				system_tray.OpenMenu()
-			},
-		},
 		Width:            450,
 		Height:           680,
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
 	})
+
+	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
+	app.KeyBinding.Add("CmdOrCtrl+Q", func(win application.Window) {
+		hk.Unregister()
+		app.Quit()
+	})
+	system_tray := app.SystemTray.New()
+	system_tray.OnClick(func() {
+		// hk.Unregister()
+		system_tray.OpenMenu()
+		// app.KeyBinding.Add("CmdOrCtrl+Shift+M", func(win application.Window) {
+		// 	// fmt.Println("CmdOrCtrl+Shift+M", win.IsVisible())
+		// 	if win.IsVisible() {
+		// 		win.Hide()
+		// 		return
+		// 	}
+		// 	win.Show()
+		// 	win.Focus()
+		// })
+	})
+	// system_tray.OnMouseLeave(func() {
+	// 	register_shortcut(win, hk)
+	// })
 	// Register a hook to hide the window when the window is closing
 	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		win.Hide()
@@ -183,20 +194,12 @@ func main() {
 	if runtime.GOOS == "darwin" {
 		system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
 	}
-	// system_tray.AttachWindow(win).WindowOffset(5)
 	menu := app.NewMenu()
-	menu.Add("Open Devboard").OnClick(func(ctx *application.Context) {
+	m_sub1 := menu.Add("Show Devboard")
+	m_sub1.SetAccelerator("CmdOrCtrl+Shift+M")
+	m_sub1.OnClick(func(ctx *application.Context) {
 		win.Show()
 		win.Focus()
-		// println("Hello World!")
-		// q := application.QuestionDialog().SetTitle("Ready?").SetMessage("Are you feeling ready?")
-		// q.AddButton("Yes").OnClick(func() {
-		// 	println("Awesome!")
-		// })
-		// q.AddButton("No").SetAsDefault().OnClick(func() {
-		// 	println("Boo!")
-		// })
-		// q.Show()
 	})
 	menu.Add("Settings").OnClick(func(ctx *application.Context) {
 		_common_service.OpenWindow(service.OpenWindowBody{
@@ -204,11 +207,13 @@ func main() {
 			URL:   "/settings_system",
 		})
 	})
-	menu.Add("Quit").OnClick(func(ctx *application.Context) {
+	m_quit := menu.Add("Quit")
+	m_quit.SetAccelerator("CmdOrCtrl+Q")
+	m_quit.OnClick(func(ctx *application.Context) {
+		hk.Unregister()
 		app.Quit()
 	})
 	system_tray.SetMenu(menu)
-	// system_tray.AttachWindow(win).WindowOffset(2)
 
 	error_win := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "Error",
@@ -479,7 +484,7 @@ func main() {
 		// win.Show()
 	}()
 	go func() {
-		register_shortcut(win)
+		register_shortcut(win, hk)
 	}()
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()
@@ -490,8 +495,8 @@ func main() {
 	}
 }
 
-func register_shortcut(win *application.WebviewWindow) {
-	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd}, hotkey.Key2)
+func register_shortcut(win *application.WebviewWindow, hk *hotkey.Hotkey) {
+	// hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
 	err := hk.Register()
 	if err != nil {
 		log.Fatalf("hotkey: failed to register hotkey: %v", err)
@@ -510,5 +515,5 @@ func register_shortcut(win *application.WebviewWindow) {
 		win.Show()
 		win.Focus()
 	}
-	register_shortcut(win)
+	register_shortcut(win, hk)
 }
