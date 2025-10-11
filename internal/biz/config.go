@@ -71,8 +71,9 @@ func (c *BizConfig) WriteConfig(data map[string]interface{}) error {
 	defer config_file.Close()
 	_, err = config_file.Write(n)
 	if err != nil {
-		return nil
+		return err
 	}
+	c.Value = data
 	return nil
 }
 
@@ -86,6 +87,11 @@ func (c *BizConfig) Get(path string, default_value any) any {
 	// 	return v
 	// }
 	// return default_value
+}
+
+func (c *BizConfig) Set(data map[string]interface{}) error {
+	c.Value = data
+	return c.WriteConfig(data)
 }
 
 func Get[R any](config *BizConfig, path string, default_value R) R {

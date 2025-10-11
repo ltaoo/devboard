@@ -19,16 +19,20 @@ function SettingsViewModel(props: ViewComponentProps) {
       route: "root.settings_layout.system" as PageKeys,
       menus: [
         {
+          title: "User Settings",
+          url: "root.settings_layout.user_settings",
+        },
+        {
           title: "分类",
           url: "root.settings_layout.category",
         },
         {
-          title: "系统",
-          url: "root.settings_layout.system",
-        },
-        {
           title: "同步",
           url: "root.settings_layout.synchronization",
+        },
+        {
+          title: "关于",
+          url: "root.settings_layout.system",
         },
       ] as {
         title: string;
