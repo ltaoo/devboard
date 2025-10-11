@@ -1,6 +1,6 @@
 # Devboard
 
-a develop tool base on clipboard
+Supercharge Your workflow. The smart clipboard toolkit for developers.
 
 
 ## preview

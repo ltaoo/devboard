@@ -8,7 +8,7 @@ info:
   companyName: "devboard.funzm.com" # The name of the company
   productName: "Devboard" # The name of the application
   productIdentifier: "com.funzm.devboard" # The unique product identifier
-  description: "A Development Tool base on clipboard" # The application description
+  description: "A clipboard-powered developer toolbox." # The application description
   copyright: "(c) 2025, My Company" # Copyright text
   comments: "Some Product Comments" # Comments
   version: "0.1.0" # The application version
