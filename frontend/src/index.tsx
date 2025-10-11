@@ -17,6 +17,7 @@ import { RequestCore } from "./domains/request";
 import { showError } from "./biz/services";
 
 import "./style.css";
+import { RouteChildren } from "./components/route-children";
 
 function Application() {
   const view = history.$view;
@@ -74,7 +75,8 @@ function Application() {
           </div>
         </div>
       </Show>
-      <Show when={views().length !== 0}>
+      <RouteChildren app={app} client={client} storage={storage} pages={pages} history={history} view={view} />
+      {/* <Show when={views().length !== 0}>
         <For each={views()}>
           {(subView, i) => {
             const routeName = subView.name;
@@ -93,7 +95,7 @@ function Application() {
             );
           }}
         </For>
-      </Show>
+      </Show> */}
       <Toast store={toast} />
     </div>
   );

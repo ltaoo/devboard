@@ -29,9 +29,13 @@ type DatabaseField struct {
 
 func (s *SyncService) FetchDatabaseDirs() *Result {
 	fields := [...]DatabaseField{{
-		Key:   "database_dir",
-		Label: "数据库路径",
+		Key:   "database_filepath",
+		Label: "数据库",
 		Text:  s.Biz.Config.DBPath,
+	}, {
+		Key:   "settings_filepath",
+		Label: "用户配置",
+		Text:  filepath.Join(s.Biz.Config.UserConfigDir, s.Biz.Config.UserConfigName),
 	}}
 
 	return Ok(map[string]interface{}{

@@ -1,5 +1,5 @@
 import { For, Show } from "solid-js";
-import { Check } from "lucide-solid";
+import { Check, File } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -35,7 +35,7 @@ function SynchronizationViewModel(props: ViewComponentProps) {
     ready() {
       request.sync.database.run();
     },
-    handleClickDir(dir: { text: string }) {
+    handleClickField(dir: { text: string }) {
       request.file.highlight.run({ file_path: dir.text });
     },
   };
@@ -171,18 +171,21 @@ export function SynchronizationView(props: ViewComponentProps) {
     <div class="space-y-8">
       <div class="block">
         <div class="text-2xl">数据</div>
-        <div class="mt-4">
+        <div class="mt-4 space-y-2">
           <For each={state().database?.fields}>
             {(field) => {
               return (
                 <div
-                  class="field text-w-fg-0"
+                  class="field text-w-fg-0 cursor-pointer"
                   onClick={() => {
-                    vm.methods.handleClickDir(field);
+                    vm.methods.handleClickField(field);
                   }}
                 >
                   <div>{field.label}</div>
-                  <div>{field.text}</div>
+                  <div class="flex items-center gap-1">
+                    <File class="w-4 h-4 text-w-fg-0" />
+                    <div>{field.text}</div>
+                  </div>
                 </div>
               );
             }}
