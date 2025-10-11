@@ -115,6 +115,10 @@ func main() {
 		App: app,
 		Biz: biz,
 	})
+	config_service := application.NewService(&service.ConfigService{
+		App: app,
+		Biz: biz,
+	})
 	system_service := application.NewService(&service.SystemService{
 		Biz: biz,
 	})
@@ -137,6 +141,7 @@ func main() {
 	app.RegisterService(system_service)
 	app.RegisterService(sync_service)
 	app.RegisterService(douyin_service)
+	app.RegisterService(config_service)
 	app.RegisterService(category_service)
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.

@@ -1,16 +1,23 @@
 package service
 
-import "os"
+import (
+	"devboard/internal/biz"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
 
 type ConfigService struct {
+	App *application.App
+	Biz *biz.App
 }
 
 func (s *ConfigService) Read() *Result {
-	user_config_dir, err := os.UserConfigDir()
-	if err != nil {
+	return Ok(s.Biz.UserConfig.Value)
+}
+
+func (s *ConfigService) WriteConfig(body map[string]interface{}) *Result {
+	if err := s.Biz.UserConfig.WriteConfig(body); err != nil {
 		return Error(err)
 	}
-	return Ok(map[string]interface{}{
-		"data_dir": user_config_dir,
-	})
+	return Ok(s.Biz.UserConfig.Value)
 }

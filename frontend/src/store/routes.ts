@@ -52,6 +52,10 @@ const configure = {
           },
         },
         children: {
+          user_settings: {
+            title: "User Settings",
+            pathname: "/user_settings",
+          },
           category: {
             title: "分类",
             pathname: "/category",
