@@ -2,7 +2,7 @@
  * @file 首页
  */
 import { For, Match, Show, Switch } from "solid-js";
-import { Bird, Check, ChevronUp, Copy, Earth, Eye, File, Folder, Link, Trash } from "lucide-solid";
+import { Bird, Check, ChevronUp, Copy, Download, Earth, Eye, File, Folder, Link, Trash } from "lucide-solid";
 import { Browser, Events } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
@@ -27,6 +27,8 @@ import { TheItemTypeFromListCore } from "@/domains/list/typing";
 import { BackToTopModel } from "@/domains/ui/back-to-top";
 import { openLocalFile, openFilePreview, saveFileTo, highlightFileInFolder } from "@/biz/fs/service";
 import { isCodeContent } from "@/biz/paste/utils";
+import { fetchCategoryTree } from "@/biz/category/service";
+import { downloadDouyinVideo } from "@/biz/douyin/service";
 import {
   deletePasteEvent,
   fetchPasteEventList,
@@ -38,7 +40,6 @@ import {
 
 import { LocalVideo } from "./components/LazyVideo";
 import { LocalImage } from "./components/LocalImage";
-import { fetchCategoryTree } from "@/biz/category/service";
 
 function HomeIndexViewModel(props: ViewComponentProps) {
   const request = {
@@ -59,6 +60,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     category: {
       tree: new RequestCore(fetchCategoryTree, { client: props.client }),
+    },
+    douyin: {
+      download: new RequestCore(downloadDouyinVideo, { client: props.client }),
     },
   };
   type SelectedFile = TheResponseOfRequestCore<typeof request.file.open_file>["files"][number];
@@ -139,6 +143,20 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     handleClickUpBtn() {
       ui.$view.setScrollTop(0);
       ui.$waterfall.methods.resetRange();
+    },
+    handleClickDownloadBtn(v: PasteRecord) {
+      if (v.operations.includes("douyin_download")) {
+        request.douyin.download.run({ content: v.text });
+        return;
+      }
+      if (v.operations.includes("json_download")) {
+        const time = parseInt(String(new Date().valueOf() / 1000));
+        request.file.save_file.run({
+          filename: `${time}.json`,
+          content: v.text,
+        });
+        return;
+      }
     },
     async handleClickTrashBtn(v: PasteRecord) {
       // ui.$waterfall.methods.resetRange();
@@ -428,7 +446,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                         <div>{v.text}</div>
                       </div>
                     </Match>
-                    <Match when={v.types.includes("timestamp")}>
+                    <Match when={v.types.includes("time")}>
                       <div class="flex items-center gap-1 p-2">
                         <div>{v.origin_text}</div>
                         <div class="text-w-fg-1">{v.text}</div>
@@ -473,6 +491,26 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                   </div>
                   <div class="operations flex justify-between hidden group-hover:block">
                     <div class="flex items-center gap-1">
+                      <Show when={v.operations.includes("douyin_download")}>
+                        <div
+                          class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
+                          onClick={() => {
+                            vm.methods.handleClickDownloadBtn(v);
+                          }}
+                        >
+                          <Download class="w-4 h-4 text-w-fg-0" />
+                        </div>
+                      </Show>
+                      <Show when={v.operations.includes("json_download")}>
+                        <div
+                          class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
+                          onClick={() => {
+                            vm.methods.handleClickDownloadBtn(v);
+                          }}
+                        >
+                          <Download class="w-4 h-4 text-w-fg-0" />
+                        </div>
+                      </Show>
                       <div
                         class="p-2 rounded-md cursor-pointer hover:bg-w-bg-5"
                         onClick={() => {

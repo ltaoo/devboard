@@ -12,6 +12,10 @@ import (
 type Config struct {
 	ProductName    string
 	ProductVersion string
+
+	UserConfigDir  string
+	UserConfigName string
+
 	// 服务器配置
 	ServerAddress string
 	Environment   string
@@ -56,10 +60,12 @@ func LoadConfig() (*Config, error) {
 	database_filename := "myapi"
 	database_filepath := filepath.Join(data_dir, database_filename)
 
-	fmt.Println("database", database_filepath)
+	// fmt.Println("database", database_filepath)
 
 	viper.SetDefault("info.version", "0.0.1")
 	viper.SetDefault("info.productName", "Devboard")
+	viper.SetDefault("UserConfigDir", data_dir)
+	viper.SetDefault("UserConfigName", "settings.json")
 	// 设置默认值
 	viper.SetDefault("SERVER_ADDRESS", ":8080")
 	viper.SetDefault("ENVIRONMENT", "development")
@@ -79,6 +85,8 @@ func LoadConfig() (*Config, error) {
 
 	config := &Config{
 		ProductVersion: viper.GetString("info.version"),
+		UserConfigDir:  viper.GetString("UserConfigDir"),
+		UserConfigName: viper.GetString("UserConfigName"),
 		ServerAddress:  viper.GetString("SERVER_ADDRESS"),
 		Environment:    viper.GetString("ENVIRONMENT"),
 		LogLevel:       viper.GetString("LOG_LEVEL"),

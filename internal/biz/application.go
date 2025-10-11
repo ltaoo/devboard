@@ -14,16 +14,24 @@ func New() *App {
 }
 
 type App struct {
-	DB                         *gorm.DB
-	Config                     *config.Config
 	Name                       string
+	Config                     *config.Config
+	UserConfig                 *BizConfig
+	DB                         *gorm.DB
 	ManuallyWriteClipboardTime time.Time
 }
 
-func (a *App) Set(db *gorm.DB, config *config.Config) {
+func (a *App) SetName(name string) {
+	a.Name = name
+}
+func (a *App) SetDatabase(db *gorm.DB) {
 	a.DB = db
+}
+func (a *App) SetConfig(config *config.Config) {
 	a.Config = config
-	a.Name = "devboard"
+}
+func (a *App) SetUserConfig(config *BizConfig) {
+	a.UserConfig = config
 }
 func (a *App) Ensure() error {
 	if a.DB == nil {

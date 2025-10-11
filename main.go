@@ -26,7 +26,7 @@ import (
 
 	"devboard/config"
 	"devboard/db"
-	"devboard/internal/biz"
+	_biz "devboard/internal/biz"
 	"devboard/internal/service"
 	"devboard/internal/transformer"
 	"devboard/models"
@@ -77,7 +77,7 @@ func (r *ResponseRecorder) WriteHeader(status int) {
 // logs any error that might occur.
 func main() {
 	// var database *gorm.DB
-	biz := biz.New()
+	biz := _biz.New()
 
 	// Create a new Wails application by providing the necessary options.
 	// Variables 'Name' and 'Description' are for application metadata.
@@ -129,6 +129,10 @@ func main() {
 		App: app,
 		Biz: biz,
 	})
+	douyin_service := application.NewService(&service.DouyinService{
+		App: app,
+		Biz: biz,
+	})
 	sync_service := application.NewService(&service.SyncService{
 		App: app,
 		Biz: biz,
@@ -139,6 +143,7 @@ func main() {
 	app.RegisterService(paste_service)
 	app.RegisterService(system_service)
 	app.RegisterService(sync_service)
+	app.RegisterService(douyin_service)
 	app.RegisterService(category_service)
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.
@@ -465,7 +470,12 @@ func main() {
 			return
 		}
 		db.Seed(database)
-		biz.Set(database, cfg)
+		biz.SetName(cfg.ProductName)
+		biz.SetDatabase(database)
+		biz.SetConfig(cfg)
+		biz_config := _biz.NewBizConfig(cfg.UserConfigDir, cfg.UserConfigName)
+		biz_config.InitializeConfig()
+		biz.SetUserConfig(biz_config)
 		// win.Show()
 	}()
 	go func() {
@@ -481,7 +491,7 @@ func main() {
 }
 
 func register_shortcut(win *application.WebviewWindow) {
-	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl, hotkey.ModShift}, hotkey.KeyS)
+	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd}, hotkey.Key2)
 	err := hk.Register()
 	if err != nil {
 		log.Fatalf("hotkey: failed to register hotkey: %v", err)

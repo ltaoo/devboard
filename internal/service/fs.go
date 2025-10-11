@@ -151,16 +151,23 @@ func (f *FileService) SaveFileTo(body SaveFileToBody) *Result {
 	// 	},
 	// })
 
-	if path, err := dialog.PromptForSingleSelection(); err == nil {
-		file, err := os.Create(path)
-		if err != nil {
-			return Error(err)
-		}
-		defer file.Close()
-		_, err = file.Write([]byte(body.Content))
-		if err != nil {
-			return Error(err)
-		}
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return Error(err)
+	}
+	if path == "" {
+		return Ok(map[string]interface{}{
+			"cancel": true,
+		})
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return Error(err)
+	}
+	defer file.Close()
+	_, err = file.Write([]byte(body.Content))
+	if err != nil {
+		return Error(err)
 	}
 	return Ok(map[string]interface{}{})
 }
