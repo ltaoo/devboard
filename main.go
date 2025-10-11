@@ -143,6 +143,19 @@ func main() {
 	app.RegisterService(douyin_service)
 	app.RegisterService(config_service)
 	app.RegisterService(category_service)
+
+	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
+
+	method_open_setting_window := func() {
+		_common_service.OpenWindow(service.OpenWindowBody{
+			Title: "Settings",
+			URL:   "/settings_system",
+		})
+	}
+	method_quit := func() {
+		hk.Unregister()
+		app.Quit()
+	}
 	// Create a new window with the necessary options.
 	// 'Title' is the title of the window.
 	// 'Mac' options tailor the window when running on macOS.
@@ -163,30 +176,29 @@ func main() {
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: true,
 		},
+		KeyBindings: map[string]func(window application.Window){
+			"CmdOrCtrl+,": func(window application.Window) {
+				method_open_setting_window()
+			},
+			"CmdOrCtrl+Q": func(window application.Window) {
+				method_quit()
+			},
+		},
 		Width:            450,
 		Height:           680,
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
 	})
 
-	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
+	app.KeyBinding.Add("CmdOrCtrl+,", func(win application.Window) {
+		method_open_setting_window()
+	})
 	app.KeyBinding.Add("CmdOrCtrl+Q", func(win application.Window) {
-		hk.Unregister()
-		app.Quit()
+		method_quit()
 	})
 	system_tray := app.SystemTray.New()
 	system_tray.OnClick(func() {
-		// hk.Unregister()
 		system_tray.OpenMenu()
-		// app.KeyBinding.Add("CmdOrCtrl+Shift+M", func(win application.Window) {
-		// 	// fmt.Println("CmdOrCtrl+Shift+M", win.IsVisible())
-		// 	if win.IsVisible() {
-		// 		win.Hide()
-		// 		return
-		// 	}
-		// 	win.Show()
-		// 	win.Focus()
-		// })
 	})
 	// system_tray.OnMouseLeave(func() {
 	// 	register_shortcut(win, hk)
@@ -200,23 +212,21 @@ func main() {
 		system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
 	}
 	menu := app.NewMenu()
-	m_sub1 := menu.Add("Show Devboard")
-	m_sub1.SetAccelerator("CmdOrCtrl+Shift+M")
-	m_sub1.OnClick(func(ctx *application.Context) {
+	m_main := menu.Add("Show Devboard")
+	m_main.SetAccelerator("CmdOrCtrl+Shift+M")
+	m_main.OnClick(func(ctx *application.Context) {
 		win.Show()
 		win.Focus()
 	})
-	menu.Add("Settings").OnClick(func(ctx *application.Context) {
-		_common_service.OpenWindow(service.OpenWindowBody{
-			Title: "Settings",
-			URL:   "/settings_system",
-		})
+	m_setting := menu.Add("Settings")
+	m_setting.SetAccelerator("CmdOrCtrl+,")
+	m_setting.OnClick(func(ctx *application.Context) {
+		method_open_setting_window()
 	})
 	m_quit := menu.Add("Quit")
 	m_quit.SetAccelerator("CmdOrCtrl+Q")
 	m_quit.OnClick(func(ctx *application.Context) {
-		hk.Unregister()
-		app.Quit()
+		method_quit()
 	})
 	system_tray.SetMenu(menu)
 
