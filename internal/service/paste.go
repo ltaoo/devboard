@@ -117,7 +117,14 @@ func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 	if body.EventId == "" {
 		return Error(fmt.Errorf("缺少 event_id 参数"))
 	}
-	s.App.Window.NewWithOptions(application.WebviewWindowOptions{
+	url := "/preview?id=" + url.QueryEscape(body.EventId)
+	existing_win := s.Biz.FindWindow(url)
+	if existing_win != nil {
+		return Ok(map[string]interface{}{
+			"ok": true,
+		})
+	}
+	win := s.App.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "预览",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
@@ -127,8 +134,9 @@ func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 		Width:            980,
 		Height:           680,
 		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/preview?id=" + url.QueryEscape(body.EventId),
+		URL:              url,
 	})
+	s.Biz.AppendWindow(url, win)
 	return Ok(map[string]interface{}{})
 }
 

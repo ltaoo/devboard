@@ -1,7 +1,7 @@
 /**
  * @file JSON 内容预览
  */
-import { Match, Show, Switch } from "solid-js";
+import { For, Match, Show, Switch } from "solid-js";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -85,10 +85,29 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                 </div>
               }
             >
-              <Match when={state().profile?.types.includes("image")}>
+              <Match when={state().profile?.type === "html"}>
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
+                  <div innerHTML={state().profile!.text!}></div>
+                </div>
+              </Match>
+              <Match when={state().profile?.type === "image"}>
                 <Show when={state().profile!.image_url}>
                   <ImageContentPreview url={state().profile!.image_url!} />
                 </Show>
+              </Match>
+              <Match when={state().profile?.type === "file"}>
+                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
+                  <For each={state().profile?.files}>
+                    {(file) => {
+                      return (
+                        <div>
+                          <div class="text-w-fg-0">{file.name}</div>
+                          <div class="text-sm text-w-fg-1">{file.absolute_path}</div>
+                        </div>
+                      );
+                    }}
+                  </For>
+                </div>
               </Match>
               <Match when={state().profile?.types.includes("JSON")}>
                 <JSONContentPreview text={state().profile?.text!} />

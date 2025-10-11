@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 	"gorm.io/gorm"
 
 	"devboard/config"
 )
 
 func New() *App {
-	return &App{}
+	return &App{
+		Windows: make(map[string]*application.WebviewWindow),
+	}
 }
 
 type App struct {
@@ -18,6 +22,7 @@ type App struct {
 	Config                     *config.Config
 	UserConfig                 *BizConfig
 	DB                         *gorm.DB
+	Windows                    map[string]*application.WebviewWindow
 	ManuallyWriteClipboardTime time.Time
 }
 
@@ -38,4 +43,22 @@ func (a *App) Ensure() error {
 		return fmt.Errorf("Please wait the database initialized")
 	}
 	return nil
+}
+
+func (a *App) FindWindow(url string) *application.WebviewWindow {
+	existing_win := a.Windows[url]
+	if existing_win != nil {
+		existing_win.Show()
+		existing_win.Focus()
+		return existing_win
+	}
+	return nil
+}
+
+func (a *App) AppendWindow(url string, win *application.WebviewWindow) {
+	a.Windows[url] = win
+	win.OnWindowEvent(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		delete(a.Windows, url)
+	})
+	win.Focus()
 }

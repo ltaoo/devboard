@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
 
 	"devboard/internal/biz"
 )
@@ -22,16 +21,12 @@ type OpenWindowBody struct {
 	Height int    `json:"height"`
 }
 
-var windows = make(map[string]*application.WebviewWindow)
-
 func (s *CommonService) OpenWindow(body OpenWindowBody) *Result {
 	if body.HTML == "" && body.URL == "" {
 		return Error(fmt.Errorf("缺少 html 或 url 参数"))
 	}
-	existing_win := windows[body.URL]
+	existing_win := s.Biz.FindWindow(body.URL)
 	if existing_win != nil {
-		existing_win.Show()
-		existing_win.Focus()
 		return Ok(map[string]interface{}{
 			"ok": true,
 		})
@@ -57,11 +52,7 @@ func (s *CommonService) OpenWindow(body OpenWindowBody) *Result {
 		URL:              body.URL,
 		HTML:             body.HTML,
 	})
-	windows[body.URL] = win
-	win.OnWindowEvent(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		delete(windows, body.URL)
-	})
-	win.Focus()
+	s.Biz.AppendWindow(body.URL, win)
 	return Ok(map[string]interface{}{
 		"ok": true,
 	})
