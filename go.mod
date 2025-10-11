@@ -13,6 +13,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/viper v1.21.0
 	github.com/studio-b12/gowebdav v0.11.0
+	github.com/tjfoc/gmsm v1.4.1
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.27
 	go.uber.org/zap v1.27.0
 	golang.design/x/hotkey v0.4.1

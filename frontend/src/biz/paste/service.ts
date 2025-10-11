@@ -45,7 +45,7 @@ export function processPartialPasteEvent(
     types: categories,
     text: (() => {
       const tt = v.text;
-      if (categories.includes("timestamp")) {
+      if (categories.includes("time")) {
         const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
         return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
       }
@@ -58,6 +58,22 @@ export function processPartialPasteEvent(
       return null;
     })(),
     image_url: v.image_base64 ? `data:image/png;base64,${v.image_base64}` : null,
+    operations: (() => {
+      const r: string[] = [];
+      if (v.text.includes("复制打开抖音")) {
+        r.push("douyin_download");
+      }
+      if (v.text.match(/https:\/\/v\.douyin/)) {
+        r.push("douyin_download");
+      }
+      if (v.text.match(/https:\/\/www\.douyin\.com\/video/)) {
+        r.push("douyin_download");
+      }
+      if (categories.includes("JSON")) {
+        r.push("json_download");
+      }
+      return r;
+    })(),
     files: (() => {
       if (v.file_list_json) {
         const r = parseJSONStr<
