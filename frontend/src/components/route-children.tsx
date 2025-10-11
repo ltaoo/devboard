@@ -19,16 +19,7 @@ export function RouteChildren(props: ViewComponentProps) {
         const routeName = subView.name;
         const PageContent = pages[routeName as Exclude<PageKeys, "root">];
         return (
-          <KeepAliveRouteView
-            class={cn(
-              "absolute inset-0",
-              "data-[state=open]:animate-in data-[state=open]:fade-in",
-              "data-[state=closed]:animate-out data-[state=closed]:fade-out"
-            )}
-            app={props.app}
-            store={subView}
-            index={i()}
-          >
+          <KeepAliveRouteView class="absolute inset-0" app={props.app} store={subView} index={i()}>
             <PageContent
               app={props.app}
               client={props.client}

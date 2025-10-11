@@ -4,7 +4,6 @@
 import { createSignal, JSX, onCleanup, onMount } from "solid-js";
 
 import { RouteViewCore } from "@/domains/route_view";
-import { cn } from "@/utils/index";
 import { ViewComponentProps } from "@/store/types";
 
 export function KeepAliveRouteView(
@@ -42,7 +41,7 @@ export function KeepAliveRouteView(
         "z-index": props.index,
         display: state().visible ? "block" : "none",
       }}
-      data-state={state().visible ? "open" : "closed"}
+      // data-state={state().enter ? "open" : "closed"}
       data-title={props.store.title}
       data-href={props.store.href}
     >

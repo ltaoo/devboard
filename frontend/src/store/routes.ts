@@ -45,6 +45,12 @@ const configure = {
       settings_layout: {
         title: "设置",
         pathname: "/settings",
+        options: {
+          animation: {
+            in: "fade-in",
+            out: "fade-out",
+          },
+        },
         children: {
           category: {
             title: "分类",
