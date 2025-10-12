@@ -2,18 +2,24 @@ import { Read, WriteConfig } from "~/configservice";
 
 import { request } from "@/biz/requests";
 
-export function fetchUserSettings() {
-  return request.post<{
-    douyin: {
-      cookie: string;
+type UserSettings = {
+  douyin: {
+    cookie: string;
+  };
+  synchronize: {
+    webdav: {
+      url: string;
+      username: string;
+      password: string;
+      root_dir: string;
     };
-  }>(Read);
+  };
+};
+
+export function fetchUserSettings() {
+  return request.post<UserSettings>(Read);
 }
 
-export function updateUserSettings(body: Record<string, unknown>) {
-  return request.post<{
-    douyin: {
-      cookie: string;
-    };
-  }>(WriteConfig, body);
+export function updateUserSettings(body: Partial<UserSettings>) {
+  return request.post<UserSettings>(WriteConfig, body);
 }

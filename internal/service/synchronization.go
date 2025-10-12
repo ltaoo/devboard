@@ -43,14 +43,6 @@ func (s *SyncService) FetchDatabaseDirs() *Result {
 	})
 }
 
-type FileNode struct {
-	Name     string      `json:"name"`
-	Filepath string      `json:"filepath"`
-	Type     string      `json:"type"` // "file" 或 "folder"
-	Content  string      `json:"content,omitempty"`
-	Files    []*FileNode `json:"files,omitempty"`
-}
-
 func (s *SyncService) PingWebDav(body WebDavSyncConfigBody) *Result {
 	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
 	err := client.Connect()
@@ -62,48 +54,106 @@ func (s *SyncService) PingWebDav(body WebDavSyncConfigBody) *Result {
 	})
 }
 
-func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, client *gowebdav.Client) *SynchronizeResult {
-	result := SynchronizeResult{
-		Messages: []SynchronizeMessage{},
-	}
+type SynchronizeMessageType int
 
+const (
+	SynchronizeMessageSuccess SynchronizeMessageType = iota
+	SynchronizeMessageError
+)
+
+type SynchronizeTaskType int
+
+const (
+	SynchronizeTaskCreateFile SynchronizeTaskType = iota
+	SynchronizeTaskCreateRecord
+)
+
+type SynchronizeMessage struct {
+	Type  SynchronizeMessageType `json:"type"`
+	Scope string                 `json:"scope"`
+	Text  string                 `json:"text"`
+}
+type SynchronizeTask struct {
+	Type    SynchronizeMessageType `json:"type"`
+	Files   []*FileTask
+	Records []*RecordTask
+}
+
+type RecordTask struct {
+	Name     string `json:"name"`
+	Filepath string `json:"filepath"`
+	Type     string `json:"type"` // "file" 或 "folder"
+	Content  string `json:"content,omitempty"`
+}
+type FileTask struct {
+	Name     string      `json:"name"`
+	Filepath string      `json:"filepath"`
+	Type     string      `json:"type"` // "file" 或 "folder"
+	Content  string      `json:"content,omitempty"`
+	Files    []*FileTask `json:"files,omitempty"`
+}
+
+type SynchronizeResult struct {
+	Messages    []SynchronizeMessage `json:"messages"`
+	Logs        []string             `json:"logs"`
+	FileTasks   []*FileTask          `json:"file_tasks"`
+	RecordTasks []*RecordTask        `json:"record_tasks"`
+}
+
+func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *gorm.DB, client *gowebdav.Client) *SynchronizeResult {
+	result := SynchronizeResult{
+		FileTasks:   []*FileTask{},
+		RecordTasks: []*RecordTask{},
+		Messages:    []SynchronizeMessage{},
+		Logs:        []string{},
+	}
+	log := func(content string) {
+		result.Logs = append(result.Logs, content)
+	}
+	add_file_task := func(task *FileTask) {
+		result.FileTasks = append(result.FileTasks, task)
+	}
+	// add_record_task := func(task *RecordTask) {
+	// 	result.RecordTasks = append(result.RecordTasks, task)
+	// }
 	table_out_dir := filepath.Join(root_dir, table_name)
 	remote_last_operation_time_filename := "last_operation_time"
 	remote_last_operation_time_filepath := filepath.Join(table_out_dir, remote_last_operation_time_filename)
 	var records []map[string]interface{}
-	r := db.Table(table_name).Order("last_operation_time DESC").Limit(1).Find(&records)
-	if r.Error != nil {
-		// return Error(fmt.Errorf("查询记录失败: %v", r.Error))
+	log("[LOG]before find latest record")
+	if err := db.Table(table_name).Order("last_operation_time DESC").Limit(1).Find(&records).Error; err != nil {
+		log("[ERROR]search latest record of table failed, because " + err.Error())
 		result.Messages = append(result.Messages, SynchronizeMessage{
-			Type:  1,
+			Type:  SynchronizeMessageError,
 			Scope: "database",
-			Text:  r.Error.Error(),
+			Text:  err.Error(),
 		})
 		return &result
 	}
-
 	// root := &FileNode{
 	// 	Name:  out_dir,
 	// 	Type:  "folder",
 	// 	Files: []*FileNode{},
 	// }
 	if len(records) == 0 {
-		// return Ok(files)
+		log("[LOG]the table don't have any records, don't synchronize to remote server")
 		result.Messages = append(result.Messages, SynchronizeMessage{
-			Type:  2,
+			Type:  SynchronizeMessageSuccess,
 			Scope: "database",
 			Text:  "there's no records need to be synchronized.",
 		})
 		return &result
 	}
-	var files []*FileNode
+	// var files []*FileTask
 	table_last_record := records[0]
 	table_last_operation_time := table_last_record["last_operation_time"].(string)
 	millis, err := strconv.ParseInt(table_last_operation_time, 10, 64)
+	log("[LOG]the latest record in table is " + table_last_operation_time)
 	// _record_last_operation_time, err := time.Parse("20060102", table_last_operation_time)
 	if err != nil {
+		log("[ERROR]format latest_operation_time failed, because " + err.Error())
 		result.Messages = append(result.Messages, SynchronizeMessage{
-			Type:  1,
+			Type:  SynchronizeMessageError,
 			Scope: "database",
 			Text:  err.Error(),
 		})
@@ -113,10 +163,11 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 	_record_last_operation_time := time.Unix(0, millis*int64(time.Millisecond))
 	_, err = client.Stat(remote_last_operation_time_filepath)
 	if err != nil {
+		log("[ERROR]check remote server failed " + err.Error())
 		if !gowebdav.IsErrNotFound(err) {
 			// return Error(err)
 			result.Messages = append(result.Messages, SynchronizeMessage{
-				Type:  1,
+				Type:  SynchronizeMessageError,
 				Scope: "webdav",
 				Text:  err.Error(),
 			})
@@ -127,9 +178,9 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 		// 文件存在
 		remote_last_operation_time_byte, err := client.Read(remote_last_operation_time_filepath)
 		if err != nil {
-			// return Error(err)
+			log("[ERROR]read the latest_operation_time file in remote server failed, because" + err.Error())
 			result.Messages = append(result.Messages, SynchronizeMessage{
-				Type:  1,
+				Type:  SynchronizeMessageError,
 				Scope: "webdav",
 				Text:  err.Error(),
 			})
@@ -138,8 +189,9 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 		remote_last_operation_time := string(remote_last_operation_time_byte)
 		remote_millis, err := strconv.ParseInt(remote_last_operation_time, 10, 64)
 		if err != nil {
+			log("[ERROR]format latest_operation_time failed" + err.Error())
 			result.Messages = append(result.Messages, SynchronizeMessage{
-				Type:  1,
+				Type:  SynchronizeMessageError,
 				Scope: "format time",
 				Text:  err.Error() + "[]" + remote_last_operation_time,
 			})
@@ -149,19 +201,19 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 		_remote_last_operation_time := time.Unix(0, remote_millis*int64(time.Millisecond))
 		// _remote_last_operation_time, err := time.Parse("20060102", remote_last_operation_time)
 		// 如果本地数据库，最新的记录时间在 webdav 之前，说明需要 同步到本地，而不能 同步到远端
+		log("[LOG]compare the latest_operation_time, local:" + table_last_operation_time + ", remote:" + remote_last_operation_time)
 		if _record_last_operation_time.Before(_remote_last_operation_time) {
-			// return Ok(nil)
+			log("[LOG]need pull latest records from remote server")
 			result.Messages = append(result.Messages, SynchronizeMessage{
-				Type:  2,
+				Type:  SynchronizeMessageSuccess,
 				Scope: "result",
 				Text:  "Please pull the remote records to local.",
 			})
 			return &result
 		}
-
 	}
 
-	files = append(files, &FileNode{
+	result.FileTasks = append(result.FileTasks, &FileTask{
 		Name:     remote_last_operation_time_filename,
 		Filepath: remote_last_operation_time_filepath,
 		Type:     "file",
@@ -169,46 +221,75 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 	})
 
 	// 按天分组记录
-	day_groups := make(map[string][]map[string]interface{})
-	for _, record := range records {
-		created_at, ok := record["created_at"].(time.Time)
-		if !ok {
-			continue
-		}
-		day_key := created_at.Format("20060102") // 格式化为 YYYYMMDD
-		day_groups[day_key] = append(day_groups[day_key], record)
-	}
-	for day, day_records := range day_groups {
-		day_dir := filepath.Join(table_out_dir, day)
+	var dates []string
+	db.Table(table_name).
+		Select("strftime('%Y-%m-%d', created_at) as date").
+		Group("date").
+		Pluck("date", &dates)
+	// day_groups := make(map[string][]map[string]interface{})
+	// for _, record := range records {
+	// 	created_at, ok := record["created_at"].(time.Time)
+	// 	if !ok {
+	// 		continue
+	// 	}
+	// 	day_key := created_at.Format("20060102") // 格式化为 YYYYMMDD
+	// 	day_groups[day_key] = append(day_groups[day_key], record)
+	// }
+	log("[LOG]before walk dates " + strconv.Itoa(len(dates)))
+	for _, day := range dates {
+		log("[LOG]walk unique_day " + "[" + day + "]")
+		// 解析时间（带时区）
+		// day_time, err := time.Parse(time.RFC3339Nano, day)
+		// if err != nil {
+		// 	log("[ERROR]parse day failed, because " + err.Error())
+		// 	continue
+		// }
+		// day_text := day_time.Format("2006-01-02")
+		day_text := day
+		day_dir := filepath.Join(table_out_dir, day_text)
 		// if err := os.MkdirAll(day_dir, 0755); err != nil {
 		// 	return Error(fmt.Errorf("创建日期目录失败: %v", err))
 		// }
-		day_node := &FileNode{
-			Name:     day,
-			Filepath: day_dir,
-			Type:     "folder",
-			Files:    []*FileNode{},
+		var day_records []map[string]interface{}
+		if err := db.Table(table_name).Where("date(created_at) = ?", day_text).Order("last_operation_time DESC").Find(&day_records).Error; err != nil {
+			log("[ERROR]search latest record of table failed, because " + err.Error())
+			result.Messages = append(result.Messages, SynchronizeMessage{
+				Type:  SynchronizeMessageError,
+				Scope: "database",
+				Text:  err.Error(),
+			})
+			return &result
 		}
-		_, ok := lo.Find(files, func(v *FileNode) bool {
+
+		log("[LOG]the records count is " + strconv.Itoa(len(day_records)))
+		_, ok := lo.Find(result.FileTasks, func(v *FileTask) bool {
 			return v.Filepath == day_dir
 		})
 		if !ok {
-			files = append(files, day_node)
+			day_folder_task := &FileTask{
+				Name:     day,
+				Filepath: day_dir,
+				Type:     "folder",
+				Files:    []*FileTask{},
+			}
+			log("[LOG]add file task " + day_folder_task.Filepath)
+			add_file_task(day_folder_task)
 		}
 
 		var _day_last_operation_time time.Time
-
 		for _, record := range day_records {
+			log("[LOG]walk the records in day")
 			// 将记录转为JSON
 			record_json, err := json.Marshal(record)
 			if err != nil {
+				log("[ERROR]stringify record to JSON failed, because" + err.Error())
 				// return Error(fmt.Errorf("JSON序列化失败: %v", err))
 				result.Messages = append(result.Messages, SynchronizeMessage{
-					Type:  1,
+					Type:  SynchronizeMessageError,
 					Scope: "JSON Marshal",
 					Text:  err.Error(),
 				})
-				return &result
+				continue
 			}
 			// 获取最后修改时间
 			_last_operation_time, ok := record["last_operation_time"].(time.Time)
@@ -222,20 +303,19 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 			// last_operation_time := fmt.Sprintf("%d", _last_operation_time.Unix())
 			last_operation_time := strconv.FormatInt(_last_operation_time.UnixMilli(), 10)
 			// last_operation_type := fmt.Sprintf("%d", record["last_operation_type"])
-
 			record_filepath := filepath.Join(day_dir, uid)
-			files = append(files, &FileNode{
+			add_file_task(&FileTask{
 				Name:     uid,
 				Filepath: record_filepath,
 				Type:     "folder",
-				Files:    []*FileNode{},
+				Files:    []*FileTask{},
 			})
 			// if err := os.MkdirAll(record_filepath, 0755); err != nil {
 			// 	return Error(fmt.Errorf("创建数据目录失败: %v", err))
 			// }
 			data_filename := "data"
 			data_filepath := filepath.Join(record_filepath, data_filename)
-			files = append(files, &FileNode{
+			add_file_task(&FileTask{
 				Name:     data_filename,
 				Filepath: data_filepath,
 				Type:     "file",
@@ -247,7 +327,7 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 
 			last_operation_time_filename := "last_operation_time"
 			last_time_filepath := filepath.Join(record_filepath, last_operation_time_filename)
-			files = append(files, &FileNode{
+			add_file_task(&FileTask{
 				Name:     last_operation_time_filename,
 				Filepath: last_time_filepath,
 				Type:     "file",
@@ -283,16 +363,20 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 		day_last_operation_time_filename := "last_operation_time"
 		day_last_time_filepath := filepath.Join(day_dir, day_last_operation_time_filename)
 		day_last_operation_time := strconv.FormatInt(_day_last_operation_time.UnixMilli(), 10)
-		files = append(files, &FileNode{
+		add_file_task(&FileTask{
 			Name:     day_last_operation_time_filename,
 			Filepath: day_last_time_filepath,
 			Type:     "file",
 			Content:  day_last_operation_time,
 		})
-
 	}
 
-	for _, file := range files {
+	return &result
+}
+func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, client *gowebdav.Client) *SynchronizeResult {
+	result := build_local_sync_to_remote_tasks(table_name, root_dir, db, client)
+
+	for _, file := range result.FileTasks {
 		if file.Type == "folder" {
 			if !strings.HasSuffix(file.Filepath, "/") {
 				file.Filepath += "/"
@@ -329,7 +413,7 @@ func local_sync_to_remote(table_name string, root_dir string, db *gorm.DB, clien
 		}
 	}
 
-	return &result
+	return result
 }
 
 type WebDavSyncConfigBody struct {
@@ -337,6 +421,21 @@ type WebDavSyncConfigBody struct {
 	RootDir  string `json:"root_dir"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+func (s *SyncService) LocalToRemoteTasks(body WebDavSyncConfigBody) *Result {
+	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
+	err := client.Connect()
+	if err != nil {
+		return Error(err)
+	}
+	tables := []string{"paste_event", "category_node", "category_hierarchy", "paste_event_category_mapping"}
+	results := make(map[string]*SynchronizeResult)
+	for _, t := range tables {
+		r := build_local_sync_to_remote_tasks(t, body.RootDir, s.Biz.DB, client)
+		results[t] = r
+	}
+	return Ok(results)
 }
 
 func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
@@ -383,18 +482,10 @@ func WithTable(table string) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
-type SynchronizeMessage struct {
-	Type  int    `json:"type"`
-	Scope string `json:"scope"`
-	Text  string `json:"text"`
-}
-type SynchronizeResult struct {
-	Messages []SynchronizeMessage `json:"messages"`
-}
-
 func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, client *gowebdav.Client) *SynchronizeResult {
 	result := SynchronizeResult{
 		Messages: []SynchronizeMessage{},
+		// Tasks: []SynchronizeTask{},
 	}
 
 	// table_name := "paste_event"

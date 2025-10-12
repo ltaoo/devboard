@@ -144,6 +144,9 @@ func TextContentDetector(text string) []string {
 	if match, _ := regexp.MatchString(`^17([0-9]{8}|[0-9]{11})`, text); match {
 		return []string{"time"}
 	}
+	if match, _ := regexp.MatchString(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}[+-]\d{2}:\d{2}$`, text); match {
+		return []string{"time"}
+	}
 	if lang := DetectCodeLanguage(text); lang != "" {
 		return []string{lang, "code"}
 	}

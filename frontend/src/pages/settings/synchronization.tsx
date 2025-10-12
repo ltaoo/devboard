@@ -12,19 +12,31 @@ import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
 import { ButtonCore, InputCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
-import { syncToRemote, syncFromRemote, pingWebDav, fetchDatabaseDirs } from "@/biz/synchronize/service";
+import {
+  syncToRemote,
+  syncFromRemote,
+  pingWebDav,
+  fetchDatabaseDirs,
+  buildLocalToRemoteTasks,
+} from "@/biz/synchronize/service";
 import { fetchSystemInfo } from "@/biz/system/service";
 import { highlightFileInFolder } from "@/biz/fs/service";
+import { fetchUserSettings, updateUserSettings } from "@/biz/settings/service";
 
 function SynchronizationViewModel(props: ViewComponentProps) {
   const request = {
     file: {
       highlight: new RequestCore(highlightFileInFolder, { client: props.client }),
     },
+    settings: {
+      data: new RequestCore(fetchUserSettings, { client: props.client }),
+      update: new RequestCore(updateUserSettings, { client: props.client }),
+    },
     sync: {
       database: new RequestCore(fetchDatabaseDirs, { client: props.client }),
       ping: new RequestCore(pingWebDav, { client: props.client }),
       uploadToWebdav: new RequestCore(syncToRemote, { client: props.client }),
+      buildLocalToRemoteTasks: new RequestCore(buildLocalToRemoteTasks, { client: props.client }),
       downloadFromWebdav: new RequestCore(syncFromRemote, { client: props.client }),
     },
   };
@@ -32,7 +44,18 @@ function SynchronizationViewModel(props: ViewComponentProps) {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
+    async refreshWebdavSettings() {
+      const r = await request.settings.data.run();
+      if (r.error) {
+        return;
+      }
+      const { douyin, synchronize } = r.data;
+      if (synchronize?.webdav) {
+        ui.$form_webdav.setValue(synchronize?.webdav);
+      }
+    },
     ready() {
+      methods.refreshWebdavSettings();
       request.sync.database.run();
     },
     handleClickField(dir: { text: string }) {
@@ -53,8 +76,37 @@ function SynchronizationViewModel(props: ViewComponentProps) {
           url: r.data.url,
           username: r.data.username,
           password: r.data.password,
+          root_dir: r.data.root_dir,
         };
+        request.settings.update.run({
+          ...request.settings.data.response,
+          synchronize: {
+            webdav: body,
+          },
+        });
         request.sync.ping.run(body);
+      },
+    }),
+    $btn_prepare_export: new ButtonCore({
+      async onClick() {
+        const r = await ui.$form_webdav.validate();
+        if (r.error) {
+          props.app.tip({
+            text: r.error.messages,
+          });
+          return;
+        }
+        const body = {
+          url: r.data.url,
+          username: r.data.username,
+          password: r.data.password,
+          root_dir: r.data.root_dir,
+        };
+        const r2 = await request.sync.buildLocalToRemoteTasks.run(body);
+        if (r2.error) {
+          return;
+        }
+        console.log(r2.data);
       },
     }),
     $btn_export: new ButtonCore({
@@ -219,6 +271,7 @@ export function SynchronizationView(props: ViewComponentProps) {
               <div>测试</div>
             </div>
           </Button>
+          <Button store={vm.ui.$btn_prepare_export}>测试同步至 webdav</Button>
           <Button store={vm.ui.$btn_export}>同步至 webdav</Button>
           <Button store={vm.ui.$btn_import}>从 webdav 同步</Button>
         </div>

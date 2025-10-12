@@ -420,7 +420,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
       </Show>
       <ScrollView
         store={vm.ui.$view}
-        class="z-0 relative bg-w-bg-0"
+        class="z-0 relative bg-w-bg-0 scroll--hidden"
         classList={{
           // "w-[375px] mx-auto": props.app.env.pc,
           "w-full": !props.app.env.pc,
@@ -446,7 +446,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
             return (
               <div
                 classList={{
-                  "paste-event-card group relative p-2 rounded-md outline outline-2 outline-w-bg-3": true,
+                  "paste-event-card group relative p-2 rounded-md outline outline-2 outline-w-fg-3": true,
                   "bg-w-bg-5": state().highlighted_idx === idx,
                 }}
                 onClick={() => {
@@ -485,22 +485,24 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                           <For each={v.files}>
                             {(f) => {
                               return (
-                                <div
-                                  class="flex items-center gap-1 cursor-pointer hover:underline"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    vm.methods.handleClickFile(f);
-                                  }}
-                                >
-                                  <Switch>
-                                    <Match when={f.mime_type === "folder"}>
-                                      <Folder class="w-4 h-4 text-w-fg-1" />
-                                    </Match>
-                                    <Match when={f.mime_type !== "folder"}>
-                                      <File class="w-4 h-4 text-w-fg-1" />
-                                    </Match>
-                                  </Switch>
-                                  <div class="text-w-fg-0">{f.name}</div>
+                                <div>
+                                  <div
+                                    class="inline-flex items-center gap-1 cursor-pointer hover:underline"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      vm.methods.handleClickFile(f);
+                                    }}
+                                  >
+                                    <Switch>
+                                      <Match when={f.mime_type === "folder"}>
+                                        <Folder class="w-4 h-4 text-w-fg-1" />
+                                      </Match>
+                                      <Match when={f.mime_type !== "folder"}>
+                                        <File class="w-4 h-4 text-w-fg-1" />
+                                      </Match>
+                                    </Switch>
+                                    <div class="text-w-fg-0">{f.name}</div>
+                                  </div>
                                 </div>
                               );
                             }}
@@ -563,75 +565,81 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       </For>
                     </div>
                     <div class="flex items-center h-[32px]">
-                      <div class="time flex justify-between block group-hover:hidden">
-                        <div title={v.created_at_text}>
-                          <RelativeTime class="text-sm text-w-fg-1" time={v.created_at}></RelativeTime>
-                        </div>
-                      </div>
-                      <div class="operations flex justify-between hidden group-hover:block">
-                        <div class="flex items-center gap-1">
-                          <Show when={v.operations.includes("douyin_download")}>
-                            <div
-                              class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                vm.methods.handleClickDownloadBtn(v);
-                              }}
-                            >
-                              <Download class="w-4 h-4 text-w-fg-0" />
+                      <Show
+                        when={state().highlighted_idx === idx}
+                        fallback={
+                          <div class="time flex justify-between">
+                            <div title={v.created_at_text}>
+                              <RelativeTime class="text-sm text-w-fg-1" time={v.created_at}></RelativeTime>
                             </div>
-                          </Show>
-                          <Show when={v.operations.includes("json_download")}>
-                            <div
-                              class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                vm.methods.handleClickDownloadBtn(v);
-                              }}
-                            >
-                              <Download class="w-4 h-4 text-w-fg-0" />
-                            </div>
-                          </Show>
-                          <div
-                            class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              vm.methods.handleClickTrashBtn(v);
-                            }}
-                          >
-                            <Trash class="w-4 h-4 text-w-fg-0" />
                           </div>
-                          <div
-                            class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              vm.methods.handleClickCopyBtn(v);
-                            }}
-                          >
-                            <DynamicContentWithClick
-                              options={[
-                                {
-                                  content: <Copy class="w-4 h-4 text-w-fg-0" />,
-                                },
-                                {
-                                  content: <Check class="w-4 h-4 text-green-500" />,
-                                },
-                              ]}
-                            />
-                          </div>
-                          <Show when={["JSON"].includes(v.type)}>
+                        }
+                      >
+                        <div class="operations flex justify-between">
+                          <div class="flex items-center gap-1">
+                            <Show when={v.operations.includes("douyin_download")}>
+                              <div
+                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  vm.methods.handleClickDownloadBtn(v);
+                                }}
+                              >
+                                <Download class="w-4 h-4 text-w-fg-0" />
+                              </div>
+                            </Show>
+                            <Show when={v.operations.includes("json_download")}>
+                              <div
+                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  vm.methods.handleClickDownloadBtn(v);
+                                }}
+                              >
+                                <Download class="w-4 h-4 text-w-fg-0" />
+                              </div>
+                            </Show>
                             <div
                               class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
                               onClick={(event) => {
                                 event.stopPropagation();
-                                vm.methods.handleClickFileBtn(v);
+                                vm.methods.handleClickTrashBtn(v);
                               }}
                             >
-                              <File class="w-4 h-4 text-w-fg-0" />
+                              <Trash class="w-4 h-4 text-w-fg-0" />
                             </div>
-                          </Show>
+                            <div
+                              class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                vm.methods.handleClickCopyBtn(v);
+                              }}
+                            >
+                              <DynamicContentWithClick
+                                options={[
+                                  {
+                                    content: <Copy class="w-4 h-4 text-w-fg-0" />,
+                                  },
+                                  {
+                                    content: <Check class="w-4 h-4 text-green-500" />,
+                                  },
+                                ]}
+                              />
+                            </div>
+                            <Show when={["JSON"].includes(v.type)}>
+                              <div
+                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  vm.methods.handleClickFileBtn(v);
+                                }}
+                              >
+                                <File class="w-4 h-4 text-w-fg-0" />
+                              </div>
+                            </Show>
+                          </div>
                         </div>
-                      </div>
+                      </Show>
                     </div>
                   </Flex>
                 </div>
