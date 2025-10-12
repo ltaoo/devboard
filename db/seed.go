@@ -186,17 +186,53 @@ var BuiltinCategoryHierarchy = []models.CategoryHierarchy{
 func Seed(db *gorm.DB) {
 	now := time.Now()
 	for _, category := range BuiltinCategories {
-		category.LastOperationTime = strconv.FormatInt(now.UnixMilli(), 10)
-		category.LastOperationType = 1
-		if err := db.Save(&category).Error; err != nil {
-			fmt.Println("create failed", err.Error())
+		var existing models.CategoryNode
+		if err := db.Where("id = ?", category.Id).First(&existing).Error; err != nil {
+			if err != gorm.ErrRecordNotFound {
+				continue
+			}
+			category.LastOperationTime = strconv.FormatInt(now.UnixMilli(), 10)
+			category.LastOperationType = 1
+			if err := db.Create(&category).Error; err != nil {
+				fmt.Println("create failed", err.Error())
+			}
+			continue
+		}
+		if existing.CreatedAt == nil {
+			existing.CreatedAt = &now
+			if err := db.Model(&category).Update("created_at", &now).Error; err != nil {
+				fmt.Println("create failed", err.Error())
+			}
+		}
+		if existing.LastOperationTime == "" {
+			if err := db.Model(&category).Update("last_operation_time", strconv.FormatInt(now.UnixMilli(), 10)).Error; err != nil {
+				fmt.Println("create failed", err.Error())
+			}
 		}
 	}
 	for _, hierarchy := range BuiltinCategoryHierarchy {
-		hierarchy.LastOperationTime = strconv.FormatInt(now.UnixMilli(), 10)
-		hierarchy.LastOperationType = 1
-		if err := db.Save(&hierarchy).Error; err != nil {
-			fmt.Println("create failed", err.Error())
+		var existing models.CategoryHierarchy
+		if err := db.Where("parent_id = ? AND child_id = ?", hierarchy.ParentId, hierarchy.ChildId).First(&existing).Error; err != nil {
+			if err != gorm.ErrRecordNotFound {
+				continue
+			}
+			hierarchy.LastOperationTime = strconv.FormatInt(now.UnixMilli(), 10)
+			hierarchy.LastOperationType = 1
+			if err := db.Create(&hierarchy).Error; err != nil {
+				fmt.Println("create failed", err.Error())
+			}
+			continue
+		}
+		if existing.CreatedAt == nil {
+			existing.CreatedAt = &now
+			if err := db.Model(&hierarchy).Update("created_at", &now).Error; err != nil {
+				fmt.Println("create failed", err.Error())
+			}
+		}
+		if existing.LastOperationTime == "" {
+			if err := db.Model(&hierarchy).Update("last_operation_time", strconv.FormatInt(now.UnixMilli(), 10)).Error; err != nil {
+				fmt.Println("create failed", err.Error())
+			}
 		}
 	}
 }
