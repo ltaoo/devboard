@@ -1,5 +1,5 @@
 import dayjs, { Dayjs } from "dayjs";
-import { createSignal } from "solid-js";
+import { createSignal, JSX } from "solid-js";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
@@ -73,12 +73,16 @@ setInterval(() => {
   bus.emit(Events.Update);
 }, 30 * 1000);
 
-export function RelativeTime(props: { time: Dayjs }) {
+export function RelativeTime(props: { time: Dayjs } & JSX.HTMLAttributes<HTMLDivElement>) {
   const [text, setText] = createSignal(props.time.fromNow());
 
   bus.on(Events.Update, () => {
     setText(props.time.fromNow());
   });
 
-  return <div>{text()}</div>;
+  return (
+    <div class={props.class} classList={props.classList}>
+      {text()}
+    </div>
+  );
 }

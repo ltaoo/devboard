@@ -28,8 +28,8 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
       }
       for (let i = 0; i < columns; i += 1) {
         // console.log("[]before new ListColumnViewCore", size);
-        const column = WaterfallColumnModel<T>({ size, buffer, gutter, index: i });
-        column.onHeightChange((height) => {
+        const $column = WaterfallColumnModel<T>({ size, buffer, gutter, index: i });
+        $column.onHeightChange((height) => {
           if (_height >= height) {
             return;
           }
@@ -37,11 +37,13 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
           bus.emit(Events.StateChange, { ..._state });
           // this.handleScroll(this.scrollValues);
         });
-        column.onStateChange(() => {
-          // console.log("[BIZ]Waterfall/waterfall - handle column StateChange");
+        $column.onCellUpdate((v) => {
+          bus.emit(Events.CellUpdate, v);
+        });
+        $column.onStateChange(() => {
           bus.emit(Events.StateChange, { ..._state });
         });
-        _$columns.push(column);
+        _$columns.push($column);
       }
       for (let i = 0; i < _$columns.length; i += 1) {
         _$columns[i].methods.update({ start: 0, end: _$columns[i].state.size });
@@ -108,6 +110,7 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
       methods.handleScroll(_scrollValues);
       console.log("[BIZ]Waterfall/waterfall - appendItems before StateChange", _state.columns[0].items);
       bus.emit(Events.StateChange, { ..._state });
+      return createdItems;
     },
     /**
      * 将指定 item 放置到目前高度最小的 column
@@ -279,8 +282,12 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
 
   enum Events {
     StateChange,
+    CellUpdate,
   }
   type TheTypesOfEvents = {
+    [Events.CellUpdate]: {
+      $item: WaterfallCellModel<T>;
+    };
     [Events.StateChange]: typeof _state;
   };
 
@@ -299,6 +306,9 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
     },
     get gutter() {
       return _gutter;
+    },
+    onCellUpdate(handler: Handler<TheTypesOfEvents[Events.CellUpdate]>) {
+      bus.on(Events.CellUpdate, handler);
     },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
       bus.on(Events.StateChange, handler);

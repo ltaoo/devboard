@@ -65,7 +65,7 @@ export function WaterfallColumnView<T extends Record<string, unknown>>(props: {
           if (!$cell) {
             return null;
           }
-          return <WaterfallCellView store={$cell} render={props.render} />;
+          return <WaterfallCellView store={$cell} idx={cell.idx} render={props.render} />;
         }}
       </For>
     </div>
@@ -75,6 +75,7 @@ export function WaterfallColumnView<T extends Record<string, unknown>>(props: {
 export function WaterfallCellView<T extends Record<string, unknown>>(
   props: {
     store: WaterfallCellModel<T>;
+    idx: number;
     render: (payload: T, idx: number) => JSX.Element;
   } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
@@ -85,17 +86,21 @@ export function WaterfallCellView<T extends Record<string, unknown>>(
       class="__a absolute left-0 w-full"
       style={{ top: `${state().top}px` }}
       data-id={state().id}
-      data-idx={state().idx}
+      data-idx={props.idx}
       data-width={state().width}
       data-height={state().height}
       data-top={state().top}
       onAnimationEnd={(event) => {
-        // console.log("[COMPONENT]ui/waterfall/waterfall - WaterfallCellView onAnimationEnd", state().id);
         const { width, height } = event.currentTarget.getBoundingClientRect();
+        console.log("[COMPONENT]ui/waterfall/waterfall - WaterfallCellView onAnimationEnd", state().uid, width, height);
+        // @todo 为什么会是 0？
+        if (height === 0) {
+          return;
+        }
         vm.methods.load({ width, height });
       }}
     >
-      {props.render(state().payload, state().idx)}
+      {props.render(state().payload, props.idx)}
     </div>
   );
 }

@@ -69,11 +69,14 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
         console.log(
           "[DOMAIN]appendItem - after this.height += heightDiff",
           "加载完成，发现高度差异为",
-          [_index, $item.idx, idx],
+          [_index, $item.uid, idx],
           [original_height, height_difference]
         );
         _height += height_difference;
         bus.emit(Events.HeightChange, _height);
+        bus.emit(Events.CellUpdate, {
+          $item,
+        });
         methods.refresh();
       });
       $item.onTopChange(([, top_difference]) => {
@@ -84,6 +87,9 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
             $next.methods.setTopWithDifference(top_difference);
           }
         }
+        bus.emit(Events.CellUpdate, {
+          $item,
+        });
       });
       const idx = _$total_items.length;
       // $item.methods.setIndex(idx);
@@ -91,13 +97,13 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       _height += $item.state.height + _gutter;
       _$total_items.push($item);
       const $prev = _$total_items[idx - 1];
-      console.log(
-        "[DOMAIN]waterfall/column - append item",
-        idx,
-        $prev?.state.top,
-        $prev?.state.height,
-        $prev?.state.top + $prev?.state.height + _gutter
-      );
+      // console.log(
+      //   "[DOMAIN]waterfall/column - append item",
+      //   idx,
+      //   $prev?.state.top,
+      //   $prev?.state.height,
+      //   $prev?.state.top + $prev?.state.height + _gutter
+      // );
       if ($prev) {
         $item.methods.setTop($prev.state.top + $prev.state.height + _gutter);
       }
@@ -172,7 +178,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       const $backup = _$total_items[_end];
       const height_difference = $item.height + _gutter;
       _height -= height_difference;
-      console.log("[BIZ]waterfall/column - delete cell", idx, $next?.idx, height_difference);
+      console.log("[BIZ]waterfall/column - delete cell", idx, $next?.uid, height_difference);
       if ($next) {
         $next.methods.setTopWithDifference(-height_difference);
       }
@@ -193,8 +199,6 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       _height = 0;
       bus.emit(Events.StateChange, { ..._state });
     },
-    handleScrollForce,
-    handleScroll: throttle(100, handleScrollForce),
     resetRange() {
       _start = 0;
       _end = _size + _buffer_size;
@@ -271,6 +275,8 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       _$items = $visible_items;
       methods.refresh();
     },
+    handleScrollForce,
+    handleScroll: throttle(100, handleScrollForce),
   };
 
   /** 该列下标 */
@@ -305,7 +311,12 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       return _size;
     },
     get items() {
-      return _$items.map((v) => v.state);
+      return _$items.map((v) => {
+        return {
+          ...v.state,
+          idx: _$total_items.indexOf(v),
+        };
+      });
     },
     get item_count() {
       return _$items.length;
@@ -320,14 +331,17 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
   enum Events {
     StateChange,
     HeightChange,
+    CellUpdate,
   }
   type TheTypesOfEvents = {
     [Events.HeightChange]: number;
+    [Events.CellUpdate]: {
+      $item: WaterfallCellModel<T>;
+    };
     [Events.StateChange]: typeof _state;
   };
 
   const bus = base<TheTypesOfEvents>();
-  let _id = bus.uid();
 
   return {
     state: _state,
@@ -346,6 +360,9 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
     },
     onHeightChange(handler: Handler<TheTypesOfEvents[Events.HeightChange]>) {
       bus.on(Events.HeightChange, handler);
+    },
+    onCellUpdate(handler: Handler<TheTypesOfEvents[Events.CellUpdate]>) {
+      bus.on(Events.CellUpdate, handler);
     },
   };
 }

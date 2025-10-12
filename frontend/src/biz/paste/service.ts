@@ -91,7 +91,7 @@ export function processPartialPasteEvent(
     })(),
     height: (() => {
       // @todo 根据内容类型及所需空间（文本、图片）估算大概值
-      return 108;
+      return 92;
     })(),
     type: v.content_type,
     created_at: dayjs(v.created_at),
