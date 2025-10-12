@@ -10,7 +10,7 @@ import (
 
 type CommonService struct {
 	App *application.App
-	Biz *biz.App
+	Biz *biz.BizApp
 }
 
 type OpenWindowBody struct {

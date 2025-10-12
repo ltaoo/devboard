@@ -15,7 +15,7 @@ import (
 
 type DouyinService struct {
 	App *application.App
-	Biz *biz.App
+	Biz *biz.BizApp
 }
 
 type DownloadDouyinVideoBody struct {

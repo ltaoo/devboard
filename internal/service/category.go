@@ -12,7 +12,7 @@ import (
 
 type CategoryService struct {
 	App *application.App
-	Biz *biz.App
+	Biz *biz.BizApp
 }
 
 func GetCategoryTreeOptimized(db *gorm.DB) ([]models.CategoryNode, error) {
@@ -161,6 +161,9 @@ func (s *CategoryService) PreloadAll() func(db *gorm.DB) *gorm.DB {
 }
 
 func (s *CategoryService) GetCategoryTreeOptimized() *Result {
+	if err := s.Biz.Ensure(); err != nil {
+		return Error(err)
+	}
 	var all_nodes []models.CategoryNode
 	if err := s.Biz.DB.Find(&all_nodes).Error; err != nil {
 		return Error(err)

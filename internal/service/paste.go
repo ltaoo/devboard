@@ -19,10 +19,10 @@ import (
 
 type PasteService struct {
 	App *application.App
-	Biz *biz.App
+	Biz *biz.BizApp
 }
 
-func NewPasteService(app *application.App, biz *biz.App) *PasteService {
+func NewPasteService(app *application.App, biz *biz.BizApp) *PasteService {
 	return &PasteService{
 		App: app,
 		Biz: biz,

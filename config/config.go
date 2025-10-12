@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/adrg/xdg"
@@ -61,6 +62,13 @@ func LoadConfig() (*Config, error) {
 	database_filepath := filepath.Join(data_dir, database_filename)
 
 	// fmt.Println("database", database_filepath)
+	if _, err := os.Stat(data_dir); os.IsNotExist(err) {
+		// 不存在则创建
+		err := os.Mkdir(data_dir, 0755)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	viper.SetDefault("info.version", "0.0.1")
 	viper.SetDefault("info.productName", "Devboard")

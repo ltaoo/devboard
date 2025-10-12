@@ -144,7 +144,7 @@ func main() {
 	app.RegisterService(config_service)
 	app.RegisterService(category_service)
 
-	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
+	hk := _biz.NewHotkey()
 
 	method_open_setting_window := func() {
 		_common_service.OpenWindow(service.OpenWindowBody{
@@ -230,20 +230,6 @@ func main() {
 	})
 	system_tray.SetMenu(menu)
 
-	error_win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Error",
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-		},
-		Hidden:             true,
-		Width:              428,
-		Height:             260,
-		DisableResize:      true,
-		ZoomControlEnabled: false,
-		BackgroundColour:   application.NewRGB(27, 38, 54),
-		URL:                "/error",
-	})
 	// win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
 	// 	fmt.Println(e.Context().DroppedFiles())
 	// })
@@ -456,9 +442,10 @@ func main() {
 	}()
 	app.Event.On("m:show-error", func(event *application.CustomEvent) {
 		body := event.Data.(service.ErrorBody)
-		url := fmt.Sprintf("/error?title=%v&desc=%v", body.Title, body.Content)
-		error_win.SetURL(url)
-		error_win.Show()
+		search := fmt.Sprintf("?title=%v&desc=%v", body.Title, body.Content)
+		biz.ShowErrorWindow(search)
+		// error_win.SetURL(url)
+		// error_win.Show()
 	})
 	win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
 		fmt.Println(e.Context().DroppedFiles())
@@ -467,8 +454,8 @@ func main() {
 		cfg, err := config.LoadConfig()
 		if err != nil {
 			t := fmt.Sprintf("Failed to load config: %v", err)
-			error_win.SetURL("/error?title=InitializeFailed&desc=" + t)
-			error_win.Show()
+			biz.ShowErrorWindow("?title=InitializeFailed&desc=" + t)
+			win.Hide()
 			return
 		}
 		logger := logger.NewLogger(cfg.LogLevel)
@@ -477,16 +464,15 @@ func main() {
 		if err != nil {
 			t := fmt.Sprintf("Failed to connect to database, %v", err)
 			fmt.Println(t)
-			error_win.SetURL("/error?title=InitializeFailed&desc=" + t)
-			error_win.Show()
+			biz.ShowErrorWindow("?title=InitializeFailed&desc=" + t)
+			win.Hide()
 			return
 		}
 		migrator := db.NewMigrator(cfg, logger, &migrations)
 		if err := migrator.MigrateUp(); err != nil {
 			t := fmt.Sprintf("Failed to run migrations, %v", err)
-			fmt.Println(t)
-			error_win.SetURL("/error?title=InitializeFailed&desc=" + t)
-			error_win.Show()
+			biz.ShowErrorWindow("?title=InitializeFailed&desc=" + t)
+			win.Hide()
 			return
 		}
 		db.Seed(database)
