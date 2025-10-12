@@ -92,7 +92,7 @@ export function SettingsView(props: ViewComponentProps) {
                 <div
                   class=""
                   classList={{
-                    "px-4 py-2 rounded-md cursor-pointer hover:bg-w-bg-4": true,
+                    "px-4 py-2 rounded-md cursor-pointer hover:bg-w-fg-4": true,
                     "bg-w-fg-4": menu.url === state().route,
                   }}
                   onClick={() => {

@@ -764,7 +764,7 @@ export class ObjectFieldCore<
     this._bus.emit(ObjectFieldEvents.StateChange, { ...this.state });
   }
   setValue(
-    values: Partial<Record<keyof T, any>>,
+    values: Partial<Record<keyof T, any>> = {},
     extra: Partial<{ key: keyof T; idx: number; silence: boolean }> = {}
   ) {
     // console.log("[DOMAIN]formv2 - setValue", values, extra, this.fields);
