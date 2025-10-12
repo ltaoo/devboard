@@ -121,6 +121,9 @@ export function connectScroll(store: ScrollViewCore, $scroll: HTMLDivElement) {
   let _scroll_top = 0;
   store.setScrollTop = (top: number) => {
     _scroll_top = top;
+    if (_scroll_top < 0) {
+      _scroll_top = 0;
+    }
     $scroll.scrollTop = top;
   };
   store.getScrollTop = () => {

@@ -78,7 +78,8 @@ type TheTypesOfEvents = {
   };
   [Events.DeviceSizeChange]: DeviceSizeTypes;
   [Events.Keydown]: {
-    key: string;
+    code: string;
+    preventDefault: () => void;
   };
   [Events.EscapeKeyDown]: void;
   [Events.Blur]: void;
@@ -278,11 +279,11 @@ export class Application<T extends { storage: StorageCore<any> }> extends BaseDo
     throw new Error("请实现 enablePointer 方法");
   }
   /** 平台相关的全局事件 */
-  keydown({ key }: { key: string }) {
-    if (key === "Escape") {
+  keydown(event: { code: string; preventDefault: () => void }) {
+    if (event.code === "Escape") {
       this.escape();
     }
-    this.emit(Events.Keydown, { key });
+    this.emit(Events.Keydown, event);
   }
   escape() {
     this.emit(Events.EscapeKeyDown);

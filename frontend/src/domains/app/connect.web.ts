@@ -155,8 +155,7 @@ export function connect<T extends { storage: StorageCore<any> }>(app: Applicatio
     app.safeArea = !!matched;
   }
   ownerDocument.addEventListener("keydown", (event) => {
-    const { key } = event;
-    app.keydown({ key });
+    app.keydown(event);
   });
 
   const originalBodyPointerEvents = ownerDocument.body.style.pointerEvents;

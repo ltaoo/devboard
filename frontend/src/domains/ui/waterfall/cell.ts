@@ -21,6 +21,7 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
       }
       const { width, height } = size;
       if (_height !== height) {
+        console.log("[DOMAIN]ui/waterfall/cell - load", _height, height);
         bus.emit(Events.HeightChange, [_height, toFixed(height - _height, 0)]);
       }
       _height = height;
@@ -34,9 +35,6 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
     exposure() {
       _visible = true;
       bus.emit(Events.Visible);
-    },
-    setIndex(idx: number) {
-      _idx = idx;
     },
     setColumnIdx(idx: number) {
       _column_idx = idx;
@@ -63,6 +61,7 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
       }
       const original_height = _height;
       _height == height;
+      console.log("[DOMAIN]ui/waterfall/cell - setHeight", _height, height);
       bus.emit(Events.HeightChange, [original_height, original_height - height]);
       methods.refresh();
     },
@@ -74,7 +73,7 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
       if (_height === height) {
         return;
       }
-      console.log("before matched.updateHeight", _payload, _height, height);
+      console.log("[DOMAIN]ui/waterfall/cell - updateHeight", _height, height);
       const cur = _height;
       _height = height;
       bus.emit(Events.HeightChange, [height, toFixed(height - cur, 0)]);
@@ -88,9 +87,8 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
   let _loaded = false;
   /** 该卡片超过 50% 的内容进入页面 */
   let _visible = false;
-  /** 其实是 id */
-  let _idx = props.uid;
-  let _id = props.payload["id"] ?? _idx;
+  let _uid = props.uid;
+  let _id = (props.payload["id"] ?? _uid) as any as number | string;
   let _column_idx = 0;
   /** 该 item 定位 */
   let _position = { x: 0, y: 0 };
@@ -99,8 +97,8 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
     get id() {
       return _id;
     },
-    get idx() {
-      return _idx;
+    get uid() {
+      return _uid;
     },
     get position() {
       return _position;
@@ -148,7 +146,6 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
   };
 
   const bus = base<TheTypesOfEvents>();
-  // let _id = props.payload["id"] ?? bus.uid();
 
   return {
     state: _state,
@@ -156,8 +153,8 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
     get id() {
       return _id;
     },
-    get idx() {
-      return _idx;
+    get uid() {
+      return _uid;
     },
     get column_idx() {
       return _column_idx;

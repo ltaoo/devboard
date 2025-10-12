@@ -2,6 +2,7 @@
  * @file 支持输入标签的输入框
  */
 import { For } from "solid-js";
+import { Bird } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModelStore } from "@/hooks";
@@ -15,7 +16,224 @@ import { InputCore, InputProps, PopoverCore, ScrollViewCore, SelectCore } from "
 import { Popover, ScrollView } from "./ui";
 import { Select } from "./ui/select";
 import { Presence } from "./ui/presence";
-import { Bird } from "lucide-solid";
+
+export function SelectWithKeyboardModel(props: {
+  $view: ScrollViewCore;
+  num?: number;
+  app: ViewComponentProps["app"];
+}) {
+  type OptionInMenu = { id: string; label: string; height: number; top?: number };
+  const methods = {
+    refresh() {
+      bus.emit(Events.StateChange, { ..._state });
+    },
+    setOptions(v: OptionInMenu[]) {
+      _options = v;
+      _displayed_options = _options;
+    },
+    unshiftOption(v: OptionInMenu) {
+      _options.unshift(v);
+      _opt_idx += 1;
+    },
+    updateOption(v: OptionInMenu) {
+      const idx = _options.findIndex((opt) => opt.id === v.id);
+      if (idx === -1) {
+        return;
+      }
+      _options[idx] = v;
+      methods.refresh();
+    },
+    selectMenuOption(idx: number) {
+      // ui.$input_select.hide();
+      // const matched = { ..._displayed_options[idx] };
+      // const existing = _selected_options.find((v) => v.id === matched.id);
+      // if (existing) {
+      //   return;
+      // }
+      // _selected_options.push(matched);
+      // _displayed_options = [..._options];
+      // ui.$input.clear();
+      // methods.refresh();
+    },
+    moveToNextOption() {
+      _opt_idx += 1;
+      if (_opt_idx > _options.length - 1) {
+        _opt_idx = _options.length - 1;
+      }
+      const scroll_top = ui.$view.getScrollTop();
+      const client_height = ui.$view.getScrollClientHeight();
+      const default_displayed_menu_count = props.num ?? 6;
+      const cur_option = _options[_opt_idx];
+      // console.log("calc need scroll the container", client_height, scroll_top, cur_option.top);
+      if (cur_option.top !== undefined) {
+        if (cur_option.top > client_height / 2 + scroll_top) {
+          // ui.$view.scrollTo({ top: cur_option.top - client_height / 2 });
+          ui.$view.setScrollTop(cur_option.top - client_height / 2);
+        }
+      }
+      // const menu_height = 24 + 6 + 6;
+      // if (_opt_idx * menu_height > scroll_top + (default_displayed_menu_count - 1) * menu_height) {
+      //   ui.$view.setScrollTop(scroll_top + menu_height);
+      // }
+      methods.refresh();
+    },
+    moveToPrevOption() {
+      _opt_idx -= 1;
+      if (_opt_idx < 0) {
+        _opt_idx = 0;
+      }
+      const scroll_top = ui.$view.getScrollTop();
+      const client_height = ui.$view.getScrollClientHeight();
+      const cur_option = _options[_opt_idx];
+      console.log("calc need scroll the container", client_height, scroll_top, cur_option.top);
+      if (cur_option.top !== undefined) {
+        if (cur_option.top - scroll_top < 0) {
+          const prev_option = _options[_opt_idx - 1];
+          if (prev_option && prev_option.top !== undefined) {
+            // ui.$view.scrollTo({ top: cur_option.top - 88 });
+            // ui.$view.setScrollTop(cur_option.top - 88);
+            ui.$view.setScrollTop(_opt_idx === 1 ? 0 : prev_option.top + 24);
+          } else {
+            ui.$view.setScrollTop(0);
+          }
+        }
+      }
+      // const menu_height = 24 + 6 + 6;
+      // if (_opt_idx * menu_height < scroll_top) {
+      //   ui.$view.setScrollTop(scroll_top - menu_height);
+      // }
+      methods.refresh();
+    },
+    resetIdx() {
+      _opt_idx = 0;
+      methods.refresh();
+    },
+    clearPressedKeys() {
+      if (_continuous_timer !== null) {
+        clearTimeout(_continuous_timer);
+        _continuous_timer = null;
+      }
+      _continuous_timer = setTimeout(() => {
+        _pressed_codes = [];
+      }, 200);
+    },
+    handleEnterMenuOption(idx: number) {
+      // if (_using_keyboard) {
+      //   return;
+      // }
+      if (_opt_idx === idx) {
+        return;
+      }
+      _opt_idx = idx;
+      methods.refresh();
+    },
+    handleMoveAtMenuOption() {
+      if (_using_keyboard === false) {
+        return;
+      }
+      _using_keyboard = false;
+    },
+  };
+  const ui = {
+    $view: props.$view,
+  };
+
+  let _options: OptionInMenu[] = [];
+  let _displayed_options: { id: string; label: string }[] = [];
+  let _opt_idx = 0;
+  let _using_keyboard = true;
+  let _pressed_codes: string[] = [];
+  let _is_continuous_keyboard = false;
+  let _continuous_timer: NodeJS.Timeout | number | null = null;
+  let _state = {
+    get idx() {
+      return _opt_idx;
+    },
+  };
+  enum Events {
+    StateChange,
+    Enter,
+    Shortcut,
+    Error,
+  }
+  type TheTypesOfEvents = {
+    [Events.StateChange]: typeof _state;
+    [Events.Enter]: { idx: number; option: OptionInMenu };
+    [Events.Shortcut]: { keys: string };
+    [Events.Error]: BizError;
+  };
+  const bus = base<TheTypesOfEvents>();
+
+  const unlisten = props.app.onKeydown((event) => {
+    _pressed_codes.push(event.code);
+    console.log(event.code, _pressed_codes);
+    methods.clearPressedKeys();
+    if (event.code === "Enter") {
+      if (_using_keyboard) {
+        bus.emit(Events.Shortcut, {
+          keys: "enter",
+        });
+        event.preventDefault();
+        return;
+      }
+    }
+    if (event.code === "Space") {
+      if (_using_keyboard) {
+        event.preventDefault();
+        bus.emit(Events.Shortcut, {
+          keys: "space",
+        });
+        return;
+      }
+    }
+    if (_pressed_codes.join("") === "KeyGKeyG") {
+      bus.emit(Events.Shortcut, {
+        keys: "gg",
+      });
+    }
+    if (event.code === "KeyJ") {
+      methods.moveToNextOption();
+      return;
+    }
+    if (event.code === "KeyK") {
+      methods.moveToPrevOption();
+      return;
+    }
+    if (event.code === "ArrowDown") {
+      methods.moveToNextOption();
+      event.preventDefault();
+      return;
+    }
+    if (event.code === "ArrowUp") {
+      methods.moveToPrevOption();
+      event.preventDefault();
+      return;
+    }
+  });
+
+  return {
+    methods,
+    ui,
+    state: _state,
+    ready() {},
+    destroy() {
+      unlisten();
+      bus.destroy();
+    },
+    onEnter(handler: Handler<TheTypesOfEvents[Events.Enter]>) {
+      return bus.on(Events.Enter, handler);
+    },
+    onShortcut(handler: Handler<TheTypesOfEvents[Events.Shortcut]>) {
+      return bus.on(Events.Shortcut, handler);
+    },
+    onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
+      return bus.on(Events.StateChange, handler);
+    },
+    onError(handler: Handler<TheTypesOfEvents[Events.Error]>) {
+      return bus.on(Events.Error, handler);
+    },
+  };
+}
 
 export function WithTagsInputModel(props: { app: ViewComponentProps["app"] } & InputProps<string>) {
   const methods = {
@@ -169,12 +387,12 @@ export function WithTagsInputModel(props: { app: ViewComponentProps["app"] } & I
   // ui.$input_select.onHide(() => {
   //   _opt_idx = 0;
   // });
-  props.app.onKeydown((event) => {
-    console.log(event.key);
+  const unlisten = props.app.onKeydown((event) => {
+    console.log(event.code);
     if (!ui.$input_select.visible) {
       return;
     }
-    if (event.key === "ArrowDown") {
+    if (event.code === "ArrowDown") {
       _opt_idx += 1;
       if (_opt_idx > _options.length - 1) {
         _opt_idx = _options.length - 1;
@@ -187,7 +405,7 @@ export function WithTagsInputModel(props: { app: ViewComponentProps["app"] } & I
       }
       methods.refresh();
     }
-    if (event.key === "ArrowUp") {
+    if (event.code === "ArrowUp") {
       _opt_idx -= 1;
       if (_opt_idx < 0) {
         _opt_idx = 0;
@@ -199,7 +417,7 @@ export function WithTagsInputModel(props: { app: ViewComponentProps["app"] } & I
       }
       methods.refresh();
     }
-    if (event.key === "Escape") {
+    if (event.code === "Escape") {
       ui.$input_select.hide();
     }
   });
@@ -210,6 +428,7 @@ export function WithTagsInputModel(props: { app: ViewComponentProps["app"] } & I
     state: _state,
     ready() {},
     destroy() {
+      unlisten();
       bus.destroy();
     },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {

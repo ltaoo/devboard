@@ -111,15 +111,18 @@ func (s *PasteService) DeletePasteEvent(body PasteEventBody) *Result {
 
 type PasteEventPreviewBody struct {
 	EventId string `json:"event_id"`
+	Focus   bool   `json:"focus"`
 }
 
 func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 	if body.EventId == "" {
 		return Error(fmt.Errorf("缺少 event_id 参数"))
 	}
-	url := "/preview?id=" + url.QueryEscape(body.EventId)
-	existing_win := s.Biz.FindWindow(url)
+	unique_url := "/preview"
+	url := unique_url + "?id=" + url.QueryEscape(body.EventId)
+	existing_win := s.Biz.FindWindow(unique_url)
 	if existing_win != nil {
+		existing_win.SetURL(url)
 		return Ok(map[string]interface{}{
 			"ok": true,
 		})
@@ -136,7 +139,7 @@ func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              url,
 	})
-	s.Biz.AppendWindow(url, win)
+	s.Biz.AppendWindow(unique_url, win)
 	return Ok(map[string]interface{}{})
 }
 
