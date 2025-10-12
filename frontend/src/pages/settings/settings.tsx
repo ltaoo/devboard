@@ -6,14 +6,14 @@ import { Check, File } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
-import { Button, Input, Textarea } from "@/components/ui";
+import { Button, Input, ScrollView, Textarea } from "@/components/ui";
 import { FieldObjV2 } from "@/components/fieldv2/obj";
 import { FieldV2 } from "@/components/fieldv2/field";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
-import { ButtonCore, InputCore } from "@/domains/ui";
+import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
 import { fetchUserSettings, updateUserSettings } from "@/biz/settings/service";
 
@@ -37,6 +37,7 @@ function SettingsViewModel(props: ViewComponentProps) {
     },
   };
   const ui = {
+    $view: new ScrollViewCore({}),
     $btn_submit: new ButtonCore({
       async onClick() {
         const r = await ui.$form_settings.fields.douyin.validate();
@@ -114,7 +115,7 @@ export function SettingsView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(SettingsViewModel, [props]);
 
   return (
-    <div class="space-y-8">
+    <ScrollView store={vm.ui.$view} class="p-4 space-y-8">
       <div class="block">
         <div class="text-2xl text-w-fg-0">User Settings</div>
         <div class="mt-4">
@@ -131,6 +132,6 @@ export function SettingsView(props: ViewComponentProps) {
           <Button store={vm.ui.$btn_submit}>提交</Button>
         </div>
       </div>
-    </div>
+    </ScrollView>
   );
 }

@@ -93,7 +93,7 @@ export function SettingsView(props: ViewComponentProps) {
                   class=""
                   classList={{
                     "px-4 py-2 rounded-md cursor-pointer hover:bg-w-bg-4": true,
-                    "bg-w-bg-4": menu.url === state().route,
+                    "bg-w-fg-4": menu.url === state().route,
                   }}
                   onClick={() => {
                     props.history.push(menu.url);
@@ -106,10 +106,8 @@ export function SettingsView(props: ViewComponentProps) {
           </For>
         </div>
       </div>
-      <div class="flex-1 w-0 p-4">
-        <div class="relative">
-          <RouteChildren {...props} />
-        </div>
+      <div class="relative flex-1 w-0">
+        <RouteChildren {...props} />
       </div>
     </div>
   );

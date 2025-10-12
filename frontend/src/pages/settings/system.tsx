@@ -8,6 +8,8 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
 import { fetchSystemInfo } from "@/biz/system/service";
+import { ScrollView } from "@/components/ui";
+import { ScrollViewCore } from "@/domains/ui";
 
 function SystemInfoModel(props: ViewComponentProps) {
   const request = {
@@ -23,7 +25,9 @@ function SystemInfoModel(props: ViewComponentProps) {
       request.system.info.run();
     },
   };
-  const ui = {};
+  const ui = {
+    $view: new ScrollViewCore({}),
+  };
   let _state = {
     get profile() {
       return request.system.info.response;
@@ -64,7 +68,7 @@ export function SystemInfoView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(SystemInfoModel, [props]);
 
   return (
-    <div>
+    <ScrollView store={vm.ui.$view} class="p-4">
       <Show when={state().profile}>
         <div>
           <div class="text-2xl">本机信息</div>
@@ -80,6 +84,6 @@ export function SystemInfoView(props: ViewComponentProps) {
           </For>
         </div>
       </Show>
-    </div>
+    </ScrollView>
   );
 }
