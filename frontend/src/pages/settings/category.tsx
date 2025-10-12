@@ -4,7 +4,9 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { render } from "solid-js/web";
 import { Edit, LoaderCircle, Plus, Trash } from "lucide-solid";
 
-import { Button, Input, Popover } from "@/components/ui";
+import { ViewComponentProps } from "@/store/types";
+import { useViewModel } from "@/hooks";
+import { Button, Input, Popover, ScrollView } from "@/components/ui";
 import { TreeSelect } from "@/components/tree-select/tree-select";
 import { TreeEdit } from "@/components/tree-select/tree-edit";
 
@@ -12,9 +14,7 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { TreeSelectModel } from "@/domains/ui/tree-select/tree-select";
 import { TreeNodeEditModel } from "@/domains/ui/tree-select/tree-node-edit";
-import { ButtonCore } from "@/domains/ui";
-import { ViewComponentProps } from "@/store/types";
-import { useViewModel } from "@/hooks";
+import { ButtonCore, ScrollViewCore } from "@/domains/ui";
 import { RequestCore } from "@/domains/request";
 import { fetchCategoryTree } from "@/biz/category/service";
 
@@ -36,6 +36,7 @@ function CategorySettingsModel(props: ViewComponentProps) {
     },
   };
   const ui = {
+    $view: new ScrollViewCore({}),
     $tree: TreeSelectModel<Node>({ nodes: [], value: [], onChange() {} }),
     $edit: TreeNodeEditModel<Node>({
       onCreate(v) {
@@ -160,7 +161,7 @@ export function CategorySettingsView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(CategorySettingsModel, [props]);
 
   return (
-    <div class="w-full h-full transition-all duration-120">
+    <ScrollView store={vm.ui.$view} class="p-4">
       <TreeEdit
         store={vm.ui.$tree}
         renderNode={(v) => {
@@ -214,6 +215,6 @@ export function CategorySettingsView(props: ViewComponentProps) {
           </div>
         </div>
       </Popover>
-    </div>
+    </ScrollView>
   );
 }

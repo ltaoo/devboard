@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -82,10 +83,9 @@ type SynchronizeTask struct {
 }
 
 type RecordTask struct {
-	Name     string `json:"name"`
-	Filepath string `json:"filepath"`
-	Type     string `json:"type"` // "file" 或 "folder"
-	Content  string `json:"content,omitempty"`
+	Type string                 `json:"type"` // "create" "update" "delete"
+	Id   string                 `json:"id"`
+	Data map[string]interface{} `json:"data"`
 }
 type FileTask struct {
 	Type     string `json:"type"` // "new_file" "insert_line" "delete_line" "update_line"
@@ -321,32 +321,34 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 		for scanner.Scan() {
 			lines = append(lines, scanner.Text())
 		}
-		// 替换指定行
-		// lines[lineNumber-1] = newContent
-		remote_latest_operation_time_str := lines[1]
-		remote_millis, err := strconv.ParseInt(remote_latest_operation_time_str, 10, 64)
-		if err != nil {
-			log("[ERROR]format latest_operation_time failed" + err.Error())
-			add_message(&SynchronizeMessage{
-				Type:  SynchronizeMessageError,
-				Scope: "format time",
-				Text:  err.Error() + "[]" + remote_meta_content,
-			})
-			return &result
-			// return Error(err)
-		}
-		_remote_last_operation_time := time.Unix(0, remote_millis*int64(time.Millisecond))
-		// _remote_last_operation_time, err := time.Parse("20060102", remote_last_operation_time)
-		// 如果本地数据库，最新的记录时间在 webdav 之前，说明需要 同步到本地，而不能 同步到远端
-		log("[LOG]compare the latest_operation_time, local:" + table_last_operation_time + ", remote:" + remote_meta_content)
-		if _record_last_operation_time.Before(_remote_last_operation_time) {
-			log("[LOG]need pull latest records from remote server")
-			add_message(&SynchronizeMessage{
-				Type:  SynchronizeMessageSuccess,
-				Scope: "result",
-				Text:  "Please pull the remote records to local.",
-			})
-			return &result
+		if len(lines) != 0 {
+			// 替换指定行
+			// lines[lineNumber-1] = newContent
+			remote_latest_operation_time_str := lines[0]
+			remote_millis, err := strconv.ParseInt(remote_latest_operation_time_str, 10, 64)
+			if err != nil {
+				log("[ERROR]format latest_operation_time failed" + err.Error())
+				add_message(&SynchronizeMessage{
+					Type:  SynchronizeMessageError,
+					Scope: "format time",
+					Text:  err.Error() + "[]" + remote_meta_content,
+				})
+				return &result
+				// return Error(err)
+			}
+			_remote_last_operation_time := time.Unix(0, remote_millis*int64(time.Millisecond))
+			// _remote_last_operation_time, err := time.Parse("20060102", remote_last_operation_time)
+			// 如果本地数据库，最新的记录时间在 webdav 之前，说明需要 同步到本地，而不能 同步到远端
+			log("[LOG]compare the latest_operation_time, local:" + table_last_operation_time + ", remote:" + remote_meta_content)
+			if _record_last_operation_time.Before(_remote_last_operation_time) {
+				log("[LOG]need pull latest records from remote server")
+				add_message(&SynchronizeMessage{
+					Type:  SynchronizeMessageSuccess,
+					Scope: "result",
+					Text:  "Please pull the remote records to local.",
+				})
+				return &result
+			}
 		}
 	}
 	// 按天分组记录
@@ -565,9 +567,9 @@ func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 
 }
 
-func get_day_timestamp_range(dateStr string) (start_time, end_time int64, err error) {
+func get_day_timestamp_range(date_str string) (start_time, end_time int64, err error) {
 	// 解析日期字符串
-	date, err := time.Parse("20060102", dateStr)
+	date, err := time.Parse("2006-01-02", date_str)
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid date format, expected YYYYMMDD: %v", err)
 	}
@@ -592,29 +594,35 @@ func WithTable(table string) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
-func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, client *gowebdav.Client) *SynchronizeResult {
+func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *gorm.DB, client *gowebdav.Client) *SynchronizeResult {
 	result := SynchronizeResult{
-		Messages: []*SynchronizeMessage{},
-		// Tasks: []SynchronizeTask{},
+		Logs:        []string{},
+		Messages:    []*SynchronizeMessage{},
+		RecordTasks: []*RecordTask{},
 	}
+	// var record_tasks []*RecordTask
 
 	add_message := func(msg *SynchronizeMessage) {
 		result.Messages = append(result.Messages, msg)
 	}
+	add_record_task := func(task *RecordTask) {
+		result.RecordTasks = append(result.RecordTasks, task)
+	}
+	log := func(content string) {
+		result.Logs = append(result.Logs, content)
+	}
 
-	// table_name := "paste_event"
 	table_out_dir := filepath.Join(root_dir, table_name)
-	remote_table_lot_file_path := filepath.Join(table_out_dir, "last_operation_time")
-	fmt.Println("check existing the ", remote_table_lot_file_path)
+	remote_table_lot_file_path := filepath.Join(table_out_dir, "meta")
 	_, err := client.Stat(remote_table_lot_file_path)
 	if err != nil {
 		if !gowebdav.IsErrNotFound(err) {
+			log("[ERROR]find meta file failed, because " + remote_table_lot_file_path)
 			add_message(&SynchronizeMessage{
 				Type:  SynchronizeMessageError,
 				Scope: "webdav",
 				Text:  err.Error(),
 			})
-			// return Error(err)
 			return &result
 		}
 		// 文件不存在
@@ -624,7 +632,6 @@ func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, clien
 			Text:  "未找到可同步的数据源",
 		})
 		return &result
-		// return Error(fmt.Errorf("未找到可同步的数据源"))
 	}
 	// 文件存在
 	// remote_lot_byte, err := client.Read(remote_table_lot_file_path)
@@ -637,17 +644,16 @@ func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, clien
 	// }
 	// remote_last_operation_time := time.Unix(0, remote_millis*int64(time.Millisecond))
 	// _remote_last_operation_time, err := time.Parse("20060102", remote_last_operation_time)
-	// 如果本地数据库，最新的记录时间在 webdav 之前，说明需要 同步到本地，而不能 同步到远端
 	var records []map[string]interface{}
 	r := db.Table(table_name).Order("last_operation_time DESC").Limit(1).Find(&records)
 	if r.Error != nil {
+		log("[ERROR]find the latest record from local data failed, because " + remote_table_lot_file_path)
 		add_message(&SynchronizeMessage{
 			Type:  SynchronizeMessageError,
 			Scope: "database",
 			Text:  r.Error.Error(),
 		})
 		return &result
-		// return Error(fmt.Errorf("查询记录失败: %v", result.Error))
 	}
 	// if len(records) != 0 {
 	// 	local_record := records[0]
@@ -665,95 +671,92 @@ func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, clien
 
 	entries, err := client.ReadDir(table_out_dir)
 	if err != nil {
-		fmt.Printf("读取目录失败: %v\n", err)
-		// return
-		// return Error(err)
+		log("[ERROR]read dir " + table_out_dir + " failed, because " + err.Error())
 		add_message(&SynchronizeMessage{
 			Type: SynchronizeMessageError,
-			Text: r.Error.Error(),
+			Text: err.Error(),
 		})
 		return &result
 	}
 
-	var records_prepare_apply []ActionsNeedApply
-
-	for _, remote_day_folder := range entries {
-		remote_day_folder_path := filepath.Join(table_out_dir, remote_day_folder.Name())
-		if remote_day_folder.IsDir() {
-			day_start, day_end, err := get_day_timestamp_range(remote_day_folder.Name())
+	for _, remote_day_file := range entries {
+		nn := remote_day_file.Name()
+		// is_day_file :=
+		if match, _ := regexp.MatchString(`^[0-9]{4}-[0-9]{2}-[0-9]{2}`, nn); !match {
+			continue
+		}
+		remote_day_folder_path := filepath.Join(table_out_dir)
+		if !remote_day_file.IsDir() {
+			log("[LOG]walk day file content of " + remote_day_folder_path)
+			day_start, day_end, err := get_day_timestamp_range(remote_day_file.Name())
 			if err != nil {
-				// return Error(err)
+				log("[ERROR]parse day_file failed, because " + err.Error())
+				continue
 			}
 			var latest_records []map[string]interface{}
 			if err := db.Table(table_name).Where("last_operation_time >= ? AND last_operation_time <= ?", day_start, day_end).Order("last_operation_time DESC").Limit(1).Find(&latest_records).Error; err != nil {
+				log("[ERROR]find latest record failed, because " + err.Error())
 				add_message(&SynchronizeMessage{
 					Type:  SynchronizeMessageError,
 					Scope: "database",
-					Text:  r.Error.Error(),
+					Text:  err.Error(),
 				})
-				// return Error(err)
+				continue
+			}
+			// 远端存在文件，但本地没有找到记录，说明整个文件内的记录都是新增的
+			remote_records_byte, err := client.Read(remote_day_folder_path)
+			if err != nil {
+				log("[ERROR]read day file failed, because " + err.Error())
+				add_message(&SynchronizeMessage{
+					Type:  SynchronizeMessageError,
+					Scope: "webdav",
+					Text:  err.Error(),
+				})
+				continue
+			}
+			// 将内容按行分割
+			scanner := bufio.NewScanner(bytes.NewReader(remote_records_byte))
+			var lines []string
+			for scanner.Scan() {
+				lines = append(lines, scanner.Text())
+			}
+			if len(lines) == 0 {
+				log("[ERROR]the file " + remote_day_folder_path + " content is empty?")
 				continue
 			}
 			if len(latest_records) == 0 {
-				// 远端存在文件，但本地没有找到记录，说明整个文件夹内的文件都是新增的
-				remote_records, err := client.ReadDir(remote_day_folder_path)
-				if err != nil {
-					fmt.Printf("读取目录失败: %v\n", err)
-					add_message(&SynchronizeMessage{
-						Type:  SynchronizeMessageError,
-						Scope: "webdav",
-						Text:  r.Error.Error(),
-					})
-					continue
-					// return Error(err)
-				}
-				for _, remote_record := range remote_records {
-					if remote_record.IsDir() {
-						id := remote_record.Name()
-						remote_record_file_path := filepath.Join(remote_day_folder_path, id)
-						remote_record_data_file_path := filepath.Join(remote_record_file_path, "data")
-						fmt.Println("0", remote_record_data_file_path)
-						remote_record_byte, err := client.Read(remote_record_data_file_path)
-						if err != nil {
-							// return Error(err)
-							add_message(&SynchronizeMessage{
-								Type:  SynchronizeMessageError,
-								Scope: "webdav",
-								Text:  r.Error.Error(),
-							})
-							continue
-						}
-						records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
-							Id:      id,
-							Action:  1,
-							Content: string(remote_record_byte),
-						})
+				for _, line := range lines {
+					// id := remote_record.Name()
+					// remote_record_file_path := filepath.Join(remote_day_folder_path, id)
+					// remote_record_data_file_path := filepath.Join(remote_record_file_path, "data")
+					// fmt.Println("0", remote_record_data_file_path)
+					// remote_record_byte, err := client.Read(remote_record_data_file_path)
+					var rr map[string]interface{}
+					if err := json.Unmarshal([]byte(line), &rr); err != nil {
+						log("[ERROR]parse the record JSON failed, because " + err.Error())
+						continue
 					}
+					add_record_task(&RecordTask{
+						Type: "create",
+						Data: rr,
+					})
 				}
 				continue
 			}
 			latest_record := latest_records[0]
 			// 检查该天远端最新修改时间，和本地该天范围内的最新记录修改时间
-			remote_record_lot_file_path := filepath.Join(remote_day_folder_path, "last_operation_time")
-			remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
-			if err != nil {
-				add_message(&SynchronizeMessage{
-					Type:  SynchronizeMessageError,
-					Scope: "webdav",
-					Text:  r.Error.Error(),
-				})
-				continue
-				// return Error(err)
-			}
-			remote_record_lot_str := string(remote_record_lot_byte)
+			// remote_record_lot_file_path := filepath.Join(remote_day_folder_path, "last_operation_time")
+			// remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
+			remote_record_lot_str := lines[len(lines)-1]
 			remote_record_lot_millis, err := strconv.ParseInt(remote_record_lot_str, 10, 64)
 			// remote_record_last_operation_time, err := time.Parse("20060102", local_last_operation_time)
 			remote_record_last_operation_time := time.Unix(0, remote_record_lot_millis*int64(time.Millisecond))
 			if err != nil {
+				log("[ERROR]format time failed, because " + err.Error())
 				add_message(&SynchronizeMessage{
 					Type:  SynchronizeMessageError,
 					Scope: "format time",
-					Text:  r.Error.Error(),
+					Text:  err.Error(),
 				})
 				continue
 				// return Error(err)
@@ -761,143 +764,142 @@ func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, clien
 			// _record_last_operation_time, err := time.Parse("20060102", latest_record.LastOperationTime)
 			local_record_lot_millis, err := strconv.ParseInt(latest_record["last_operation_time"].(string), 10, 64)
 			if err != nil {
+				log("[ERROR]format time failed, because " + err.Error())
 				add_message(&SynchronizeMessage{
 					Type:  SynchronizeMessageError,
 					Scope: "format time",
-					Text:  r.Error.Error(),
+					Text:  err.Error(),
 				})
 				continue
-				// return Error(err)
 			}
 			local_record_last_operation_time := time.Unix(0, local_record_lot_millis*int64(time.Millisecond))
+			log("[LOG]compare the latest operation time of special day")
 			if local_record_last_operation_time.Before(remote_record_last_operation_time) {
-				remote_record_list, err := client.ReadDir(remote_day_folder_path)
-				if err != nil {
-					fmt.Printf("读取目录失败: %v\n", err)
-					add_message(&SynchronizeMessage{
-						Type:  SynchronizeMessageError,
-						Scope: "webdav",
-						Text:  r.Error.Error(),
-					})
-					continue
-					// return Error(err)
-				}
-				for _, remote_record_folder := range remote_record_list {
-					if remote_record_folder.IsDir() {
-						id := remote_record_folder.Name()
-						remote_record_folder_path := filepath.Join(remote_day_folder_path, id)
-						var local_records []map[string]interface{}
-						if err := db.Table(table_name).Where("id = ?", id).Limit(1).Find(&local_records).Error; err != nil {
-							add_message(&SynchronizeMessage{
-								Type:  SynchronizeMessageError,
-								Scope: "database",
-								Text:  r.Error.Error(),
-							})
-							continue
-							// return Error(err)
-						}
-						if len(local_records) == 0 {
-							// 远端存在文件但本地没有对应记录，说明文件是 新增
-							remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
-							fmt.Println("1", remote_record_data_file_path)
-							remote_record_byte, err := client.Read(remote_record_data_file_path)
-							if err != nil {
-								add_message(&SynchronizeMessage{
-									Type:  SynchronizeMessageError,
-									Scope: "webdav",
-									Text:  r.Error.Error(),
-								})
-								continue
-								// return Error(err)
-							}
-							records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
-								Id:      id,
-								Action:  1,
-								Content: string(remote_record_byte),
-							})
-							continue
-						}
-						// 有匹配的记录，说明需要处理冲突，以最新的记录为准
-						remote_record_lot_file_path := filepath.Join(remote_record_folder_path, "last_operation_time")
-						fmt.Println("2", remote_record_lot_file_path)
-						remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
-						if err != nil {
-							add_message(&SynchronizeMessage{
-								Type:  SynchronizeMessageError,
-								Scope: "webdav",
-								Text:  r.Error.Error(),
-							})
-							continue
-							// return Error(err)
-						}
-						remote_record_lot_content := string(remote_record_lot_byte)
-						remote_record_lot_millis, err := strconv.ParseInt(remote_record_lot_content, 10, 64)
-						if err != nil {
-							add_message(&SynchronizeMessage{
-								Type:  SynchronizeMessageError,
-								Scope: "format time",
-								Text:  r.Error.Error(),
-							})
-							continue
-							// return Error(err)
-						}
-						remote_record_last_operation_time := time.Unix(0, remote_record_lot_millis*int64(time.Millisecond))
-
-						local_record := local_records[0]
-						local_record_lot_content := local_record["last_operation_time"].(string)
-						local_record_lot_millis, err := strconv.ParseInt(local_record_lot_content, 10, 64)
-						if err != nil {
-							add_message(&SynchronizeMessage{
-								Type:  SynchronizeMessageError,
-								Scope: "format time",
-								Text:  r.Error.Error(),
-							})
-							continue
-							// return Error(err)
-						}
-						local_record_last_operation_time := time.Unix(0, local_record_lot_millis*int64(time.Millisecond))
-						if remote_record_last_operation_time.Before(local_record_last_operation_time) {
-							continue
-						}
-						remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
-						fmt.Println("3", remote_record_data_file_path)
-						remote_record_data_byte, err := client.Read(remote_record_data_file_path)
-						if err != nil {
-							add_message(&SynchronizeMessage{
-								Type:  SynchronizeMessageError,
-								Scope: "webdav",
-								Text:  r.Error.Error(),
-							})
-							continue
-							// return Error(err)
-						}
-						records_prepare_apply = append(records_prepare_apply, ActionsNeedApply{
-							Id:      id,
-							Action:  2,
-							Content: string(remote_record_data_byte),
-						})
+				for _, line := range lines {
+					// id := remote_record_folder.Name()
+					// remote_record_folder_path := filepath.Join(remote_day_folder_path, id)
+					var rr map[string]interface{}
+					if err := json.Unmarshal([]byte(line), &rr); err != nil {
+						log("[ERROR]parse the record JSON failed, because " + err.Error())
+						continue
 					}
+					id, ok := rr["id"].(string)
+					if !ok {
+						log("[ERROR]get id failed")
+						continue
+					}
+					var local_records []map[string]interface{}
+					if err := db.Table(table_name).Where("id = ?", id).Limit(1).Find(&local_records).Error; err != nil {
+						log("[ERROR]find the record with id failed, because " + err.Error())
+						add_message(&SynchronizeMessage{
+							Type:  SynchronizeMessageError,
+							Scope: "database",
+							Text:  err.Error(),
+						})
+						continue
+					}
+					if len(local_records) == 0 {
+						// 远端存在文件但本地没有对应记录，说明文件是 新增
+						add_record_task(&RecordTask{
+							Type: "create",
+							Data: rr,
+						})
+						continue
+					}
+					// 有匹配的记录，说明需要处理冲突，以最新的记录为准
+					// remote_record_lot_file_path := filepath.Join(remote_record_folder_path, "last_operation_time")
+					// fmt.Println("2", remote_record_lot_file_path)
+					// remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
+					// if err != nil {
+					// 	add_message(&SynchronizeMessage{
+					// 		Type:  SynchronizeMessageError,
+					// 		Scope: "webdav",
+					// 		Text:  r.Error.Error(),
+					// 	})
+					// 	continue
+					// }
+					remote_record_lot_content, ok := (rr["last_operation_time"]).(string)
+					if !ok {
+						log("[ERROR]get latest operation time failed, " + line)
+						continue
+					}
+					remote_record_lot_millis, err := strconv.ParseInt(remote_record_lot_content, 10, 64)
+					if err != nil {
+						log("[ERROR]parse time failed, because " + err.Error())
+						add_message(&SynchronizeMessage{
+							Type:  SynchronizeMessageError,
+							Scope: "format time",
+							Text:  err.Error(),
+						})
+						continue
+					}
+					remote_record_last_operation_time := time.Unix(0, remote_record_lot_millis*int64(time.Millisecond))
+					local_record := local_records[0]
+					local_record_lot_content := local_record["last_operation_time"].(string)
+					local_record_lot_millis, err := strconv.ParseInt(local_record_lot_content, 10, 64)
+					if err != nil {
+						log("[ERROR]parse time failed, because " + err.Error())
+						add_message(&SynchronizeMessage{
+							Type:  SynchronizeMessageError,
+							Scope: "format time",
+							Text:  err.Error(),
+						})
+						continue
+					}
+					local_record_last_operation_time := time.Unix(0, local_record_lot_millis*int64(time.Millisecond))
+					if remote_record_last_operation_time.Before(local_record_last_operation_time) {
+						log("[ERROR]the records is latest, ignore the remote file")
+						continue
+					}
+					// remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
+					// fmt.Println("3", remote_record_data_file_path)
+					// remote_record_data_byte, err := client.Read(remote_record_data_file_path)
+					// if err != nil {
+					// 	add_message(&SynchronizeMessage{
+					// 		Type:  SynchronizeMessageError,
+					// 		Scope: "webdav",
+					// 		Text:  r.Error.Error(),
+					// 	})
+					// 	continue
+					// }
+					add_record_task(&RecordTask{
+						Type: "update",
+						Id:   id,
+						Data: rr,
+					})
 				}
 			}
 		}
 	}
 
-	// var errors []error
+	return &result
+}
 
-	for _, r := range records_prepare_apply {
-		fmt.Println(r.Id, r.Action)
-		var d map[string]interface{}
-		if err := json.Unmarshal([]byte(r.Content), &d); err != nil {
-			continue
-		}
-		if r.Action == 1 {
-			if err := db.Table(table_name).Create(d); err != nil {
+func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, client *gowebdav.Client) *SynchronizeResult {
+	result := build_remote_sync_to_local_tasks(table_name, root_dir, db, client)
+
+	add_message := func(msg *SynchronizeMessage) {
+		result.Messages = append(result.Messages, msg)
+	}
+	log := func(content string) {
+		result.Logs = append(result.Logs, content)
+	}
+
+	for _, r := range result.RecordTasks {
+		// var d map[string]interface{}
+		// if err := json.Unmarshal([]byte(r.Content), &d); err != nil {
+		// 	continue
+		// }
+		log("[LOG]" + r.Type)
+		if r.Type == "create" {
+			if err := db.Table(table_name).Create(r.Data); err != nil {
 				continue
 			}
 		}
-		if r.Action == 2 {
-			r := db.Table(table_name).Where("id = ?", r.Id).Updates(d)
+		if r.Type == "update" {
+			r := db.Table(table_name).Where("id = ?", r.Id).Updates(r.Data)
 			if r.Error != nil {
+				log("[ERROR]update record failed, because " + r.Error.Error())
 				// errors = append(errors, fmt.Errorf("更新记录失败: %v", result.Error))
 				add_message(&SynchronizeMessage{
 					Type:  SynchronizeMessageError,
@@ -907,11 +909,12 @@ func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, clien
 				continue
 			}
 			if r.RowsAffected == 0 {
+				log("[ERROR]update record failed, no matched record.")
 				// errors = append(errors, fmt.Errorf("未找到要更新的记录ID: %s", r.Id))
 				add_message(&SynchronizeMessage{
 					Type:  SynchronizeMessageError,
 					Scope: "database",
-					Text:  r.Error.Error(),
+					Text:  "",
 				})
 			}
 		}
@@ -925,10 +928,23 @@ func remote_sync_to_local(table_name string, root_dir string, db *gorm.DB, clien
 		// 	}
 		// }
 	}
-
-	return &result
+	return result
 }
 
+func (s *SyncService) RemoteToLocalTask(body WebDavSyncConfigBody) *Result {
+	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
+	err := client.Connect()
+	if err != nil {
+		return Error(err)
+	}
+	tables := []string{"paste_event", "category_node", "category_hierarchy", "paste_event_category_mapping"}
+	results := make(map[string]*SynchronizeResult)
+	for _, t := range tables {
+		r := build_remote_sync_to_local_tasks(t, body.RootDir, s.Biz.DB, client)
+		results[t] = r
+	}
+	return Ok(results)
+}
 func (s *SyncService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
 	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
 	err := client.Connect()

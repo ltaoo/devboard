@@ -127,7 +127,7 @@ export function connectScroll(store: ScrollViewCore, $scroll: HTMLDivElement) {
     $scroll.scrollTop = top;
   };
   store.getScrollTop = () => {
-    console.log("[CONNECT]scroll-view/connect - store.getScrollTop", $scroll);
+    // console.log("[CONNECT]scroll-view/connect - store.getScrollTop", $scroll);
     return $scroll.scrollTop;
     // return _scroll_top;
   };

@@ -3,14 +3,14 @@ import { Check, File } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, ScrollView } from "@/components/ui";
 import { FieldObjV2 } from "@/components/fieldv2/obj";
 import { FieldV2 } from "@/components/fieldv2/field";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
-import { ButtonCore, InputCore } from "@/domains/ui";
+import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
 import {
   syncToRemote,
@@ -18,6 +18,7 @@ import {
   pingWebDav,
   fetchDatabaseDirs,
   buildLocalToRemoteTasks,
+  buildRemoteToLocalTasks,
 } from "@/biz/synchronize/service";
 import { fetchSystemInfo } from "@/biz/system/service";
 import { highlightFileInFolder } from "@/biz/fs/service";
@@ -38,6 +39,7 @@ function SynchronizationViewModel(props: ViewComponentProps) {
       uploadToWebdav: new RequestCore(syncToRemote, { client: props.client }),
       buildLocalToRemoteTasks: new RequestCore(buildLocalToRemoteTasks, { client: props.client }),
       downloadFromWebdav: new RequestCore(syncFromRemote, { client: props.client }),
+      buildRemoteToLocalTasks: new RequestCore(buildRemoteToLocalTasks, { client: props.client }),
     },
   };
   const methods = {
@@ -63,6 +65,7 @@ function SynchronizationViewModel(props: ViewComponentProps) {
     },
   };
   const ui = {
+    $view: new ScrollViewCore({}),
     $btn_validate: new ButtonCore({
       async onClick() {
         const r = await ui.$form_webdav.validate();
@@ -125,6 +128,24 @@ function SynchronizationViewModel(props: ViewComponentProps) {
           root_dir: r.data.root_dir,
         };
         request.sync.uploadToWebdav.run(body);
+      },
+    }),
+    $btn_prepare_import: new ButtonCore({
+      async onClick() {
+        const r = await ui.$form_webdav.validate();
+        if (r.error) {
+          props.app.tip({
+            text: r.error.messages,
+          });
+          return;
+        }
+        const body = {
+          url: r.data.url,
+          username: r.data.username,
+          password: r.data.password,
+          root_dir: r.data.root_dir,
+        };
+        request.sync.buildRemoteToLocalTasks.run(body);
       },
     }),
     $btn_import: new ButtonCore({
@@ -220,62 +241,71 @@ export function SynchronizationView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(SynchronizationViewModel, [props]);
 
   return (
-    <div class="space-y-8">
-      <div class="block">
-        <div class="text-2xl">数据</div>
-        <div class="mt-4 space-y-2">
-          <For each={state().database?.fields}>
-            {(field) => {
-              return (
-                <div
-                  class="field text-w-fg-0 cursor-pointer"
-                  onClick={() => {
-                    vm.methods.handleClickField(field);
-                  }}
-                >
-                  <div>{field.label}</div>
-                  <div class="flex items-center gap-1">
-                    <File class="w-4 h-4 text-w-fg-0" />
-                    <div>{field.text}</div>
+    <ScrollView store={vm.ui.$view} class="p-4">
+      <div class="space-y-8">
+        <div class="block">
+          <div class="text-2xl">数据</div>
+          <div class="mt-4 space-y-2">
+            <For each={state().database?.fields}>
+              {(field) => {
+                return (
+                  <div
+                    class="field text-w-fg-0 cursor-pointer"
+                    onClick={() => {
+                      vm.methods.handleClickField(field);
+                    }}
+                  >
+                    <div>{field.label}</div>
+                    <div class="flex items-center gap-1">
+                      <File class="w-4 h-4 text-w-fg-0" />
+                      <div>{field.text}</div>
+                    </div>
                   </div>
+                );
+              }}
+            </For>
+          </div>
+        </div>
+        <div class="block">
+          <div class="text-2xl">Webdav</div>
+          <div class="mt-4">
+            <FieldObjV2 class="space-y-2" store={vm.ui.$form_webdav}>
+              <FieldV2 store={vm.ui.$form_webdav.fields.url}>
+                <Input store={vm.ui.$form_webdav.fields.url.input} />
+              </FieldV2>
+              <FieldV2 store={vm.ui.$form_webdav.fields.username}>
+                <Input store={vm.ui.$form_webdav.fields.username.input} />
+              </FieldV2>
+              <FieldV2 store={vm.ui.$form_webdav.fields.password}>
+                <Input store={vm.ui.$form_webdav.fields.password.input} />
+              </FieldV2>
+              <FieldV2 store={vm.ui.$form_webdav.fields.root_dir}>
+                <Input store={vm.ui.$form_webdav.fields.root_dir.input} />
+              </FieldV2>
+            </FieldObjV2>
+          </div>
+          <div class="mt-4 space-y-1">
+            <div>
+              <Button store={vm.ui.$btn_validate}>
+                <div class="flex items-center space-x-1">
+                  <Show when={state().ping?.ok}>
+                    <Check class="w-4 h-4 text-w-green" />
+                  </Show>
+                  <div>测试</div>
                 </div>
-              );
-            }}
-          </For>
-        </div>
-      </div>
-      <div class="block">
-        <div class="text-2xl">Webdav</div>
-        <div class="mt-4">
-          <FieldObjV2 class="space-y-2" store={vm.ui.$form_webdav}>
-            <FieldV2 store={vm.ui.$form_webdav.fields.url}>
-              <Input store={vm.ui.$form_webdav.fields.url.input} />
-            </FieldV2>
-            <FieldV2 store={vm.ui.$form_webdav.fields.username}>
-              <Input store={vm.ui.$form_webdav.fields.username.input} />
-            </FieldV2>
-            <FieldV2 store={vm.ui.$form_webdav.fields.password}>
-              <Input store={vm.ui.$form_webdav.fields.password.input} />
-            </FieldV2>
-            <FieldV2 store={vm.ui.$form_webdav.fields.root_dir}>
-              <Input store={vm.ui.$form_webdav.fields.root_dir.input} />
-            </FieldV2>
-          </FieldObjV2>
-        </div>
-        <div class="mt-4 space-x-1">
-          <Button store={vm.ui.$btn_validate}>
-            <div class="flex items-center space-x-1">
-              <Show when={state().ping?.ok}>
-                <Check class="w-4 h-4 text-w-green" />
-              </Show>
-              <div>测试</div>
+              </Button>
             </div>
-          </Button>
-          <Button store={vm.ui.$btn_prepare_export}>测试同步至 webdav</Button>
-          <Button store={vm.ui.$btn_export}>同步至 webdav</Button>
-          <Button store={vm.ui.$btn_import}>从 webdav 同步</Button>
+            <div class="flex space-x-1">
+              <Button store={vm.ui.$btn_prepare_export}>测试同步至 webdav</Button>
+              <Button store={vm.ui.$btn_export}>同步至 webdav</Button>
+            </div>
+            <div class="flex space-x-1">
+              <Button store={vm.ui.$btn_prepare_import}>测试从 webdav 同步</Button>
+              <Button store={vm.ui.$btn_import}>从 webdav 同步</Button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </ScrollView>
   );
 }
