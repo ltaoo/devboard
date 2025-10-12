@@ -447,7 +447,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
               <div
                 classList={{
                   "paste-event-card group relative p-2 rounded-md outline outline-2 outline-w-fg-3": true,
-                  "bg-w-bg-5": state().highlighted_idx === idx,
+                  "bg-w-fg-5": state().highlighted_idx === idx,
                 }}
                 onClick={() => {
                   vm.ui.$select.methods.handleEnterMenuOption(idx);

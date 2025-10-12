@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -38,7 +38,7 @@ func (s *SyncService) FetchDatabaseDirs() *Result {
 	}, {
 		Key:   "settings_filepath",
 		Label: "用户配置",
-		Text:  filepath.Join(s.Biz.Config.UserConfigDir, s.Biz.Config.UserConfigName),
+		Text:  path.Join(s.Biz.Config.UserConfigDir, s.Biz.Config.UserConfigName),
 	}}
 
 	return Ok(map[string]interface{}{
@@ -84,7 +84,7 @@ type SynchronizeTask struct {
 
 type RecordTask struct {
 	Type string                 `json:"type"` // "create" "update" "delete"
-	Id   string                 `json:"id"`
+	Id   string                 `json:"id,omitempty"`
 	Data map[string]interface{} `json:"data"`
 }
 type FileTask struct {
@@ -227,9 +227,9 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 	// add_record_task := func(task *RecordTask) {
 	// 	result.RecordTasks = append(result.RecordTasks, task)
 	// }
-	table_out_dir := filepath.Join(root_dir, table_name)
+	table_out_dir := path.Join(root_dir, table_name)
 	remote_last_operation_time_filename := "meta"
-	remote_meta_filepath := filepath.Join(table_out_dir, remote_last_operation_time_filename)
+	remote_meta_filepath := path.Join(table_out_dir, remote_last_operation_time_filename)
 	var records []map[string]interface{}
 	log("[LOG]before find latest record")
 	if err := db.Table(table_name).Order("last_operation_time DESC").Limit(1).Find(&records).Error; err != nil {
@@ -378,7 +378,7 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 		// }
 		// day_text := day_time.Format("2006-01-02")
 		day_text := day
-		day_dir := filepath.Join(table_out_dir, day_text)
+		day_dir := path.Join(table_out_dir, day_text)
 		// if err := os.MkdirAll(day_dir, 0755); err != nil {
 		// 	return Error(fmt.Errorf("创建日期目录失败: %v", err))
 		// }
@@ -434,7 +434,7 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 			// last_operation_time := fmt.Sprintf("%d", _last_operation_time.Unix())
 			// last_operation_time := strconv.FormatInt(_last_operation_time.UnixMilli(), 10)
 			// last_operation_type := fmt.Sprintf("%d", record["last_operation_type"])
-			// record_filepath := filepath.Join(day_dir, uid)
+			// record_filepath := path.Join(day_dir, uid)
 			// add_file_task(&FileTask{
 			// 	Type:     "insert_line",
 			// 	Name:     uid,
@@ -445,7 +445,7 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 			// 	return Error(fmt.Errorf("创建数据目录失败: %v", err))
 			// }
 			// data_filename := "data"
-			// data_filepath := filepath.Join(record_filepath, data_filename)
+			// data_filepath := path.Join(record_filepath, data_filename)
 			add_file_task(&FileTask{
 				Type:     "insert_line",
 				Filepath: day_dir,
@@ -456,7 +456,7 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 			// }
 
 			// last_operation_time_filename := "last_operation_time"
-			// last_time_filepath := filepath.Join(record_filepath, last_operation_time_filename)
+			// last_time_filepath := path.Join(record_filepath, last_operation_time_filename)
 			// add_file_task(&FileTask{
 			// 	Name:     last_operation_time_filename,
 			// 	Filepath: last_time_filepath,
@@ -467,7 +467,7 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 			// 	return Error(fmt.Errorf("写入操作时间文件失败: %v", err))
 			// }
 			// last_operation_type_filename := "last_operation_type"
-			// last_type_filepath := filepath.Join(record_filepath, last_operation_type_filename)
+			// last_type_filepath := path.Join(record_filepath, last_operation_type_filename)
 			// files = append(files, &FileNode{
 			// 	Name:     last_operation_type_filename,
 			// 	Filepath: last_type_filepath,
@@ -491,7 +491,7 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 		}
 
 		// day_last_operation_time_filename := "last_operation_time"
-		// day_last_time_filepath := filepath.Join(day_dir, day_last_operation_time_filename)
+		// day_last_time_filepath := path.Join(day_dir, day_last_operation_time_filename)
 		day_last_operation_time := strconv.FormatInt(_day_last_operation_time.UnixMilli(), 10)
 		add_file_task(&FileTask{
 			Type:     "insert_line",
@@ -612,12 +612,12 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 		result.Logs = append(result.Logs, content)
 	}
 
-	table_out_dir := filepath.Join(root_dir, table_name)
-	remote_table_lot_file_path := filepath.Join(table_out_dir, "meta")
-	_, err := client.Stat(remote_table_lot_file_path)
+	table_dir := path.Join(root_dir, table_name)
+	remote_table_meta_file_path := path.Join(table_dir, "meta")
+	_, err := client.Stat(remote_table_meta_file_path)
 	if err != nil {
 		if !gowebdav.IsErrNotFound(err) {
-			log("[ERROR]find meta file failed, because " + remote_table_lot_file_path)
+			log("[ERROR]find meta file failed, because " + remote_table_meta_file_path)
 			add_message(&SynchronizeMessage{
 				Type:  SynchronizeMessageError,
 				Scope: "webdav",
@@ -625,6 +625,7 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 			})
 			return &result
 		}
+		log("[ERROR]the meta file not existing, " + remote_table_meta_file_path)
 		// 文件不存在
 		add_message(&SynchronizeMessage{
 			Type:  SynchronizeMessageError,
@@ -647,7 +648,7 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 	var records []map[string]interface{}
 	r := db.Table(table_name).Order("last_operation_time DESC").Limit(1).Find(&records)
 	if r.Error != nil {
-		log("[ERROR]find the latest record from local data failed, because " + remote_table_lot_file_path)
+		log("[ERROR]find the latest record from local data failed, because " + remote_table_meta_file_path)
 		add_message(&SynchronizeMessage{
 			Type:  SynchronizeMessageError,
 			Scope: "database",
@@ -669,9 +670,9 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 	// 	}
 	// }
 
-	entries, err := client.ReadDir(table_out_dir)
+	entries, err := client.ReadDir(table_dir)
 	if err != nil {
-		log("[ERROR]read dir " + table_out_dir + " failed, because " + err.Error())
+		log("[ERROR]read dir " + table_dir + " failed, because " + err.Error())
 		add_message(&SynchronizeMessage{
 			Type: SynchronizeMessageError,
 			Text: err.Error(),
@@ -685,7 +686,7 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 		if match, _ := regexp.MatchString(`^[0-9]{4}-[0-9]{2}-[0-9]{2}`, nn); !match {
 			continue
 		}
-		remote_day_folder_path := filepath.Join(table_out_dir)
+		remote_day_folder_path := path.Join(table_dir, nn)
 		if !remote_day_file.IsDir() {
 			log("[LOG]walk day file content of " + remote_day_folder_path)
 			day_start, day_end, err := get_day_timestamp_range(remote_day_file.Name())
@@ -727,8 +728,8 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 			if len(latest_records) == 0 {
 				for _, line := range lines {
 					// id := remote_record.Name()
-					// remote_record_file_path := filepath.Join(remote_day_folder_path, id)
-					// remote_record_data_file_path := filepath.Join(remote_record_file_path, "data")
+					// remote_record_file_path := path.Join(remote_day_folder_path, id)
+					// remote_record_data_file_path := path.Join(remote_record_file_path, "data")
 					// fmt.Println("0", remote_record_data_file_path)
 					// remote_record_byte, err := client.Read(remote_record_data_file_path)
 					var rr map[string]interface{}
@@ -745,7 +746,7 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 			}
 			latest_record := latest_records[0]
 			// 检查该天远端最新修改时间，和本地该天范围内的最新记录修改时间
-			// remote_record_lot_file_path := filepath.Join(remote_day_folder_path, "last_operation_time")
+			// remote_record_lot_file_path := path.Join(remote_day_folder_path, "last_operation_time")
 			// remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
 			remote_record_lot_str := lines[len(lines)-1]
 			remote_record_lot_millis, err := strconv.ParseInt(remote_record_lot_str, 10, 64)
@@ -777,7 +778,7 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 			if local_record_last_operation_time.Before(remote_record_last_operation_time) {
 				for _, line := range lines {
 					// id := remote_record_folder.Name()
-					// remote_record_folder_path := filepath.Join(remote_day_folder_path, id)
+					// remote_record_folder_path := path.Join(remote_day_folder_path, id)
 					var rr map[string]interface{}
 					if err := json.Unmarshal([]byte(line), &rr); err != nil {
 						log("[ERROR]parse the record JSON failed, because " + err.Error())
@@ -807,7 +808,7 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 						continue
 					}
 					// 有匹配的记录，说明需要处理冲突，以最新的记录为准
-					// remote_record_lot_file_path := filepath.Join(remote_record_folder_path, "last_operation_time")
+					// remote_record_lot_file_path := path.Join(remote_record_folder_path, "last_operation_time")
 					// fmt.Println("2", remote_record_lot_file_path)
 					// remote_record_lot_byte, err := client.Read(remote_record_lot_file_path)
 					// if err != nil {
@@ -851,7 +852,7 @@ func build_remote_sync_to_local_tasks(table_name string, root_dir string, db *go
 						log("[ERROR]the records is latest, ignore the remote file")
 						continue
 					}
-					// remote_record_data_file_path := filepath.Join(remote_record_folder_path, "data")
+					// remote_record_data_file_path := path.Join(remote_record_folder_path, "data")
 					// fmt.Println("3", remote_record_data_file_path)
 					// remote_record_data_byte, err := client.Read(remote_record_data_file_path)
 					// if err != nil {
