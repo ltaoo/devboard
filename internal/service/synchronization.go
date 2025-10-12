@@ -421,7 +421,6 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 			// }
 			matched_line_idx := -1
 			for idx, line_text := range lines {
-				// @todo 这里是判断了是否存在相同字符串，不太精确，可能复制了一个和 id 一样的内容
 				if find := strings.Contains(line_text, `"`+id+`"`); find {
 					matched_line_idx = idx
 				}
@@ -432,6 +431,10 @@ func build_local_sync_to_remote_tasks(table_name string, root_dir string, db *go
 				var rr map[string]interface{}
 				if err := json.Unmarshal([]byte(matched_line), &rr); err != nil {
 					log("[ERROR]parse the record JSON failed, because " + err.Error())
+					continue
+				}
+				if rr["id"] != id {
+					// 上面的查找失误了，可能是复制的内容包含 id，这里规避掉这种可能
 					continue
 				}
 				if rr["last_operation_time"] != record["last_operation_time"] {
