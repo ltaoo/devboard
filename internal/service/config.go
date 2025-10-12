@@ -8,7 +8,7 @@ import (
 
 type ConfigService struct {
 	App *application.App
-	Biz *biz.App
+	Biz *biz.BizApp
 }
 
 func (s *ConfigService) Read() *Result {

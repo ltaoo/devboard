@@ -20,7 +20,7 @@ import (
 
 type SyncService struct {
 	App *application.App
-	Biz *biz.App
+	Biz *biz.BizApp
 }
 
 type DatabaseField struct {

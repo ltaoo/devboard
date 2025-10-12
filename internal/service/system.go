@@ -7,7 +7,7 @@ import (
 )
 
 type SystemService struct {
-	Biz *biz.App
+	Biz *biz.BizApp
 }
 type SystemInfoField struct {
 	Key   string `json:"key"`
@@ -24,11 +24,11 @@ func (s *SystemService) FetchComputeInfo() *Result {
 	}
 
 	fields := [...]SystemInfoField{
-		{
-			Key:   "app_version",
-			Label: "应用版本",
-			Text:  s.Biz.Config.ProductVersion,
-		},
+		// {
+		// 	Key:   "app_version",
+		// 	Label: "应用版本",
+		// 	Text:  s.Biz.Config.ProductVersion,
+		// },
 		{
 			Key:   "host_id",
 			Label: "主机 id",
