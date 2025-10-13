@@ -139,7 +139,7 @@ func remote_to_local(table_name string, root_dir string, db *gorm.DB, client *go
 		// if err := json.Unmarshal([]byte(r.Content), &d); err != nil {
 		// 	continue
 		// }
-		log("[LOG]" + r.Type)
+		log("[LOG]apply record task, the type is " + r.Type)
 		if r.Type == "create" {
 			if err := db.Table(table_name).Create(r.Data); err != nil {
 				continue

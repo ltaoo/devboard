@@ -14,7 +14,7 @@ type LocalClient interface {
 	FetchTableLastRecord() (map[string]interface{}, error)
 	FetchUniqueDaysOfTable() []string
 	FetchRecordsBetweenSpecialDayOfTable(day_str string) ([]map[string]interface{}, error)
-	FetchLastRecordBetweenStartAndEndOfTable(start int64, end int64) ([]map[string]interface{}, error)
+	FetchRecordOrderByTimeAndBetweenStartAndEndOfTable(start int64, end int64) ([]map[string]interface{}, error)
 	FetchRecordById(id string) ([]map[string]interface{}, error)
 	SetRecords(v []map[string]interface{})
 }
@@ -49,9 +49,9 @@ func (c *DatabaseLocalClient) FetchRecordsBetweenSpecialDayOfTable(day_str strin
 	}
 	return day_records, nil
 }
-func (c *DatabaseLocalClient) FetchLastRecordBetweenStartAndEndOfTable(day_start int64, day_end int64) ([]map[string]interface{}, error) {
+func (c *DatabaseLocalClient) FetchRecordOrderByTimeAndBetweenStartAndEndOfTable(day_start int64, day_end int64) ([]map[string]interface{}, error) {
 	var latest_records []map[string]interface{}
-	if err := c.DB.Table(c.TableName).Where("last_operation_time >= ? AND last_operation_time <= ?", day_start, day_end).Order("last_operation_time DESC").Limit(1).Find(&latest_records).Error; err != nil {
+	if err := c.DB.Table(c.TableName).Where("last_operation_time >= ? AND last_operation_time <= ?", day_start, day_end).Order("last_operation_time DESC").Find(&latest_records).Error; err != nil {
 		return nil, fmt.Errorf("find latest record failed, because %v", err.Error())
 	}
 	return latest_records, nil
@@ -147,7 +147,7 @@ func (c *MockLocalClient) FetchRecordsBetweenSpecialDayOfTable(day_str string) (
 
 	return result, nil
 }
-func (c *MockLocalClient) FetchLastRecordBetweenStartAndEndOfTable(day_start int64, day_end int64) ([]map[string]interface{}, error) {
+func (c *MockLocalClient) FetchRecordOrderByTimeAndBetweenStartAndEndOfTable(day_start int64, day_end int64) ([]map[string]interface{}, error) {
 	var filtered []map[string]interface{}
 
 	for _, record := range c.records {
