@@ -74,7 +74,7 @@ export function WaterfallColumnView<T extends Record<string, unknown>>(props: {
           const $cell = vm.$cells[idx()];
           return (
             <Show when={$cell} keyed={true}>
-              <WaterfallCellView store={$cell!} idx={idx()} render={props.render} />
+              <WaterfallCellView store={$cell!} idx={cell.idx} render={props.render} />
             </Show>
           );
         }}
