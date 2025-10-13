@@ -12,14 +12,7 @@ import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
 import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
-import {
-  syncToRemote,
-  syncFromRemote,
-  pingWebDav,
-  fetchDatabaseDirs,
-  buildLocalToRemoteTasks,
-  buildRemoteToLocalTasks,
-} from "@/biz/synchronize/service";
+import { syncToRemote, syncFromRemote, pingWebDav, fetchDatabaseDirs } from "@/biz/synchronize/service";
 import { fetchSystemInfo } from "@/biz/system/service";
 import { highlightFileInFolder } from "@/biz/fs/service";
 import { fetchUserSettings, updateUserSettings } from "@/biz/settings/service";
@@ -37,9 +30,7 @@ function SynchronizationViewModel(props: ViewComponentProps) {
       database: new RequestCore(fetchDatabaseDirs, { client: props.client }),
       ping: new RequestCore(pingWebDav, { client: props.client }),
       uploadToWebdav: new RequestCore(syncToRemote, { client: props.client }),
-      buildLocalToRemoteTasks: new RequestCore(buildLocalToRemoteTasks, { client: props.client }),
       downloadFromWebdav: new RequestCore(syncFromRemote, { client: props.client }),
-      buildRemoteToLocalTasks: new RequestCore(buildRemoteToLocalTasks, { client: props.client }),
     },
   };
   const methods = {
@@ -104,8 +95,9 @@ function SynchronizationViewModel(props: ViewComponentProps) {
           username: r.data.username,
           password: r.data.password,
           root_dir: r.data.root_dir,
+          test: true,
         };
-        const r2 = await request.sync.buildLocalToRemoteTasks.run(body);
+        const r2 = await request.sync.uploadToWebdav.run(body);
         if (r2.error) {
           return;
         }
@@ -144,8 +136,9 @@ function SynchronizationViewModel(props: ViewComponentProps) {
           username: r.data.username,
           password: r.data.password,
           root_dir: r.data.root_dir,
+          test: true,
         };
-        request.sync.buildRemoteToLocalTasks.run(body);
+        request.sync.downloadFromWebdav.run(body);
       },
     }),
     $btn_import: new ButtonCore({

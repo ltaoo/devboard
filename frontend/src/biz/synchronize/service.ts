@@ -1,11 +1,4 @@
-import {
-  RemoteToLocal,
-  LocalToRemote,
-  PingWebDav,
-  FetchDatabaseDirs,
-  LocalToRemoteTasks,
-  RemoteToLocalTask,
-} from "~/syncservice";
+import { RemoteToLocal, LocalToRemote, PingWebDav, FetchDatabaseDirs } from "~/syncservice";
 
 import { request } from "@/biz/requests";
 
@@ -23,10 +16,13 @@ export function pingWebDav(body: { url: string; username: string; password: stri
   return request.post<{ ok: boolean }>(PingWebDav, body);
 }
 
-export function syncToRemote(body: { url: string; username: string; password: string; root_dir: string }) {
-  return request.post<void>(LocalToRemote, body);
-}
-export function buildLocalToRemoteTasks(body: { url: string; username: string; password: string; root_dir: string }) {
+export function syncToRemote(body: {
+  url: string;
+  username: string;
+  password: string;
+  root_dir: string;
+  test?: boolean;
+}) {
   return request.post<
     Record<
       string,
@@ -35,13 +31,16 @@ export function buildLocalToRemoteTasks(body: { url: string; username: string; p
         file_tasks: {}[];
       }
     >
-  >(LocalToRemoteTasks, body);
+  >(LocalToRemote, body);
 }
 
-export function syncFromRemote(body: { url: string; username: string; password: string; root_dir: string }) {
-  return request.post<void>(RemoteToLocal, body);
-}
-export function buildRemoteToLocalTasks(body: { url: string; username: string; password: string; root_dir: string }) {
+export function syncFromRemote(body: {
+  url: string;
+  username: string;
+  password: string;
+  root_dir: string;
+  test?: boolean;
+}) {
   return request.post<
     Record<
       string,
@@ -50,5 +49,5 @@ export function buildRemoteToLocalTasks(body: { url: string; username: string; p
         file_tasks: {}[];
       }
     >
-  >(RemoteToLocalTask, body);
+  >(RemoteToLocal, body);
 }
