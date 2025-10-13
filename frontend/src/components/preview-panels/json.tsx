@@ -7,7 +7,7 @@ export function JSONContentPreview(props: { text: string }) {
 
   return (
     <div>
-      <CodeCard language="JSON" linenumber code={text()} />
+      <CodeCard id="json" language="JSON" linenumber code={text()} />
     </div>
   );
 }
