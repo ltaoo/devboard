@@ -8,6 +8,7 @@ import { useViewModelStore } from "@/hooks";
 import { WaterfallModel } from "@/domains/ui/waterfall/waterfall";
 import { WaterfallColumnModel } from "@/domains/ui/waterfall/column";
 import { WaterfallCellModel } from "@/domains/ui/waterfall/cell";
+import { Keyed } from "@/components/keyed";
 
 export function WaterfallView<T extends Record<string, unknown>>(
   props: {
@@ -58,17 +59,41 @@ export function WaterfallColumnView<T extends Record<string, unknown>>(props: {
         height: `${state().height}px`,
       }}
     >
+      {/* <Keyed each={state().items} by={(item) => item.id}>
+        {(item, idx) => {
+          const $cell = vm.$cells[idx()];
+          return (
+            <Show when={$cell}>
+              <WaterfallCellView store={$cell!} idx={idx()} render={props.render} />
+            </Show>
+          );
+        }}
+      </Keyed> */}
       <For each={state().items}>
         {(cell, idx) => {
-          // const v = cell.payload;
           const $cell = vm.$cells[idx()];
-          if (!$cell) {
-            return null;
-          }
-          return <WaterfallCellView store={$cell} idx={cell.idx} render={props.render} />;
+          return (
+            <Show when={$cell} keyed={true}>
+              <WaterfallCellView store={$cell!} idx={idx()} render={props.render} />
+            </Show>
+          );
         }}
       </For>
     </div>
+  );
+}
+
+function WaterfallCellViewWrap<T extends Record<string, unknown>>(
+  props: {
+    store?: WaterfallCellModel<T>;
+    idx: number;
+    render: (payload: T, idx: number) => JSX.Element;
+  } & JSX.HTMLAttributes<HTMLDivElement>
+) {
+  return (
+    <Show when={props.store} keyed={true}>
+      <WaterfallCellView store={props.store!} idx={props.idx} render={props.render} />
+    </Show>
   );
 }
 
@@ -92,7 +117,7 @@ export function WaterfallCellView<T extends Record<string, unknown>>(
       data-top={state().top}
       onAnimationEnd={(event) => {
         const { width, height } = event.currentTarget.getBoundingClientRect();
-        console.log("[COMPONENT]ui/waterfall/waterfall - WaterfallCellView onAnimationEnd", state().uid, width, height);
+        // console.log("[COMPONENT]ui/waterfall/waterfall - WaterfallCellView onAnimationEnd", state().uid, width, height);
         // @todo 为什么会是 0？
         if (height === 0) {
           return;

@@ -531,7 +531,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       </Match>
                       <Match when={isCodeContent(v.types)}>
                         <div class="w-full overflow-auto">
-                          <CodeCard language={v.language} code={v.text} />
+                          <CodeCard id={v.id} language={v.language} code={v.text} />
                         </div>
                       </Match>
                       <Match when={v.type === "html"}>

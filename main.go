@@ -213,7 +213,9 @@ func main() {
 	}
 	menu := app.NewMenu()
 	m_main := menu.Add("Show Devboard")
-	m_main.SetAccelerator("CmdOrCtrl+Shift+M")
+	if runtime.GOOS == "darwin" {
+		m_main.SetAccelerator("CmdOrCtrl+Shift+M")
+	}
 	m_main.OnClick(func(ctx *application.Context) {
 		win.Show()
 		win.Focus()
