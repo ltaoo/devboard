@@ -113,7 +113,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                 <JSONContentPreview text={state().profile?.text!} />
               </Match>
               <Match when={isCodeContent(state().profile?.types)}>
-                <CodeCard language={state().profile?.language} linenumber code={state().profile?.text!} />
+                <CodeCard id={state().profile?.id!} language={state().profile?.language} linenumber code={state().profile?.text!} />
               </Match>
             </Switch>
           </div>
