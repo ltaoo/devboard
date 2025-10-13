@@ -55,6 +55,9 @@ const (
 	CF_GDIOBJLAST      = 0x03FF
 	CF_PRIVATEFIRST    = 0x0200
 	CF_PRIVATELAST     = 0x02FF
+	CF_PRIVATE_TYPE1   = 49297
+	CF_MAYBE_HTML      = 49845
+	CF_MAYBE_OFFICE    = 49847
 )
 const (
 	CP_UTF8 = 65001
@@ -446,48 +449,64 @@ func read_content_with_type() ClipboardContent {
 	open_clipboard()
 	defer close_clipboard()
 	cur_types := get_content_types(ContentTypeParams{IsEnabled: true})
-	var maybe_type string
-	for _, t := range cur_types {
-		if t == "public.utf8-plain-text" {
-			maybe_type = t
-			b, err := read_text()
-			d := ClipboardContent{
-				Type:  maybe_type,
-				Data:  b,
-				Error: nil,
-			}
-			if err != nil {
-				d.Error = fmt.Errorf("读取类型为 %v 的内容时失败", maybe_type)
-			}
-			return d
+	// fmt.Println("after get_content_types", cur_types)
+	if len(cur_types) == 0 {
+		d := ClipboardContent{
+			Type:  "",
+			Data:  "",
+			Error: fmt.Errorf("没有读取到任意可用内容类型"),
 		}
-		if t == "public.file-url" {
-			maybe_type = t
-			b, err := read_files()
-			d := ClipboardContent{
-				Type:  maybe_type,
-				Data:  b,
-				Error: nil,
-			}
-			if err != nil {
+		return d
+	}
+	maybe_type := cur_types[0]
+	if maybe_type == "public.utf8-plain-text" {
+		b, err := read_text()
+		d := ClipboardContent{
+			Type:  maybe_type,
+			Data:  b,
+			Error: nil,
+		}
+		if err != nil {
+			d.Error = fmt.Errorf("读取类型为 %v 的内容时失败", maybe_type)
+		}
+		return d
+	}
+	if maybe_type == "public.html" {
+		b, err := read_html()
+		d := ClipboardContent{
+			Type:  maybe_type,
+			Data:  b,
+			Error: nil,
+		}
+		if err != nil {
+			d.Error = fmt.Errorf("读取类型为 %v 的内容时失败", maybe_type)
+		}
+		return d
+	}
+	if maybe_type == "public.file-url" {
+		b, err := read_files()
+		d := ClipboardContent{
+			Type:  maybe_type,
+			Data:  b,
+			Error: nil,
+		}
+		if err != nil {
 
-				d.Error = fmt.Errorf("读取类型为 %v 的内容时失败", maybe_type)
-			}
-			return d
+			d.Error = fmt.Errorf("读取类型为 %v 的内容时失败", maybe_type)
 		}
-		if t == "public.png" {
-			maybe_type = t
-			b, err := read_image()
-			d := ClipboardContent{
-				Type:  maybe_type,
-				Data:  b,
-				Error: nil,
-			}
-			if err != nil {
-				d.Error = fmt.Errorf("读取类型为 %v 的内容时失败", maybe_type)
-			}
-			return d
+		return d
+	}
+	if maybe_type == "public.png" {
+		b, err := read_image()
+		d := ClipboardContent{
+			Type:  maybe_type,
+			Data:  b,
+			Error: nil,
 		}
+		if err != nil {
+			d.Error = fmt.Errorf("读取类型为 %v 的内容时失败", maybe_type)
+		}
+		return d
 	}
 	type_text := strings.Join(cur_types, "\n")
 	return ClipboardContent{
@@ -972,6 +991,67 @@ func get_content_types(params ContentTypeParams) []string {
 	}
 	format := uint(0)
 	var types []string
+	text_type_name := "public.utf8-plain-text"
+	html_type_name := "public.html"
+	image_type_name := "public.png"
+	file_type_name := "public.file-url"
+	append_text := func(to_head bool) {
+		existing := Include(types, func(v string, idx int) bool {
+			return v == text_type_name
+		})
+		if !existing {
+			if to_head {
+				types = append(types, "")
+				copy(types[1:], types)
+				types[0] = text_type_name
+			} else {
+				types = append(types, text_type_name)
+			}
+		}
+	}
+	append_html := func(to_head bool) {
+		existing := Include(types, func(v string, idx int) bool {
+			return v == html_type_name
+		})
+		if existing {
+			return
+		}
+		if to_head {
+			types = append(types, "")
+			copy(types[1:], types)
+			types[0] = html_type_name
+			return
+		}
+		types = append(types, html_type_name)
+	}
+	append_png := func(to_head bool) {
+		existing := Include(types, func(v string, idx int) bool {
+			return v == image_type_name
+		})
+		if !existing {
+			if to_head {
+				types = append(types, "")
+				copy(types[1:], types)
+				types[0] = image_type_name
+			} else {
+				types = append(types, image_type_name)
+			}
+		}
+	}
+	append_file_url := func(to_head bool) {
+		existing := Include(types, func(v string, idx int) bool {
+			return v == file_type_name
+		})
+		if !existing {
+			if to_head {
+				types = append(types, "")
+				copy(types[1:], types)
+				types[0] = file_type_name
+			} else {
+				types = append(types, file_type_name)
+			}
+		}
+	}
 	var format_list []uint
 	for {
 		tt, _, err := enumClipboardFormats.Call(uintptr(format))
@@ -984,26 +1064,62 @@ func get_content_types(params ContentTypeParams) []string {
 			}
 			break
 		}
-		// types = append(types, int(tt))
-		if tt == 1 {
-			types = append(types, "public.utf8-plain-text")
+		if tt == CF_TEXT {
+			append_text(false)
 		}
-		if tt == 2 {
-			types = append(types, "public.png")
+		if tt == CF_BITMAP {
+			append_png(false)
 		}
-		if tt == 7 {
-			types = append(types, "public.utf8-plain-text")
+		if tt == CF_OEMTEXT {
+			append_text(false)
 		}
-		if tt == 8 {
-			types = append(types, "public.png")
+		if tt == CF_DIB {
+			append_png(false)
 		}
-		if tt == 13 {
-			types = append(types, "public.png")
+		if tt == CF_UNICODETEXT {
+			append_text(false)
 		}
-		if tt == 17 {
-			types = append(types, "public.png")
+		if tt == CF_LOCALE {
+			append_text(false)
+		}
+		if tt == CF_DIBV5 {
+			append_png(false)
+		}
+		if tt == CF_HDROP {
+			append_file_url(false)
+		}
+		if tt == CF_MAYBE_HTML {
+			append_html(true)
+		}
+		if tt == CF_MAYBE_OFFICE {
+			append_html(true)
 		}
 	}
+
+	// format := CF_TEXT
+	// var types []string
+	// register_clipboard_format("HTML Format")
+	// one_type, _, err := enumClipboardFormats.Call(uintptr(format))
+	// fmt.Println("cur type", one_type, uint(one_type))
+	// if one_type == 0 {
+	// 	if err.Error() != "The operation completed successfully." {
+	// 		fmt.Println("EnumClipboardFormats error:", err)
+	// 	}
+	// 	one_type, _, _ := enumClipboardFormats.Call(uintptr(format))
+	// 	fmt.Println("cur type", one_type, uint(one_type))
+	// 	return []string{}
+	// 	// break
+	// }
+	// if one_type == CF_OEMTEXT {
+	// 	types = append(types, "public.utf8-plain-text")
+	// }
+	// if one_type == CF_DIBV5 {
+	// 	types = append(types, "public.png")
+	// }
+	// if one_type == CF_HDROP {
+	// 	types = append(types, "public.file-url")
+	// }
+	// return types
 	// const max_length = 256
 	// for _, f := range format_list {
 	// 	buf := make([]byte, max_length)
@@ -1084,4 +1200,14 @@ func byte_ptr_to_string(ptr *byte) string {
 		length++
 	}
 	return string((*[1 << 20]byte)(unsafe.Pointer(ptr))[:length:length])
+}
+
+func Include[T any](collection []T, iteratee func(item T, index int) bool) bool {
+	for i, item := range collection {
+		res := iteratee(item, i)
+		if res {
+			return true
+		}
+	}
+	return false
 }
