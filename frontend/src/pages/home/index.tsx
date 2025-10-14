@@ -3,7 +3,7 @@
  */
 import { For, Match, Show, Switch } from "solid-js";
 import { Bird, Check, ChevronUp, Copy, Download, Earth, Eye, File, Folder, Link, Trash } from "lucide-solid";
-import { Browser, Events } from "@wailsio/runtime";
+import { Browser, Dialogs, Events } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -40,6 +40,7 @@ import {
 
 import { LocalVideo } from "./components/LazyVideo";
 import { LocalImage } from "./components/LocalImage";
+import { HTMLCard } from "@/components/html-card";
 
 function HomeIndexViewModel(props: ViewComponentProps) {
   const request = {
@@ -148,6 +149,30 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     async handleClickPasteContent(v: PasteRecord) {
       methods.previewPasteContent(v);
+    },
+    async handleClickOuterURL(event: { url: string }) {
+      const r = await Dialogs.Question({
+        Title: "Open URL",
+        Message: "Are you sure open the url: " + event.url,
+        Buttons: [
+          {
+            Label: "Cancel",
+            IsCancel: true,
+          },
+          {
+            Label: "Confirm",
+            IsDefault: true,
+          },
+        ],
+      });
+      if (r !== "Confirm") {
+        return;
+      }
+      Browser.OpenURL(event.url);
+    },
+    handleClickURL(url: string) {
+      Browser.OpenURL(url);
+      return;
     },
     async handleClickCopyBtn(v: PasteRecord) {
       const r = await request.paste.write.run({ id: v.id });
@@ -381,6 +406,11 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     const vv = processPartialPasteEvent(created_paste_event);
     methods.prepareLoadRecord(vv);
   });
+  Events.On("m:refresh", (event) => {
+    request.paste.list.refresh();
+    ui.$select.methods.resetIdx();
+    methods.backToTop();
+  });
 
   return {
     request,
@@ -410,7 +440,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
   const [state, vm] = useViewModel(HomeIndexViewModel, [props]);
 
   return (
-    <div class="relative w-full h-full">
+    <div class="relative w-full h-full" style="--custom-contextmenu: refresh; --custom-contextmenu-data: some-data">
       <Show when={!!state().show_refresh_tip}>
         <div class="z-[99] absolute top-4 left-1/2 -translate-x-1/2">
           <div class="py-2 px-4 bg-w-bg-3 rounded-full cursor-pointer" onClick={vm.methods.loadAddedRecords}>
@@ -511,7 +541,12 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       </Match>
                       <Match when={v.types.includes("url")}>
                         <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
-                          <div class="flex items-center gap-1 cursor-pointer">
+                          <div
+                            class="flex items-center gap-1 cursor-pointer"
+                            onClick={() => {
+                              vm.methods.handleClickURL(v.text);
+                            }}
+                          >
                             <Link class="w-4 h-4" />
                             <div class="flex-1 w-0 underline">{v.text}</div>
                           </div>
@@ -536,7 +571,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       </Match>
                       <Match when={v.type === "html"}>
                         <div class="p-2 text-w-fg-0">
-                          <div innerHTML={v.text}></div>
+                          <HTMLCard html={v.text} />
                         </div>
                       </Match>
                       <Match when={v.type === "text"}>

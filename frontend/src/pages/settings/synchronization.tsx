@@ -1,5 +1,6 @@
 import { For, Show } from "solid-js";
 import { Check, File } from "lucide-solid";
+import { Events as WailsEvents } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -188,6 +189,7 @@ function SynchronizationViewModel(props: ViewComponentProps) {
         props.app.tip({
           text: ["同步完成"],
         });
+        WailsEvents.Emit({ name: "m:refresh", data: {} });
       },
     }),
     $form_webdav: new ObjectFieldCore({

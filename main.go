@@ -215,9 +215,9 @@ func main() {
 		win.Hide()
 		e.Cancel()
 	})
-	win.RegisterHook(events.Common.WindowLostFocus, func(e *application.WindowEvent) {
-		win.Close()
-	})
+	// win.RegisterHook(events.Common.WindowLostFocus, func(e *application.WindowEvent) {
+	// 	win.Close()
+	// })
 	if runtime.GOOS == "darwin" {
 		system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
 	}
@@ -241,6 +241,17 @@ func main() {
 		method_quit()
 	})
 	system_tray.SetMenu(menu)
+
+	// ctx_menu := application.NewContextMenu("main")
+	// ctx_menu.Add("Refresh").OnClick(func(ctx *application.Context) {
+	// 	app.Event.Emit("m:refresh")
+	// })
+	ctx_menu := app.ContextMenu.New()
+	m_refresh := ctx_menu.Add("Reload")
+	m_refresh.OnClick(func(data *application.Context) {
+		app.Event.Emit("m:refresh")
+	})
+	app.ContextMenu.Add("refresh", ctx_menu)
 
 	// win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
 	// 	fmt.Println(e.Context().DroppedFiles())
