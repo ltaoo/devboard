@@ -14,6 +14,7 @@ import { PasteEventProfileModel } from "@/biz/paste/paste_profile";
 import { ImageContentPreview } from "@/components/preview-panels/image";
 import { isCodeContent } from "@/biz/paste/utils";
 import { CodeCard } from "@/components/code-card";
+import { HTMLCard } from "@/components/html-card";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
@@ -87,7 +88,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
             >
               <Match when={state().profile?.type === "html"}>
                 <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
-                  <div innerHTML={state().profile!.text!}></div>
+                  <HTMLCard html={state().profile!.text!} />
                 </div>
               </Match>
               <Match when={state().profile?.type === "image"}>
@@ -113,7 +114,12 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                 <JSONContentPreview text={state().profile?.text!} />
               </Match>
               <Match when={isCodeContent(state().profile?.types)}>
-                <CodeCard id={state().profile?.id!} language={state().profile?.language} linenumber code={state().profile?.text!} />
+                <CodeCard
+                  id={state().profile?.id!}
+                  language={state().profile?.language}
+                  linenumber
+                  code={state().profile?.text!}
+                />
               </Match>
             </Switch>
           </div>
