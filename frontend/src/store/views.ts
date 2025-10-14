@@ -15,9 +15,9 @@ export const pages: Omit<Record<PageKeys, ViewComponent>, "root"> = {
   "root.error": ErrorTipView,
   "root.notfound": NotFoundPage,
   // "root.home_layout": lazy(async () => ({ default: (await import("@/pages/home/layout")).HomeLayout })),
-  "root.home_layout": HomeLayout,
+  "root.home": HomeLayout,
   // "root.home_layout.index": lazy(async () => ({ default: (await import("@/pages/home")).HomeIndexPage })),
-  "root.home_layout.index": HomeIndexView,
+  "root.home.index": HomeIndexView,
   "root.video_preview": lazy(async () => ({
     default: (await import("@/pages/file_preview/video_preview")).VideoFilePreviewView,
   })),
@@ -30,19 +30,25 @@ export const pages: Omit<Record<PageKeys, ViewComponent>, "root"> = {
   "root.paste_event_preview": lazy(async () => ({
     default: (await import("@/pages/paste_content_preview")).PreviewPasteEventView,
   })),
-  "root.settings_layout": lazy(async () => ({
+  "root.helper_center": lazy(async () => ({
+    default: (await import("@/pages/helper_center/layout")).HelperCenterLayoutView,
+  })),
+  "root.helper_center.shortcut": lazy(async () => ({
+    default: (await import("@/pages/helper_center/shortcut")).HelperCenterShortcutView,
+  })),
+  "root.settings": lazy(async () => ({
     default: (await import("@/pages/settings/settings_layout")).SettingsView,
   })),
-  "root.settings_layout.user_settings": lazy(async () => ({
+  "root.settings.user_settings": lazy(async () => ({
     default: (await import("@/pages/settings/settings")).SettingsView,
   })),
-  "root.settings_layout.category": lazy(async () => ({
+  "root.settings.category": lazy(async () => ({
     default: (await import("@/pages/settings/category")).CategorySettingsView,
   })),
-  "root.settings_layout.system": lazy(async () => ({
+  "root.settings.system": lazy(async () => ({
     default: (await import("@/pages/settings/system")).SystemInfoView,
   })),
-  "root.settings_layout.synchronization": lazy(async () => ({
+  "root.settings.synchronization": lazy(async () => ({
     default: (await import("@/pages/settings/synchronization")).SynchronizationView,
   })),
 };

@@ -101,7 +101,7 @@ export const app = new Application({
         history.push(route.name, query, { ignore: true });
         return Result.Ok(null);
       }
-      history.push("root.home_layout.index");
+      history.push("root.home.index");
       return Result.Ok(null);
     }
     console.log("[STORE]beforeReady - before if (!app.$user.isLogin", app.$user.isLogin, route.pathname);
@@ -109,7 +109,7 @@ export const app = new Application({
       app.tip({
         text: ["请先登录"],
       });
-      if (route.name !== "root.home_layout.index" && route.name !== "root") {
+      if (route.name !== "root.home.index" && route.name !== "root") {
         _pending_redirect = {
           name: route.name,
           pathname,
@@ -124,7 +124,7 @@ export const app = new Application({
       history.push(route.name, query, { ignore: true });
       return Result.Ok(null);
     }
-    history.push("root.home_layout.index");
+    history.push("root.home.index");
     return Result.Ok(null);
   },
 });
@@ -188,7 +188,7 @@ user.onLogin((profile) => {
     _pending_redirect = null;
     return;
   }
-  history.destroyAllAndPush("root.home_layout.index");
+  history.destroyAllAndPush("root.home.index");
 });
 user.onTokenRefresh((profile) => {
   storage.set("user", profile);

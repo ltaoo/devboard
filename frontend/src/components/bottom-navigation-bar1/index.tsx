@@ -25,7 +25,7 @@ export function BottomNavigationBar1(props: {
         <IconButton
           onClick={() => {
             if (props.home) {
-              props.history.destroyAllAndPush("root.home_layout.index");
+              props.history.destroyAllAndPush("root.home.index");
               return;
             }
             props.back();

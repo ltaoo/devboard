@@ -47,7 +47,7 @@ function RegisterViewModel(props: ViewComponentProps) {
     }),
     $btn_home: new ButtonCore({
       onClick() {
-        props.history.destroyAllAndPush("root.home_layout.index");
+        props.history.destroyAllAndPush("root.home.index");
       },
     }),
   };

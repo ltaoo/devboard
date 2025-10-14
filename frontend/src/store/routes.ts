@@ -13,7 +13,7 @@ const configure = {
       require: [],
     },
     children: {
-      home_layout: {
+      home: {
         title: "首页布局",
         pathname: "/home",
         children: {
@@ -42,7 +42,17 @@ const configure = {
         title: "详情",
         pathname: "/preview",
       },
-      settings_layout: {
+      helper_center: {
+        title: "帮助中心",
+        pathname: "/helper_center",
+        children: {
+          shortcut: {
+            title: "Shortcut",
+            pathname: "/help/shortcut",
+          },
+        },
+      },
+      settings: {
         title: "设置",
         pathname: "/settings",
         options: {

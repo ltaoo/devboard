@@ -159,6 +159,37 @@ function SynchronizationViewModel(props: ViewComponentProps) {
         request.sync.downloadFromWebdav.run(body);
       },
     }),
+    $btn_synchronize: new ButtonCore({
+      async onClick() {
+        const r = await ui.$form_webdav.validate();
+        if (r.error) {
+          props.app.tip({
+            text: r.error.messages,
+          });
+          return;
+        }
+        const body = {
+          url: r.data.url,
+          username: r.data.username,
+          password: r.data.password,
+          root_dir: r.data.root_dir,
+        };
+        ui.$btn_synchronize.setLoading(true);
+        const r2 = await request.sync.downloadFromWebdav.run(body);
+        if (r2.error) {
+          ui.$btn_synchronize.setLoading(false);
+          return;
+        }
+        const r3 = await request.sync.uploadToWebdav.run(body);
+        ui.$btn_synchronize.setLoading(false);
+        if (r3.error) {
+          return;
+        }
+        props.app.tip({
+          text: ["同步完成"],
+        });
+      },
+    }),
     $form_webdav: new ObjectFieldCore({
       fields: {
         url: new SingleFieldCore({
@@ -278,24 +309,25 @@ export function SynchronizationView(props: ViewComponentProps) {
             </FieldObjV2>
           </div>
           <div class="mt-4 space-y-1">
-            <div>
+            <div class="space-x-1">
               <Button store={vm.ui.$btn_validate}>
                 <div class="flex items-center space-x-1">
                   <Show when={state().ping?.ok}>
                     <Check class="w-4 h-4 text-w-green" />
                   </Show>
-                  <div>测试</div>
+                  <div>测试并保存</div>
                 </div>
               </Button>
+              <Button store={vm.ui.$btn_synchronize}>同步</Button>
             </div>
-            <div class="flex space-x-1">
+            {/* <div class="flex space-x-1">
               <Button store={vm.ui.$btn_prepare_export}>测试同步至 webdav</Button>
               <Button store={vm.ui.$btn_export}>同步至 webdav</Button>
             </div>
             <div class="flex space-x-1">
               <Button store={vm.ui.$btn_prepare_import}>测试从 webdav 同步</Button>
               <Button store={vm.ui.$btn_import}>从 webdav 同步</Button>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

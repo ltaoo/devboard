@@ -183,6 +183,9 @@ func main() {
 			"CmdOrCtrl+Q": func(window application.Window) {
 				method_quit()
 			},
+			"Escape": func(window application.Window) {
+				window.Close()
+			},
 		},
 		Width:            450,
 		Height:           680,
@@ -196,6 +199,10 @@ func main() {
 	app.KeyBinding.Add("CmdOrCtrl+Q", func(win application.Window) {
 		method_quit()
 	})
+	// app.KeyBinding.Add("Escape", func(win application.Window) {
+	// 	fmt.Println("escape")
+	// 	win.Close()
+	// })
 	system_tray := app.SystemTray.New()
 	system_tray.OnClick(func() {
 		system_tray.OpenMenu()
@@ -207,6 +214,9 @@ func main() {
 	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		win.Hide()
 		e.Cancel()
+	})
+	win.RegisterHook(events.Common.WindowLostFocus, func(e *application.WindowEvent) {
+		win.Close()
 	})
 	if runtime.GOOS == "darwin" {
 		system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
@@ -449,9 +459,6 @@ func main() {
 		// error_win.SetURL(url)
 		// error_win.Show()
 	})
-	win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
-		fmt.Println(e.Context().DroppedFiles())
-	})
 	go func() {
 		cfg, err := config.LoadConfig()
 		if err != nil {
@@ -487,7 +494,7 @@ func main() {
 		// win.Show()
 	}()
 	go func() {
-		register_shortcut(win, hk)
+		register_global_shortcut(win, hk)
 	}()
 	// Run the application. This blocks until the application has been exited.
 	err := app.Run()
@@ -498,7 +505,7 @@ func main() {
 	}
 }
 
-func register_shortcut(win *application.WebviewWindow, hk *hotkey.Hotkey) {
+func register_global_shortcut(win *application.WebviewWindow, hk *hotkey.Hotkey) {
 	// hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
 	err := hk.Register()
 	if err != nil {
@@ -518,5 +525,5 @@ func register_shortcut(win *application.WebviewWindow, hk *hotkey.Hotkey) {
 		win.Show()
 		win.Focus()
 	}
-	register_shortcut(win, hk)
+	register_global_shortcut(win, hk)
 }
