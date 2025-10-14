@@ -45,6 +45,10 @@ export function processPartialPasteEvent(
     types: categories,
     text: (() => {
       const tt = v.text;
+      if (v.content_type === "html") {
+        // 旧数据错误地写入了 text 字段，前端做个兼容？
+        return v.html || tt;
+      }
       if (categories.includes("time")) {
         const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
         return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");

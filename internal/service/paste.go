@@ -50,7 +50,7 @@ func (s *PasteService) FetchPasteEventList(body FetchPasteEventListBody) *Result
 	pb := models.NewPaginationBuilder[models.PasteEvent](query).
 		SetLimit(body.PageSize).
 		SetPage(body.Page).
-		SetOrderBy("paste_event.created_at DESC")
+		SetOrderBy("datetime(paste_event.created_at) DESC")
 	var list1 []models.PasteEvent
 	if err := pb.Build().Preload("Categories").Find(&list1).Error; err != nil {
 		return Error(err)
