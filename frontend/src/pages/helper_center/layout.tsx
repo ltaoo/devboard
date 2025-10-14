@@ -8,7 +8,7 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { RouteMenusModel } from "@/domains/route_view";
 
-function SettingsViewModel(props: ViewComponentProps) {
+function HelperCenterLayoutViewModel(props: ViewComponentProps) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -16,24 +16,16 @@ function SettingsViewModel(props: ViewComponentProps) {
   };
   const ui = {
     $menu: RouteMenusModel({
-      route: "root.settings.system" as PageKeys,
+      route: "root.helper_center.shortcut" as PageKeys,
       menus: [
         {
-          title: "配置",
-          url: "root.settings.user_settings",
+          title: "快捷键",
+          url: "root.helper_center.shortcut",
         },
-        {
-          title: "标签",
-          url: "root.settings.category",
-        },
-        {
-          title: "同步",
-          url: "root.settings.synchronization",
-        },
-        {
-          title: "关于",
-          url: "root.settings.system",
-        },
+        // {
+        //   title: "数据同步",
+        //   url: "root.settings_layout.category",
+        // },
       ] as {
         title: string;
         url: PageKeys;
@@ -78,8 +70,8 @@ function SettingsViewModel(props: ViewComponentProps) {
   };
 }
 
-export function SettingsView(props: ViewComponentProps) {
-  const [state, vm] = useViewModel(SettingsViewModel, [props]);
+export function HelperCenterLayoutView(props: ViewComponentProps) {
+  const [state, vm] = useViewModel(HelperCenterLayoutViewModel, [props]);
   // const [routeName, setRouteName] = createSignal<PageKeys>("root.home_layout.index");
 
   return (

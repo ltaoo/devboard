@@ -2,7 +2,19 @@
  * @file 后台/首页布局
  */
 import { For, JSX, createSignal } from "solid-js";
-import { Users, Home, Bike, BicepsFlexed, User, Star, Boxes, Settings, List, ClipboardList } from "lucide-solid";
+import {
+  Users,
+  Home,
+  Bike,
+  BicepsFlexed,
+  User,
+  Star,
+  Boxes,
+  Settings,
+  List,
+  ClipboardList,
+  HelpCircle,
+} from "lucide-solid";
 
 import { pages } from "@/store/views";
 import { ViewComponent, ViewComponentProps } from "@/store/types";
@@ -53,7 +65,23 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
           onClick() {
             request.common.open_window.run({
               title: "设置",
-              route: "root.settings_layout.system",
+              route: "root.settings.system",
+            });
+          },
+        },
+      ] as { title: string; icon: JSX.Element; badge?: boolean; url?: PageKeys; onClick?: () => void }[],
+      $history: props.history,
+    }),
+    $menu2: RouteMenusModel({
+      route: "root.home_layout.index" as PageKeys,
+      menus: [
+        {
+          title: "帮助",
+          icon: <HelpCircle class="w-6 h-6" />,
+          onClick() {
+            request.common.open_window.run({
+              title: "帮助中心/快捷键",
+              route: "root.helper_center.shortcut",
             });
           },
         },
@@ -68,6 +96,9 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
     // },
     get menus() {
       return ui.$menu.state.menus;
+    },
+    get menus2() {
+      return ui.$menu2.state.menus;
     },
     get cur_route_name() {
       return ui.$menu.state.route_name;
@@ -112,25 +143,47 @@ export const HomeLayout: ViewComponent = (props) => {
 
   return (
     <div class="flex w-full h-full">
-      <div class="relative z-10 p-2 space-y-2 border-r border-w-fg-3 bg-w-bg-1">
-        <For each={state().menus}>
-          {(menu) => {
-            const { icon, url, badge, onClick } = menu;
-            return (
-              <Menu
-                class=""
-                app={props.app}
-                history={props.history}
-                highlight={state().cur_route_name === url}
-                url={url}
-                badge={badge}
-                onClick={onClick}
-              >
-                {icon}
-              </Menu>
-            );
-          }}
-        </For>
+      <div class="flex flex-col justify-between  border-r border-w-fg-3 bg-w-bg-1">
+        <div class="relative z-10 p-2 space-y-2">
+          <For each={state().menus}>
+            {(menu) => {
+              const { icon, url, badge, onClick } = menu;
+              return (
+                <Menu
+                  class=""
+                  app={props.app}
+                  history={props.history}
+                  highlight={state().cur_route_name === url}
+                  url={url}
+                  badge={badge}
+                  onClick={onClick}
+                >
+                  {icon}
+                </Menu>
+              );
+            }}
+          </For>
+        </div>
+        <div class="relative z-10 p-2 space-y-2">
+          <For each={state().menus2}>
+            {(menu) => {
+              const { icon, url, badge, onClick } = menu;
+              return (
+                <Menu
+                  class=""
+                  app={props.app}
+                  history={props.history}
+                  highlight={state().cur_route_name === url}
+                  url={url}
+                  badge={badge}
+                  onClick={onClick}
+                >
+                  {icon}
+                </Menu>
+              );
+            }}
+          </For>
+        </div>
       </div>
       <div class="z-0 flex-1 relative w-0 h-full">
         <RouteChildren

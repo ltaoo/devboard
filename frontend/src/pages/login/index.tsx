@@ -31,7 +31,7 @@ function LoginViewModel(props: ViewComponentProps) {
     }),
     $btn_goto_home: new ButtonCore({
       async onClick() {
-        props.history.destroyAllAndPush("root.home_layout.index");
+        props.history.destroyAllAndPush("root.home.index");
       },
     }),
   };
