@@ -390,7 +390,7 @@ func main() {
 					created_paste_event = models.PasteEvent{
 						Id:                uuid.New().String(),
 						ContentType:       "html",
-						Text:              text,
+						Html:              text,
 						LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
 						LastOperationType: 1,
 					}
