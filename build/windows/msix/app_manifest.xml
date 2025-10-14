@@ -7,14 +7,14 @@
   
   <Identity 
     Name="com.funzm.devboard"
-    Publisher="CN=My Company"
+    Publisher="CN=com.funzm"
     Version="0.1.0.0" 
     ProcessorArchitecture="x64" />
   
   <Properties>
-    <DisplayName>My Product</DisplayName>
-    <PublisherDisplayName>My Company</PublisherDisplayName>
-    <Description>My Product Description</Description>
+    <DisplayName>Devboard</DisplayName>
+    <PublisherDisplayName>com.funzm</PublisherDisplayName>
+    <Description>Supercharge Your workflow. The smart clipboard toolkit for developers.</Description>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
   
@@ -29,8 +29,8 @@
   <Applications>
     <Application Id="com.funzm.devboard" Executable="devboard" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
-        DisplayName="My Product"
-        Description="My Product Description"
+        DisplayName="Devboard"
+        Description="Supercharge Your workflow. The smart clipboard toolkit for developers."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

@@ -10,15 +10,15 @@
     <Installer
         Path="devboard"
         Arguments=""
-        InstallLocation="C:\Program Files\My Company\My Product">
+        InstallLocation="C:\Program Files\com.funzm\devboard">
     </Installer>
     <PackageInformation
-        PackageName="My Product"
-        PackageDisplayName="My Product"
-        PublisherName="CN=My Company"
-        PublisherDisplayName="My Company"
+        PackageName="Devboard"
+        PackageDisplayName="Devboard"
+        PublisherName="CN=com.funzm"
+        PublisherDisplayName="com.funzm"
         Version="0.1.0.0"
-        PackageDescription="My Product Description">
+        PackageDescription="Supercharge Your workflow. The smart clipboard toolkit for developers.">
         <Capabilities>
             <Capability Name="runFullTrust" />
             
@@ -26,8 +26,8 @@
         <Applications>
             <Application
                 Id="com.funzm.devboard"
-                Description="My Product Description"
-                DisplayName="My Product"
+                Description="Supercharge Your workflow. The smart clipboard toolkit for developers."
+                DisplayName="Devboard"
                 ExecutableName="devboard"
                 EntryPoint="Windows.FullTrustApplication">
                 
@@ -41,9 +41,9 @@
         </Dependencies>
         <Properties>
             <Framework>false</Framework>
-            <DisplayName>My Product</DisplayName>
-            <PublisherDisplayName>My Company</PublisherDisplayName>
-            <Description>My Product Description</Description>
+            <DisplayName>Devboard</DisplayName>
+            <PublisherDisplayName>com.funzm</PublisherDisplayName>
+            <Description>Supercharge Your workflow. The smart clipboard toolkit for developers.</Description>
             <Logo>Assets\AppIcon.png</Logo>
         </Properties>
     </PackageInformation>
