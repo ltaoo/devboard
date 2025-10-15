@@ -41,7 +41,14 @@ function getCurrentDeviceSize(width: number) {
   return "sm";
 }
 export type DeviceSizeTypes = keyof typeof mediaSizes;
-
+export type KeyboardEvent = {
+  code: string;
+  shift: boolean;
+  ctrl: boolean;
+  cmd: boolean;
+  alt: boolean;
+  preventDefault: () => void;
+};
 enum Events {
   Tip,
   Loading,
@@ -59,6 +66,7 @@ enum Events {
   Resize,
   Blur,
   Keydown,
+  Keyup,
   OrientationChange,
   EscapeKeyDown,
   StateChange,
@@ -77,10 +85,8 @@ type TheTypesOfEvents = {
     height: number;
   };
   [Events.DeviceSizeChange]: DeviceSizeTypes;
-  [Events.Keydown]: {
-    code: string;
-    preventDefault: () => void;
-  };
+  [Events.Keydown]: KeyboardEvent;
+  [Events.Keyup]: KeyboardEvent;
   [Events.EscapeKeyDown]: void;
   [Events.Blur]: void;
   [Events.Show]: void;
@@ -279,11 +285,14 @@ export class Application<T extends { storage: StorageCore<any> }> extends BaseDo
     throw new Error("请实现 enablePointer 方法");
   }
   /** 平台相关的全局事件 */
-  keydown(event: { code: string; preventDefault: () => void }) {
+  keydown(event: KeyboardEvent) {
     if (event.code === "Escape") {
       this.escape();
     }
     this.emit(Events.Keydown, event);
+  }
+  keyup(event: KeyboardEvent) {
+    this.emit(Events.Keyup, event);
   }
   escape() {
     this.emit(Events.EscapeKeyDown);
@@ -346,6 +355,9 @@ export class Application<T extends { storage: StorageCore<any> }> extends BaseDo
   }
   onKeydown(handler: Handler<TheTypesOfEvents[Events.Keydown]>) {
     return this.on(Events.Keydown, handler);
+  }
+  onKeyup(handler: Handler<TheTypesOfEvents[Events.Keyup]>) {
+    return this.on(Events.Keyup, handler);
   }
   onEscapeKeyDown(handler: Handler<TheTypesOfEvents[Events.EscapeKeyDown]>) {
     return this.on(Events.EscapeKeyDown, handler);
