@@ -16,6 +16,7 @@ import { InputCore, InputProps, PopoverCore, ScrollViewCore, SelectCore } from "
 import { Popover, ScrollView } from "./ui";
 import { Select } from "./ui/select";
 import { Presence } from "./ui/presence";
+import { ShortcutModel } from "@/biz/shortcut/shortcut";
 
 export function SelectWithKeyboardModel(props: {
   $view: ScrollViewCore;
@@ -59,27 +60,32 @@ export function SelectWithKeyboardModel(props: {
       // ui.$input.clear();
       // methods.refresh();
     },
-    moveToNextOption() {
+    moveToNextOption(step = 1) {
       console.log("[COMPONENT]with-tags-input - moveToNextOption", _opt_idx, _options.length);
-      const cur_option = _options[_opt_idx];
-      _opt_idx += 1;
+      _opt_idx += step;
       if (_opt_idx > _options.length - 1) {
         _opt_idx = _options.length - 1;
       }
       const scroll_top = ui.$view.getScrollTop();
       const client_height = ui.$view.getScrollClientHeight();
-      const default_displayed_menu_count = props.num ?? 6;
       const target_option = _options[_opt_idx];
-      // console.log("calc need scroll the container", client_height, scroll_top, cur_option.top);
+      console.log(
+        "[COMPONENT]with-tag - moveToNext calc need scroll the container",
+        _opt_idx,
+        client_height,
+        scroll_top,
+        target_option
+      );
 
       if (target_option && target_option.top !== undefined) {
-        if (Math.abs(target_option.top - scroll_top) > client_height) {
+        if (target_option.top - scroll_top < 0) {
           const closest_opt_idx = _options.findIndex((opt) => {
             return opt.top && opt.top >= scroll_top;
           });
           if (closest_opt_idx !== -1) {
             // const closest_opt = _options[closest_opt_idx];
             // console.log(closest_opt);
+            console.log("[COMPONENT]with-tag - moveToNext direct to option", closest_opt_idx);
             _opt_idx = closest_opt_idx;
           }
         } else if (target_option.top > client_height / 2 + scroll_top) {
@@ -93,10 +99,10 @@ export function SelectWithKeyboardModel(props: {
       // }
       methods.refresh();
     },
-    moveToPrevOption() {
+    moveToPrevOption(step = 1) {
       console.log("[COMPONENT]with-tags-input - moveToPrevOption", _opt_idx, _options.length);
       const cur_option = _options[_opt_idx];
-      _opt_idx -= 1;
+      _opt_idx -= step;
       if (_opt_idx < 0) {
         _opt_idx = 0;
       }
@@ -167,6 +173,7 @@ export function SelectWithKeyboardModel(props: {
   };
   const ui = {
     $view: props.$view,
+    $shortcut: ShortcutModel({}),
   };
 
   let _options: OptionInMenu[] = [];
@@ -195,51 +202,74 @@ export function SelectWithKeyboardModel(props: {
   };
   const bus = base<TheTypesOfEvents>();
 
+  ui.$shortcut.methods.register("KeyGKeyG", () => {
+    bus.emit(Events.Shortcut, {
+      keys: "gg",
+    });
+  });
+  ui.$shortcut.methods.register("KeyJ,ArrowDown", () => {
+    console.log("[COMPONENT]with-tags-input - handle KeyJ,ArrowDown");
+    methods.moveToNextOption();
+  });
+  ui.$shortcut.methods.register("ControlRight+KeyD", () => {
+    methods.moveToNextOption(3);
+  });
+  ui.$shortcut.methods.register("KeyK,ArrowUp", () => {
+    methods.moveToPrevOption();
+  });
+  ui.$shortcut.methods.register("ControlRight+KeyU", () => {
+    methods.moveToPrevOption(3);
+  });
+
   const unlisten = props.app.onKeydown((event) => {
-    _pressed_codes.push(event.code);
-    console.log(event.code, _pressed_codes);
-    methods.clearPressedKeys();
-    if (event.code === "Enter") {
-      if (_using_keyboard) {
-        bus.emit(Events.Shortcut, {
-          keys: "enter",
-        });
-        event.preventDefault();
-        return;
-      }
-    }
-    if (event.code === "Space") {
-      if (_using_keyboard) {
-        event.preventDefault();
-        bus.emit(Events.Shortcut, {
-          keys: "space",
-        });
-        return;
-      }
-    }
-    if (_pressed_codes.join("") === "KeyGKeyG") {
-      bus.emit(Events.Shortcut, {
-        keys: "gg",
-      });
-    }
-    if (event.code === "KeyJ") {
-      methods.moveToNextOption();
-      return;
-    }
-    if (event.code === "KeyK") {
-      methods.moveToPrevOption();
-      return;
-    }
-    if (event.code === "ArrowDown") {
-      methods.moveToNextOption();
-      event.preventDefault();
-      return;
-    }
-    if (event.code === "ArrowUp") {
-      methods.moveToPrevOption();
-      event.preventDefault();
-      return;
-    }
+    ui.$shortcut.methods.handleKeydown(event);
+    // _pressed_codes.push(event.code);
+    // console.log(event.code, _pressed_codes);
+    // methods.clearPressedKeys();
+    // if (event.code === "Enter") {
+    //   if (_using_keyboard) {
+    //     bus.emit(Events.Shortcut, {
+    //       keys: "enter",
+    //     });
+    //     event.preventDefault();
+    //     return;
+    //   }
+    // }
+    // if (event.code === "Space") {
+    //   if (_using_keyboard) {
+    //     event.preventDefault();
+    //     bus.emit(Events.Shortcut, {
+    //       keys: "space",
+    //     });
+    //     return;
+    //   }
+    // }
+    // if (_pressed_codes.join("") === "KeyGKeyG") {
+    //   bus.emit(Events.Shortcut, {
+    //     keys: "gg",
+    //   });
+    // }
+    // if (event.code === "KeyJ") {
+    //   methods.moveToNextOption();
+    //   return;
+    // }
+    // if (event.code === "KeyK") {
+    //   methods.moveToPrevOption();
+    //   return;
+    // }
+    // if (event.code === "ArrowDown") {
+    //   methods.moveToNextOption();
+    //   event.preventDefault();
+    //   return;
+    // }
+    // if (event.code === "ArrowUp") {
+    //   methods.moveToPrevOption();
+    //   event.preventDefault();
+    //   return;
+    // }
+  });
+  const unlisten2 = props.app.onKeyup((event) => {
+    ui.$shortcut.methods.handleKeyup(event);
   });
 
   return {
@@ -249,6 +279,7 @@ export function SelectWithKeyboardModel(props: {
     ready() {},
     destroy() {
       unlisten();
+      unlisten2();
       bus.destroy();
     },
     onEnter(handler: Handler<TheTypesOfEvents[Events.Enter]>) {
@@ -419,7 +450,7 @@ export function WithTagsInputModel(props: { app: ViewComponentProps["app"] } & I
   //   _opt_idx = 0;
   // });
   const unlisten = props.app.onKeydown((event) => {
-    console.log(event.code);
+    // console.log(event.code);
     if (!ui.$input_select.visible) {
       return;
     }

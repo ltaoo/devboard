@@ -141,6 +141,15 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       _added_records = [];
       ui.$waterfall.methods.resetRange();
     },
+    async copyPasteRecord(v: PasteRecord) {
+      const r = await request.paste.write.run({ id: v.id });
+      if (r.error) {
+        return;
+      }
+      props.app.tip({
+        text: ["已复制至粘贴板"],
+      });
+    },
     previewPasteContent(v: PasteRecord) {
       if (v.types.includes("url")) {
         Browser.OpenURL(v.text);
@@ -187,8 +196,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       return;
     },
     async handleClickCopyBtn(v: PasteRecord) {
-      const r = await request.paste.write.run({ id: v.id });
-      // props.app.copy(v.text);
+      methods.copyPasteRecord(v);
     },
     handleClickUpBtn() {
       methods.backToTop();
@@ -404,8 +412,14 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     if (keys === "space") {
       const idx = ui.$select.state.idx;
       const $cell = ui.$waterfall.$items[idx];
-      console.log("[PAGE]home/index - before previewPasteContent", idx);
+      // console.log("[PAGE]home/index - before previewPasteContent", idx);
       methods.previewPasteContent($cell.state.payload);
+    }
+    if (keys === "enter") {
+      const idx = ui.$select.state.idx;
+      const $cell = ui.$waterfall.$items[idx];
+      // console.log("[PAGE]home/index - before previewPasteContent", idx);
+      methods.copyPasteRecord($cell.state.payload);
     }
   });
   ui.$back_to_top.onStateChange(() => methods.refresh());
