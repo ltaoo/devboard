@@ -27,7 +27,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       }
       return false;
     })();
-    console.log("[]handleScrollForce - before if (!update", update, scrollTop, range);
+    // console.log("[]handleScrollForce - before if (!update", update, scrollTop, range);
     if (!update) {
       return;
     }
@@ -66,12 +66,12 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
             $next.methods.setTopWithDifference(height_difference);
           }
         }
-        console.log(
-          "[DOMAIN]appendItem - after this.height += heightDiff",
-          "加载完成，发现高度差异为",
-          [_index, $item.uid, idx],
-          [original_height, height_difference]
-        );
+        // console.log(
+        //   "[DOMAIN]appendItem - after this.height += heightDiff",
+        //   "加载完成，发现高度差异为",
+        //   [_index, $item.uid, idx],
+        //   [original_height, height_difference]
+        // );
         _height += height_difference;
         bus.emit(Events.HeightChange, _height);
         bus.emit(Events.CellUpdate, {
@@ -138,7 +138,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       const idx = _$total_items.length;
       const $first = _$total_items[0];
       if ($first) {
-        console.log("[BIZ]waterfall/column - before $first set top", idx, $first.id, $first.state.top, $item.height);
+        // console.log("[BIZ]waterfall/column - before $first set top", idx, $first.id, $first.state.top, $item.height);
         $first.methods.setTopWithDifference($item.height + _gutter);
         // console.log("[BIZ]waterfall/column - after $first set top", idx, $first.id, $first.state.top, $item.height);
       }
@@ -178,7 +178,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       const $backup = _$total_items[_end];
       const height_difference = $item.height + _gutter;
       _height -= height_difference;
-      console.log("[BIZ]waterfall/column - delete cell", idx, $next?.uid, height_difference);
+      // console.log("[BIZ]waterfall/column - delete cell", idx, $next?.uid, height_difference);
       if ($next) {
         $next.methods.setTopWithDifference(-height_difference);
       }
@@ -207,7 +207,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       // methods.calcVisibleRange(0);
     },
     calcVisibleRange(scroll_top: number) {
-      console.log("[BIZ]waterfall/column - calcVisibleRange", scroll_top, _start, _end, _$items);
+      // console.log("[BIZ]waterfall/column - calcVisibleRange", scroll_top, _start, _end, _$items);
       // 找中点需要遍历几万个元素，不是最佳方案
       // const $middle_item = (() => {
       //   return _$total_items.find(($v) => {
@@ -258,12 +258,12 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
         // end = Math.min(_$total_items.length, start + _size);
       })();
       //     const count = this.buffer_size;
-      console.log("before Math.max", [start, start - _buffer_size], [end, _$total_items.length]);
+      // console.log("before Math.max", [start, start - _buffer_size], [end, _$total_items.length]);
       const result = { start: Math.max(0, start - _buffer_size), end: Math.min(end, _$total_items.length) };
       return result;
     },
     update(range: { start: number; end: number }) {
-      console.log("[DOMAIN]waterfall/column - update case range is changed", range);
+      // console.log("[DOMAIN]waterfall/column - update case range is changed", range);
       const $visible_items = _$total_items.slice(range.start, range.end);
       const item = $visible_items[0];
       if (!item) {

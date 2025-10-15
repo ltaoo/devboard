@@ -7,6 +7,7 @@ import { Browser, Dialogs, Events } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
+import { HTMLCard } from "@/components/html-card";
 import { Button, ListView, ScrollView, Skeleton } from "@/components/ui";
 import { RelativeTime } from "@/components/relative_time";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
@@ -37,10 +38,7 @@ import {
   processPartialPasteEvent,
   writePasteEvent,
 } from "@/biz/paste/service";
-
-import { LocalVideo } from "./components/LazyVideo";
-import { LocalImage } from "./components/LocalImage";
-import { HTMLCard } from "@/components/html-card";
+import { d1, d2, d3, d4 } from "@mock/created_paste_event";
 
 function HomeIndexViewModel(props: ViewComponentProps) {
   const request = {
@@ -105,6 +103,20 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         console.log("[]before setScrollTop in onHeightChange", ui.$view.getScrollTop(), difference);
         ui.$view.addScrollTop(difference);
         console.log("[]after setScrollTop in onHeightChange", ui.$view.getScrollTop());
+        ui.$select.methods.updateOption({
+          id: $first.state.payload.id,
+          label: $first.state.payload.id,
+          height: $first.state.height,
+          top: $first.state.top,
+        });
+      });
+      $first.onTopChange(() => {
+        ui.$select.methods.updateOption({
+          id: $first.state.payload.id,
+          label: $first.state.payload.id,
+          height: $first.state.height,
+          top: $first.state.top,
+        });
       });
     },
     prepareLoadRecord(data: PasteRecord) {
@@ -492,7 +504,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
               >
                 <div class="">
                   {/* <div class="absolute left-0 top-0">{state().highlighted_idx}</div> */}
-                  {/* <div class="absolute left-2 top-2">{idx}</div> */}
+                  {/* <div class="absolute left-2 top-2">{v.id}</div> */}
                   <div
                     classList={{
                       "relative min-h-[40px] max-h-[120px] overflow-hidden rounded-md": true,

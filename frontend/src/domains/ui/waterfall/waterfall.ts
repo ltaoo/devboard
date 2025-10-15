@@ -108,7 +108,7 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
       // _items.push(...createdItems);
       //     this.state.pendingItems.push(...createdItems);
       methods.handleScroll(_scrollValues);
-      console.log("[BIZ]Waterfall/waterfall - appendItems before StateChange", _state.columns[0].items);
+      // console.log("[BIZ]Waterfall/waterfall - appendItems before StateChange", _state.columns[0].items);
       bus.emit(Events.StateChange, { ..._state });
       return createdItems;
     },
@@ -117,7 +117,7 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
      */
     placeItemToColumn(item: WaterfallCellModel<T>) {
       if (_$columns.length === 1) {
-        console.log("[BIZ]Waterfall/waterfall - placeItemToColumn", _$items.length, item.state.payload);
+        // console.log("[BIZ]Waterfall/waterfall - placeItemToColumn", _$items.length, item.state.payload);
         _$items.push(item);
         _$columns[0].methods.appendItem(item);
         return;
@@ -137,7 +137,7 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
     /** 往前面插入 cell */
     unshiftItemToColumn(item: WaterfallCellModel<T>, opt: Partial<{ skipUpdateHeight: boolean }> = {}) {
       if (_$columns.length === 1) {
-        console.log("[BIZ]Waterfall/waterfall - placeItemToColumn", _$items.length, item.state.payload);
+        // console.log("[BIZ]Waterfall/waterfall - placeItemToColumn", _$items.length, item.state.payload);
         _$items.unshift(item);
         _$columns[0].methods.unshiftItem(item, opt);
         return;

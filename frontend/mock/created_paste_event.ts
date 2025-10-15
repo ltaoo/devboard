@@ -16,6 +16,7 @@ export const d1 = {
     text: "1. Test Content Hello World",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d2 = {
@@ -34,6 +35,7 @@ export const d2 = {
     text: "2. await page.enable_auto_solve_cloudflare_captcha()",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d3 = {
@@ -52,6 +54,7 @@ export const d3 = {
     text: "3. \"\"\" Example using the context manager approach to handle Cloudflare captcha. This waits for the captcha to be processed before continuing. \"\"\" browser = Chrome() await browser.start() page = await browser.get_page() print('Using context manager approach...') async with page.expect_and_bypass_cloudflare_captcha( custom_selector=(By.ID, 'TAYH8'), time_before_click=5 ): await page.go_to('https://www.planetminecraft.com/account/sign_in/') print('Page loaded, waiting for captcha to be handled...') print('Captcha handling completed, now we can continue...') await asyncio.sleep(3) await browser.stop()",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d4 = {
@@ -70,6 +73,7 @@ export const d4 = {
     text: "4. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d5 = {
@@ -88,6 +92,7 @@ export const d5 = {
     text: "5. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d6 = {
@@ -106,6 +111,7 @@ export const d6 = {
     text: "6. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d7 = {
@@ -124,6 +130,7 @@ export const d7 = {
     text: "7. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d8 = {
@@ -142,6 +149,7 @@ export const d8 = {
     text: "8. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d9 = {
@@ -160,6 +168,7 @@ export const d9 = {
     text: "9. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d10 = {
@@ -178,6 +187,7 @@ export const d10 = {
     text: "10. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d11 = {
@@ -196,6 +206,7 @@ export const d11 = {
     text: "11. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d12 = {
@@ -214,6 +225,7 @@ export const d12 = {
     text: "1. Test Content Hello World",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d13 = {
@@ -232,6 +244,7 @@ export const d13 = {
     text: "13. await page.enable_auto_solve_cloudflare_captcha()",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d14 = {
@@ -250,6 +263,7 @@ export const d14 = {
     text: "14. \"\"\" Example using the context manager approach to handle Cloudflare captcha. This waits for the captcha to be processed before continuing. \"\"\" browser = Chrome() await browser.start() page = await browser.get_page() print('Using context manager approach...') async with page.expect_and_bypass_cloudflare_captcha( custom_selector=(By.ID, 'TAYH8'), time_before_click=5 ): await page.go_to('https://www.planetminecraft.com/account/sign_in/') print('Page loaded, waiting for captcha to be handled...') print('Captcha handling completed, now we can continue...') await asyncio.sleep(3) await browser.stop()",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d15 = {
@@ -268,6 +282,7 @@ export const d15 = {
     text: "15. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d16 = {
@@ -286,6 +301,7 @@ export const d16 = {
     text: "16. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d17 = {
@@ -304,6 +320,7 @@ export const d17 = {
     text: "17. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d18 = {
@@ -322,6 +339,7 @@ export const d18 = {
     text: "18. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d19 = {
@@ -340,6 +358,7 @@ export const d19 = {
     text: "19. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d20 = {
@@ -358,6 +377,7 @@ export const d20 = {
     text: "20. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d21 = {
@@ -376,6 +396,7 @@ export const d21 = {
     text: "21. ",
     image_base64: "",
   },
+  categories: [],
 };
 
 export const d22 = {
@@ -394,4 +415,5 @@ export const d22 = {
     text: "22. ",
     image_base64: "",
   },
+  categories: [],
 };

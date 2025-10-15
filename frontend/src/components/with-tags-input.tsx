@@ -28,16 +28,20 @@ export function SelectWithKeyboardModel(props: {
       bus.emit(Events.StateChange, { ..._state });
     },
     setOptions(v: OptionInMenu[]) {
+      // console.log("[COMPONENT]with-tags-input - setOptions", v[0]);
       _options = v;
       _displayed_options = _options;
     },
     unshiftOption(v: OptionInMenu) {
+      // console.log("[COMPONENT]with-tags-input - unshiftOption", v);
       _options.unshift(v);
       _opt_idx += 1;
     },
     updateOption(v: OptionInMenu) {
       const idx = _options.findIndex((opt) => opt.id === v.id);
+      // console.log("[COMPONENT]with-tags-input - updateOption", v.id, v.top, idx);
       if (idx === -1) {
+        // console.error("[COMPONENT]with-tags-input - not found matched opt");
         return;
       }
       _options[idx] = v;
@@ -56,6 +60,8 @@ export function SelectWithKeyboardModel(props: {
       // methods.refresh();
     },
     moveToNextOption() {
+      console.log("[COMPONENT]with-tags-input - moveToNextOption", _opt_idx, _options.length);
+      const cur_option = _options[_opt_idx];
       _opt_idx += 1;
       if (_opt_idx > _options.length - 1) {
         _opt_idx = _options.length - 1;
@@ -63,12 +69,22 @@ export function SelectWithKeyboardModel(props: {
       const scroll_top = ui.$view.getScrollTop();
       const client_height = ui.$view.getScrollClientHeight();
       const default_displayed_menu_count = props.num ?? 6;
-      const cur_option = _options[_opt_idx];
+      const target_option = _options[_opt_idx];
       // console.log("calc need scroll the container", client_height, scroll_top, cur_option.top);
-      if (cur_option.top !== undefined) {
-        if (cur_option.top > client_height / 2 + scroll_top) {
+
+      if (target_option && target_option.top !== undefined) {
+        if (Math.abs(target_option.top - scroll_top) > client_height) {
+          const closest_opt_idx = _options.findIndex((opt) => {
+            return opt.top && opt.top >= scroll_top;
+          });
+          if (closest_opt_idx !== -1) {
+            // const closest_opt = _options[closest_opt_idx];
+            // console.log(closest_opt);
+            _opt_idx = closest_opt_idx;
+          }
+        } else if (target_option.top > client_height / 2 + scroll_top) {
           // ui.$view.scrollTo({ top: cur_option.top - client_height / 2 });
-          ui.$view.setScrollTop(cur_option.top - client_height / 2);
+          ui.$view.setScrollTop(target_option.top - client_height / 2);
         }
       }
       // const menu_height = 24 + 6 + 6;
@@ -78,24 +94,39 @@ export function SelectWithKeyboardModel(props: {
       methods.refresh();
     },
     moveToPrevOption() {
+      console.log("[COMPONENT]with-tags-input - moveToPrevOption", _opt_idx, _options.length);
+      const cur_option = _options[_opt_idx];
       _opt_idx -= 1;
       if (_opt_idx < 0) {
         _opt_idx = 0;
       }
+      const target_option = _options[_opt_idx];
       const scroll_top = ui.$view.getScrollTop();
       const client_height = ui.$view.getScrollClientHeight();
-      const cur_option = _options[_opt_idx];
-      console.log("calc need scroll the container", client_height, scroll_top, cur_option.top);
-      if (cur_option.top !== undefined) {
-        if (cur_option.top - scroll_top < 0) {
-          const prev_option = _options[_opt_idx - 1];
-          if (prev_option && prev_option.top !== undefined) {
-            // ui.$view.scrollTo({ top: cur_option.top - 88 });
-            // ui.$view.setScrollTop(cur_option.top - 88);
-            ui.$view.setScrollTop(_opt_idx === 1 ? 0 : prev_option.top + 24);
-          } else {
-            ui.$view.setScrollTop(0);
+      console.log(
+        "[COMPONENT]with-tags-input - calc need scroll the container",
+        _opt_idx,
+        client_height,
+        scroll_top,
+        cur_option.top,
+        target_option
+      );
+      if (target_option && target_option.top !== undefined) {
+        if (Math.abs(target_option.top - scroll_top) > client_height) {
+          const closest_opt_idx = _options.findIndex((opt) => {
+            return opt.top && opt.top + opt.height >= scroll_top + client_height;
+          });
+          console.log("[COMPONENT]with-tags-input - offscreen", closest_opt_idx);
+          if (closest_opt_idx !== -1) {
+            // const closest_opt = _options[closest_opt_idx];
+            // console.log(closest_opt);
+            _opt_idx = closest_opt_idx;
           }
+        } else if (target_option.top >= scroll_top && target_option.top <= scroll_top + client_height) {
+        } else if (target_option.top < scroll_top) {
+          ui.$view.setScrollTop(target_option.top - 58);
+        } else {
+          ui.$view.setScrollTop(0);
         }
       }
       // const menu_height = 24 + 6 + 6;
