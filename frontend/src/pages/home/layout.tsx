@@ -14,6 +14,7 @@ import {
   List,
   ClipboardList,
   HelpCircle,
+  Bot,
 } from "lucide-solid";
 
 import { pages } from "@/store/views";
@@ -75,6 +76,16 @@ function HomeLayoutViewModel(props: ViewComponentProps) {
     $menu2: RouteMenusModel({
       route: "root.home_layout.index" as PageKeys,
       menus: [
+        // {
+        //   title: "控制台",
+        //   icon: <Bot class="w-6 h-6" />,
+        //   onClick() {
+        //     request.common.open_window.run({
+        //       title: "控制台",
+        //       route: "root.console",
+        //     });
+        //   },
+        // },
         {
           title: "帮助",
           icon: <HelpCircle class="w-6 h-6" />,

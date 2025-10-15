@@ -21,7 +21,7 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
       }
       const { width, height } = size;
       if (_height !== height) {
-        console.log("[DOMAIN]ui/waterfall/cell - load", _height, height);
+        // console.log("[DOMAIN]ui/waterfall/cell - load", _height, height);
         bus.emit(Events.HeightChange, [_height, toFixed(height - _height, 0)]);
       }
       _height = height;
@@ -61,7 +61,7 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
       }
       const original_height = _height;
       _height == height;
-      console.log("[DOMAIN]ui/waterfall/cell - setHeight", _height, height);
+      // console.log("[DOMAIN]ui/waterfall/cell - setHeight", _height, height);
       bus.emit(Events.HeightChange, [original_height, original_height - height]);
       methods.refresh();
     },
@@ -73,7 +73,7 @@ export function WaterfallCellModel<T extends Record<string, unknown>>(props: {
       if (_height === height) {
         return;
       }
-      console.log("[DOMAIN]ui/waterfall/cell - updateHeight", _height, height);
+      // console.log("[DOMAIN]ui/waterfall/cell - updateHeight", _height, height);
       const cur = _height;
       _height = height;
       bus.emit(Events.HeightChange, [height, toFixed(height - cur, 0)]);

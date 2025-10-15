@@ -51,4 +51,7 @@ export const pages: Omit<Record<PageKeys, ViewComponent>, "root"> = {
   "root.settings.synchronization": lazy(async () => ({
     default: (await import("@/pages/settings/synchronization")).SynchronizationView,
   })),
+  "root.console": lazy(async () => ({
+    default: (await import("@/pages/debug/debug")).DebugConsoleView,
+  })),
 };

@@ -22,7 +22,7 @@ export function CodeCard(props: { id: string | number; language?: string | null;
         return;
       }
       const language = props.language.toLowerCase();
-      console.log("load language", language, $code);
+      // console.log("load language", language, $code);
       if (!$code) {
         return;
       }

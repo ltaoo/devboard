@@ -4,6 +4,7 @@ import {
   DeletePasteEvent,
   FetchPasteEventList,
   FetchPasteEventProfile,
+  MockPasteText,
   PreviewPasteEvent,
   Write,
 } from "~/pasteservice";
@@ -152,4 +153,8 @@ export function openPasteEventPreviewWindow(body: { id: string }) {
 
 export function writePasteEvent(body: { id: string }) {
   return request.post(Write, { event_id: body.id });
+}
+
+export function fakePasteEvent(body: { text: string }) {
+  return request.post(MockPasteText, { text: body.text });
 }

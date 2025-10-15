@@ -86,7 +86,7 @@ export function connect<T extends { storage: StorageCore<any> }>(app: Applicatio
    */
   function get_system_theme() {
     try {
-      console.log("[Domain]app/connect - handleMediaQuery");
+      // console.log("[Domain]app/connect - handleMediaQuery");
       const r = window.matchMedia(MediaColorSchemeDarkText);
       // 看别人代码，还判断了 m.media != r，打印 m.media 就是 MediaColorSchemeDarkText 文本
       // 如果不相同，应该是 light，但是别人代码是 dark，搞不懂

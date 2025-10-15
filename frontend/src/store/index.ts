@@ -104,7 +104,7 @@ export const app = new Application({
       history.push("root.home.index");
       return Result.Ok(null);
     }
-    console.log("[STORE]beforeReady - before if (!app.$user.isLogin", app.$user.isLogin, route.pathname);
+    // console.log("[STORE]beforeReady - before if (!app.$user.isLogin", app.$user.isLogin, route.pathname);
     if (!app.$user.isLogin) {
       app.tip({
         text: ["请先登录"],

@@ -80,6 +80,10 @@ const configure = {
           },
         },
       },
+      console: {
+        title: "调试台",
+        pathname: "/debug_console",
+      },
       login: {
         title: "登录",
         pathname: "/login",

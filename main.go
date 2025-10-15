@@ -3,21 +3,13 @@ package main
 import (
 	"context"
 	"embed"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
-	"mime"
 	"net/http"
-	"os"
-	"path/filepath"
 	"runtime"
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/icons"
@@ -27,7 +19,6 @@ import (
 	"devboard/db"
 	_biz "devboard/internal/biz"
 	"devboard/internal/service"
-	"devboard/internal/transformer"
 	"devboard/models"
 	"devboard/pkg/clipboard"
 	"devboard/pkg/logger"
@@ -111,10 +102,11 @@ func main() {
 		Biz: biz,
 	}
 	common_service := application.NewService(_common_service)
-	paste_service := application.NewService(&service.PasteService{
+	_paste_service := service.PasteService{
 		App: app,
 		Biz: biz,
-	})
+	}
+	paste_service := application.NewService(&_paste_service)
 	config_service := application.NewService(&service.ConfigService{
 		App: app,
 		Biz: biz,
@@ -268,7 +260,7 @@ func main() {
 	// }()
 	go func() {
 		ch := clipboard.Watch(context.TODO())
-		var created_paste_event models.PasteEvent
+		var created_paste_event *models.PasteEvent
 		// var prev_paste_event models.PasteEvent
 		// if err := biz_app.DB.First(&prev_paste_event).Error; err != nil {
 		// }
@@ -280,185 +272,41 @@ func main() {
 			}
 			if data.Type == "public.file-url" {
 				if files, ok := data.Data.([]string); ok {
-					var results []service.FileInPasteBoard
-					for _, f := range files {
-						info, err := os.Stat(f)
-						if err != nil {
-							continue
-						}
-						name := info.Name()
-						if info.IsDir() {
-							results = append(results, service.FileInPasteBoard{
-								Name:         name,
-								AbsolutePath: f,
-								MimeType:     "folder",
-							})
-							continue
-						}
-						mime_type := mime.TypeByExtension(filepath.Ext(name))
-						if mime_type == "" {
-							// 如果无法通过扩展名确定，使用 application/octet-stream 作为默认值
-							mime_type = "application/octet-stream"
-						} else {
-							// 去除可能的参数（如 charset=utf-8）
-							mime_type = strings.Split(mime_type, ";")[0]
-						}
-						results = append(results, service.FileInPasteBoard{
-							Name:         name,
-							AbsolutePath: f,
-							MimeType:     mime_type,
-						})
+					created, err := _paste_service.HandlePasteFile(files)
+					if err != nil {
+						return
 					}
-					if len(results) != 0 {
-						content, err := json.Marshal(&results)
-						if err != nil {
-							return
-						}
-						created_paste_event = models.PasteEvent{
-							Id:                uuid.New().String(),
-							ContentType:       "file",
-							FileListJSON:      string(content),
-							LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-							LastOperationType: 1,
-						}
-						// created_paste_event.Content = created_paste_content
-						if err := biz.DB.Create(&created_paste_event).Error; err != nil {
-							log.Fatalf("Failed to create paste event: %v", err)
-							return
-						}
-						categories := []string{"file"}
-						for _, c := range categories {
-							created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-								Id:    c,
-								Label: c,
-							})
-							created_map := models.PasteEventCategoryMapping{
-								Id:                uuid.New().String(),
-								PasteEventId:      created_paste_event.Id,
-								CategoryId:        c,
-								LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-								LastOperationType: 1,
-								CreatedAt:         now,
-							}
-							if err := biz.DB.Create(&created_map).Error; err != nil {
-							}
-						}
-					}
+					created_paste_event = created
 				}
 			}
 			if data.Type == "public.utf8-plain-text" {
 				if text, ok := data.Data.(string); ok {
-					// if prev_paste_event.Id != 0 {
-					// 	prev_type := prev_paste_event.ContentType
-					// 	prev_text := prev_paste_event.Content.Text
-					// 	if prev_type == "text" && prev_text == text {
-					// 		return
-					// 	}
-					// }
-					created_paste_event = models.PasteEvent{
-						Id:                uuid.New().String(),
-						ContentType:       "text",
-						Text:              text,
-						LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-						LastOperationType: 1,
-					}
-					if err := biz.DB.Create(&created_paste_event).Error; err != nil {
-						log.Fatalf("Failed to create paste event: %v", err)
+					created, err := _paste_service.HandlePasteText(text)
+					if err != nil {
 						return
 					}
-					categories := transformer.TextContentDetector(text)
-					for _, c := range categories {
-						created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-							Id:    c,
-							Label: c,
-						})
-						created_map := models.PasteEventCategoryMapping{
-							Id:                uuid.New().String(),
-							PasteEventId:      created_paste_event.Id,
-							CategoryId:        c,
-							LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-							LastOperationType: 1,
-							CreatedAt:         now,
-						}
-						if err := biz.DB.Create(&created_map).Error; err == nil {
-						}
-					}
+					created_paste_event = created
 				}
 			}
 			if data.Type == "public.html" {
 				if text, ok := data.Data.(string); ok {
-					created_paste_event = models.PasteEvent{
-						Id:                uuid.New().String(),
-						ContentType:       "html",
-						Html:              text,
-						LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-						LastOperationType: 1,
-					}
-					if err := biz.DB.Create(&created_paste_event).Error; err != nil {
-						log.Fatalf("Failed to create paste event: %v", err)
+					created, err := _paste_service.HandlePasteHTML(text)
+					if err != nil {
 						return
 					}
-					categories := []string{"html"}
-					for _, c := range categories {
-						created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-							Id:    c,
-							Label: c,
-						})
-						created_map := models.PasteEventCategoryMapping{
-							Id:                uuid.New().String(),
-							PasteEventId:      created_paste_event.Id,
-							CategoryId:        c,
-							LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-							LastOperationType: 1,
-							CreatedAt:         now,
-						}
-						if err := biz.DB.Create(&created_map).Error; err == nil {
-						}
-					}
+					created_paste_event = created
 				}
 			}
 			if data.Type == "public.png" {
 				if f, ok := data.Data.([]byte); ok {
-					encoded := base64.StdEncoding.EncodeToString(f)
-					// if prev_paste_event.Id != 0 {
-					// 	prev_type := prev_paste_event.ContentType
-					// 	prev_image_base64 := prev_paste_event.Content.ImageBase64
-					// 	if prev_type == "image" && prev_image_base64 == encoded {
-					// 		return
-					// 	}
-					// }
-					created_paste_event = models.PasteEvent{
-						Id:                uuid.New().String(),
-						ContentType:       "image",
-						ImageBase64:       encoded,
-						LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-						LastOperationType: 1,
-					}
-					// created_paste_event.Content = created_paste_content
-					if err := biz.DB.Create(&created_paste_event).Error; err != nil {
-						log.Fatalf("Failed to create paste event: %v", err)
+					created, err := _paste_service.HandlePastePNG(f)
+					if err != nil {
 						return
 					}
-					categories := []string{"image"}
-					for _, c := range categories {
-						created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-							Id:    c,
-							Label: c,
-						})
-						created_map := models.PasteEventCategoryMapping{
-							Id:                uuid.New().String(),
-							PasteEventId:      created_paste_event.Id,
-							CategoryId:        c,
-							LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-							LastOperationType: 1,
-							CreatedAt:         now,
-						}
-						if err := biz.DB.Create(&created_map).Error; err != nil {
-						}
-					}
+					created_paste_event = created
 				}
 			}
-			if created_paste_event.Id != "" {
+			if created_paste_event != nil {
 				app.Event.Emit("clipboard:update", created_paste_event)
 			}
 		}
@@ -467,8 +315,6 @@ func main() {
 		body := event.Data.(service.ErrorBody)
 		search := fmt.Sprintf("?title=%v&desc=%v", body.Title, body.Content)
 		biz.ShowErrorWindow(search)
-		// error_win.SetURL(url)
-		// error_win.Show()
 	})
 	go func() {
 		cfg, err := config.LoadConfig()
