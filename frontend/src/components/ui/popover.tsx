@@ -57,7 +57,11 @@ export function Popover(props: { store: PopoverCore } & JSX.HTMLAttributes<HTMLE
             }}
           >
             <div
-              class="__a relative p-4 text-w-fg-0"
+              classList={{
+                [props.class ?? "p-2"]: true,
+                "__a relative text-w-fg-0": true,
+                ...props.classList,
+              }}
               onAnimationStart={(event) => {
                 const floating = event.currentTarget.getBoundingClientRect();
                 vm.popper.place2(floating);

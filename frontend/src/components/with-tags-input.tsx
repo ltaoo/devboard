@@ -69,7 +69,7 @@ export function WithTagsInputModel(
     },
     openSelect(opt: Partial<{ force: boolean }> = {}) {
       const with_keyboard = _state.isFocus && ui.$input.value === "";
-      console.log("[COMPONENT]with-input - openSelect", _state.isFocus, ui.$input.value, opt.force, with_keyboard);
+      // console.log("[COMPONENT]with-input - openSelect", _state.isFocus, ui.$input.value, opt.force, with_keyboard);
       if (opt.force && !_state.isFocus) {
         ui.$input.focus();
         ui.$input_select.toggle({
@@ -141,7 +141,7 @@ export function WithTagsInputModel(
         // ui.$input.setValue("");
       },
       onKeyDown(event) {
-        console.log("[COMPONENT]WithTagsInput - on keydown", ui.$input.value, event.code);
+        // console.log("[COMPONENT]WithTagsInput - on keydown", ui.$input.value, event.code);
         if (event.code === "Enter") {
           if (ui.$input_select.visible) {
             methods.selectMenuOption(ui.$list_select.state.idx);
@@ -281,7 +281,7 @@ export function WithTagsInput(props: { store: WithTagsInputModel }) {
         />
       </div>
       {/* <Select store={vm.ui.$input_select} /> */}
-      <Popover store={vm.ui.$input_select}>
+      <Popover store={vm.ui.$input_select} class="p-2">
         <ScrollView
           store={vm.ui.$view}
           classList={{

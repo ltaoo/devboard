@@ -64,7 +64,7 @@ function Application() {
 
   return (
     <div
-      class="screen w-screen h-screen transition-all duration-120"
+      class="screen w-screen h-screen select-none transition-all duration-120"
       style={{ transform: `translateY(${-state().height}px)` }}
     >
       <Show when={!state().ready}>

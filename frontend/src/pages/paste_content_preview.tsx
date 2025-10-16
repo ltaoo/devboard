@@ -1,20 +1,22 @@
 /**
- * @file JSON 内容预览
+ * @file 粘贴板内容预览
  */
 import { For, Match, Show, Switch } from "solid-js";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
 import { JSONContentPreview } from "@/components/preview-panels/json";
+import { CodeCard } from "@/components/code-card";
+import { HTMLCard } from "@/components/html-card";
+import { ImageContentPreview } from "@/components/preview-panels/image";
+import { ScrollView } from "@/components/ui";
+import { ScrollViewCore } from "@/domains/ui";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
-import { toNumber } from "@/utils/primitive";
 import { PasteEventProfileModel } from "@/biz/paste/paste_profile";
-import { ImageContentPreview } from "@/components/preview-panels/image";
 import { isCodeContent } from "@/biz/paste/utils";
-import { CodeCard } from "@/components/code-card";
-import { HTMLCard } from "@/components/html-card";
+import { toNumber } from "@/utils/primitive";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
@@ -27,7 +29,9 @@ function PreviewPasteEventModel(props: ViewComponentProps) {
       $profile.methods.load(props.view.query.id);
     },
   };
-  const ui = {};
+  const ui = {
+    $view: new ScrollViewCore({}),
+  };
 
   let _state = {
     get profile() {
@@ -72,13 +76,13 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(PreviewPasteEventModel, [props]);
 
   return (
-    <div class="relative w-full h-full">
+    <ScrollView store={vm.ui.$view} class="relative w-full h-full">
       <Switch>
         <Match when={state().error}>
           <div>{state().error?.message}</div>
         </Match>
         <Match when={state().profile}>
-          <div class="content w-full h-full">
+          <div class="content">
             <Switch
               fallback={
                 <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
@@ -123,8 +127,29 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
               </Match>
             </Switch>
           </div>
+          <div class="h-[124px]">
+            <div class="fixed bottom-0 p-4 left-1/2 -translate-x-1/2">
+              <div class="flex w-[80vw] px-6 py-4 backdrop-blur-md bg-white/30 border border-white/20 rounded-xl shadow-lg">
+                <div>
+                  <div class="flex gap-1">
+                    <For each={state().profile?.categories}>
+                      {(cate) => {
+                        return (
+                          <div class="px-2 py-1 rounded-md bg-w-fg-3">
+                            <div class="text-w-fg-0 text-[12px]">{cate.label}</div>
+                          </div>
+                        );
+                      }}
+                    </For>
+                  </div>
+                  <div class="mt-2 text-w-fg-0">{state().profile?.created_at_text}</div>
+                </div>
+                <div></div>
+              </div>
+            </div>
+          </div>
         </Match>
       </Switch>
-    </div>
+    </ScrollView>
   );
 }
