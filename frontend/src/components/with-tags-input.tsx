@@ -7,15 +7,12 @@ import { Bird } from "lucide-solid";
 import { ViewComponentProps } from "@/store/types";
 import { useViewModelStore } from "@/hooks";
 import { Input as InputPrimitive } from "@/packages/ui/input";
+import { Popover, ScrollView } from "@/components/ui";
 import { Input } from "@/components/ui/input";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { InputCore, InputProps, PopoverCore, ScrollViewCore, SelectCore } from "@/domains/ui";
-
-import { Popover, ScrollView } from "./ui";
-import { Select } from "./ui/select";
-import { Presence } from "./ui/presence";
 import { ShortcutModel } from "@/biz/shortcut/shortcut";
 
 export function SelectWithKeyboardModel(props: {
@@ -28,9 +25,14 @@ export function SelectWithKeyboardModel(props: {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    setOptions(v: OptionInMenu[]) {
+    setOptions(list: OptionInMenu[]) {
       // console.log("[COMPONENT]with-tags-input - setOptions", v[0]);
-      _options = v;
+      _options = list;
+      _displayed_options = _options;
+    },
+    appendOptions(list: OptionInMenu[]) {
+      // console.log("[COMPONENT]with-tags-input - setOptions", v[0]);
+      _options = [..._options, ...list];
       _displayed_options = _options;
     },
     unshiftOption(v: OptionInMenu) {
@@ -61,7 +63,7 @@ export function SelectWithKeyboardModel(props: {
       // methods.refresh();
     },
     moveToNextOption(step = 1) {
-      console.log("[COMPONENT]with-tags-input - moveToNextOption", _opt_idx, _options.length);
+      // console.log("[COMPONENT]with-tags-input - moveToNextOption", _opt_idx, _options.length);
       _opt_idx += step;
       if (_opt_idx > _options.length - 1) {
         _opt_idx = _options.length - 1;
@@ -69,23 +71,24 @@ export function SelectWithKeyboardModel(props: {
       const scroll_top = ui.$view.getScrollTop();
       const client_height = ui.$view.getScrollClientHeight();
       const target_option = _options[_opt_idx];
-      console.log(
-        "[COMPONENT]with-tag - moveToNext calc need scroll the container",
-        _opt_idx,
-        client_height,
-        scroll_top,
-        target_option
-      );
-
+      // console.log(
+      //   "[COMPONENT]with-tag - moveToNext calc need scroll the container",
+      //   _opt_idx,
+      //   client_height,
+      //   scroll_top,
+      //   target_option
+      // );
       if (target_option && target_option.top !== undefined) {
-        if (target_option.top - scroll_top < 0) {
+        const cur_option_in_up_area = target_option.top + target_option.height - scroll_top < 0;
+        const cur_option_in_bottom_area = Math.abs(target_option.top - scroll_top) > client_height;
+        if (cur_option_in_up_area || cur_option_in_bottom_area) {
           const closest_opt_idx = _options.findIndex((opt) => {
             return opt.top && opt.top >= scroll_top;
           });
           if (closest_opt_idx !== -1) {
             // const closest_opt = _options[closest_opt_idx];
             // console.log(closest_opt);
-            console.log("[COMPONENT]with-tag - moveToNext direct to option", closest_opt_idx);
+            // console.log("[COMPONENT]with-tag - moveToNext direct to option", closest_opt_idx);
             _opt_idx = closest_opt_idx;
           }
         } else if (target_option.top > client_height / 2 + scroll_top) {
@@ -100,7 +103,7 @@ export function SelectWithKeyboardModel(props: {
       methods.refresh();
     },
     moveToPrevOption(step = 1) {
-      console.log("[COMPONENT]with-tags-input - moveToPrevOption", _opt_idx, _options.length);
+      // console.log("[COMPONENT]with-tags-input - moveToPrevOption", _opt_idx, _options.length);
       const cur_option = _options[_opt_idx];
       _opt_idx -= step;
       if (_opt_idx < 0) {
@@ -109,23 +112,21 @@ export function SelectWithKeyboardModel(props: {
       const target_option = _options[_opt_idx];
       const scroll_top = ui.$view.getScrollTop();
       const client_height = ui.$view.getScrollClientHeight();
-      console.log(
-        "[COMPONENT]with-tags-input - calc need scroll the container",
-        _opt_idx,
-        client_height,
-        scroll_top,
-        cur_option.top,
-        target_option
-      );
+      // console.log(
+      //   "[COMPONENT]with-tags-input - calc need scroll the container",
+      //   _opt_idx,
+      //   client_height,
+      //   scroll_top,
+      //   cur_option.top,
+      //   target_option
+      // );
       if (target_option && target_option.top !== undefined) {
         if (Math.abs(target_option.top - scroll_top) > client_height) {
           const closest_opt_idx = _options.findIndex((opt) => {
             return opt.top && opt.top + opt.height >= scroll_top + client_height;
           });
-          console.log("[COMPONENT]with-tags-input - offscreen", closest_opt_idx);
+          // console.log("[COMPONENT]with-tags-input - offscreen", closest_opt_idx);
           if (closest_opt_idx !== -1) {
-            // const closest_opt = _options[closest_opt_idx];
-            // console.log(closest_opt);
             _opt_idx = closest_opt_idx;
           }
         } else if (target_option.top >= scroll_top && target_option.top <= scroll_top + client_height) {
@@ -202,35 +203,63 @@ export function SelectWithKeyboardModel(props: {
   };
   const bus = base<TheTypesOfEvents>();
 
-  ui.$shortcut.methods.register("KeyGKeyG", () => {
-    bus.emit(Events.Shortcut, {
-      keys: "gg",
-    });
-  });
-  ui.$shortcut.methods.register("KeyJ,ArrowDown", () => {
-    console.log("[COMPONENT]with-tags-input - handle KeyJ,ArrowDown");
-    methods.moveToNextOption();
-  });
-  ui.$shortcut.methods.register("ControlRight+KeyD", () => {
-    methods.moveToNextOption(3);
-  });
-  ui.$shortcut.methods.register("KeyK,ArrowUp", () => {
-    methods.moveToPrevOption();
-  });
-  ui.$shortcut.methods.register("ControlRight+KeyU", () => {
-    methods.moveToPrevOption(3);
-  });
+  // ui.$shortcut.methods.register("KeyGKeyG", () => {
+  //   bus.emit(Events.Shortcut, {
+  //     keys: "gg",
+  //   });
+  // });
+  // ui.$shortcut.methods.register("KeyJ,ArrowDown", () => {
+  //   console.log("[COMPONENT]with-tags-input - handle KeyJ,ArrowDown");
+  //   methods.moveToNextOption();
+  // });
+  // ui.$shortcut.methods.register("ControlRight+KeyD", () => {
+  // });
+  const shortcut_handler: Record<string, Function> = {
+    "KeyK,ArrowUp"() {
+      // console.log("[]shortcut - moveToPrevOption");
+      methods.moveToPrevOption();
+    },
+    "ControlRight+KeyU"() {
+      methods.moveToPrevOption(3);
+    },
+    "KeyJ,ArrowDown"() {
+      // console.log("[]shortcut - moveToNextOption");
+      methods.moveToNextOption();
+    },
+    "ControlRight+KeyD"() {
+      methods.moveToNextOption(3);
+    },
+    KeyGKeyG() {
+      bus.emit(Events.Shortcut, {
+        keys: "gg",
+      });
+    },
+    Space() {
+      bus.emit(Events.Shortcut, {
+        keys: "space",
+      });
+    },
+    Enter() {
+      bus.emit(Events.Shortcut, {
+        keys: "enter",
+      });
+    },
+    "MetaLeft+KeyR"() {
+      bus.emit(Events.Shortcut, {
+        keys: "reload",
+      });
+    },
+  };
+  ui.$shortcut.methods.register(shortcut_handler);
+  // ui.$shortcut.onShortcut(({ key }) => {
+  //   console.log("[]onShortcut", key);
+  // });
 
   const unlisten = props.app.onKeydown((event) => {
+    console.log("[COMPONENT]props.app.onKeydown", event.code);
     ui.$shortcut.methods.handleKeydown(event);
-    // _pressed_codes.push(event.code);
-    // console.log(event.code, _pressed_codes);
-    // methods.clearPressedKeys();
     // if (event.code === "Enter") {
     //   if (_using_keyboard) {
-    //     bus.emit(Events.Shortcut, {
-    //       keys: "enter",
-    //     });
     //     event.preventDefault();
     //     return;
     //   }
@@ -238,34 +267,8 @@ export function SelectWithKeyboardModel(props: {
     // if (event.code === "Space") {
     //   if (_using_keyboard) {
     //     event.preventDefault();
-    //     bus.emit(Events.Shortcut, {
-    //       keys: "space",
-    //     });
     //     return;
     //   }
-    // }
-    // if (_pressed_codes.join("") === "KeyGKeyG") {
-    //   bus.emit(Events.Shortcut, {
-    //     keys: "gg",
-    //   });
-    // }
-    // if (event.code === "KeyJ") {
-    //   methods.moveToNextOption();
-    //   return;
-    // }
-    // if (event.code === "KeyK") {
-    //   methods.moveToPrevOption();
-    //   return;
-    // }
-    // if (event.code === "ArrowDown") {
-    //   methods.moveToNextOption();
-    //   event.preventDefault();
-    //   return;
-    // }
-    // if (event.code === "ArrowUp") {
-    //   methods.moveToPrevOption();
-    //   event.preventDefault();
-    //   return;
     // }
   });
   const unlisten2 = props.app.onKeyup((event) => {
@@ -365,12 +368,12 @@ export function WithTagsInputModel(props: { app: ViewComponentProps["app"] } & I
       },
       onEnter: props.onEnter,
       onKeyDown(event) {
-        console.log(
-          "[COMPONENT]WithTagsInput - on keydown",
-          _opt_idx,
-          _displayed_options,
-          _displayed_options[_opt_idx]
-        );
+        // console.log(
+        //   "[COMPONENT]WithTagsInput - on keydown",
+        //   _opt_idx,
+        //   _displayed_options,
+        //   _displayed_options[_opt_idx]
+        // );
         // console.log(event);
         if (event.key === "Enter") {
           if (ui.$input_select.visible) {
@@ -587,4 +590,19 @@ export function WithTagsInput(props: { store: WithTagsInputModel }) {
       </Popover>
     </>
   );
+}
+
+export function buildOptionFromWaterfallCell($item: {
+  state: {
+    top?: number;
+    height: number;
+    payload: { id: string };
+  };
+}) {
+  return {
+    id: $item.state.payload.id,
+    label: $item.state.payload.id,
+    top: $item.state.top,
+    height: $item.state.height,
+  };
 }
