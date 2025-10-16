@@ -81,7 +81,7 @@ export class PopoverCore extends BaseDomain<TheTypesOfEvents> {
     this.present = new PresenceCore();
     this.layer = new DismissableLayerCore();
     this.layer.onDismiss(() => {
-      console.log("[DOMAIN/ui]popover/index - onDismiss");
+      // console.log("[DOMAIN/ui]popover/index - onDismiss");
       this.hide();
     });
     this.present.onStateChange(() => {
@@ -95,7 +95,7 @@ export class PopoverCore extends BaseDomain<TheTypesOfEvents> {
   ready() {}
   destroy() {}
   toggle(position?: Partial<{ x: number; y: number; width: number; height: number }>) {
-    console.log("[DOMAIN/ui]popover/index - toggle");
+    // console.log("[DOMAIN/ui]popover/index - toggle");
     const { visible } = this;
     if (visible) {
       this.hide();
@@ -127,7 +127,7 @@ export class PopoverCore extends BaseDomain<TheTypesOfEvents> {
     right?: number;
     bottom?: number;
   }) {
-    console.log(this.popper.reference?.getRect());
+    // console.log(this.popper.reference?.getRect());
     if (position) {
       this.popper.updateReference({
         getRect() {

@@ -48,17 +48,35 @@ export function ModelInList<T>(props: {}) {
   };
 }
 
-export function DynamicContentWithClickModel(props: { onClick?: () => void }) {
+export function DynamicContentWithClickModel(props: {
+  options: { content: null | JSX.Element }[];
+  onClick?: () => void;
+}) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
     click() {
-      bus.emit(Events.Click);
       _step += 1;
+      if (_step > props.options.length - 1) {
+        // _is_last = true;
+        _step = props.options.length - 1;
+      }
+      if (_step === _prev_step) {
+        return;
+      }
+      bus.emit(Events.Click);
       methods.refresh();
+      _prev_step = _step;
+      // if (_is_last) {
+      //   return;
+      // }
       setTimeout(() => {
         _step -= 1;
+        if (_step < 0) {
+          _step = 0;
+        }
+        _prev_step = _step;
         methods.refresh();
       }, 3000);
     },
@@ -69,9 +87,14 @@ export function DynamicContentWithClickModel(props: { onClick?: () => void }) {
   const ui = {};
 
   let _step = 0;
+  let _prev_step = _step;
+  let _is_last = false;
   let _state = {
     get step() {
       return _step;
+    },
+    get options() {
+      return props.options;
     },
   };
   enum Events {
@@ -114,7 +137,6 @@ export type DynamicContentWithClickModel = ReturnType<typeof DynamicContentWithC
 export function DynamicContentWithClick(
   props: {
     store: DynamicContentWithClickModel;
-    options: { content: null | JSX.Element }[];
   } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
   const [state, vm] = useViewModelStore(props.store);
@@ -127,7 +149,7 @@ export function DynamicContentWithClick(
       }}
     >
       {(() => {
-        const matched = props.options[state().step];
+        const matched = state().options[state().step];
         if (!matched) {
           return null;
         }

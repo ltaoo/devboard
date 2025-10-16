@@ -175,9 +175,9 @@ func main() {
 			"CmdOrCtrl+Q": func(window application.Window) {
 				method_quit()
 			},
-			"Escape": func(window application.Window) {
-				window.Close()
-			},
+			// "Escape": func(window application.Window) {
+			// 	window.Close()
+			// },
 		},
 		Width:            450,
 		Height:           680,
