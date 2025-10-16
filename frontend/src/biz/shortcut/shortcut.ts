@@ -1,12 +1,17 @@
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 
+type KeyboardEvent = {
+  code: string;
+  preventDefault: () => void;
+};
+
 export function ShortcutModel(props: {}) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    register(handlers: Record<string, Function>) {
+    register(handlers: Record<string, (event: KeyboardEvent) => void>) {
       const keys = Object.keys(handlers);
       for (let i = 0; i < keys.length; i += 1) {
         const handle_key = keys[i];
@@ -25,7 +30,7 @@ export function ShortcutModel(props: {}) {
         _pressed_codes = [];
       }, 200);
     },
-    invokeHandlers(key: string) {
+    invokeHandlers(event: KeyboardEvent, key: string) {
       // for (let i = 0; i < _handlers.length; i += 1) {
       // const handler = _handlers[i];
       // handler({ key });
@@ -33,7 +38,7 @@ export function ShortcutModel(props: {}) {
       const handler2 = _shortcut_map[key];
       // console.log("[]invokeHandlers - ", key, _shortcut_map, handler2);
       if (handler2) {
-        handler2();
+        handler2(event);
       }
     },
     buildShortcut() {
@@ -42,14 +47,14 @@ export function ShortcutModel(props: {}) {
       const key2 = _pressed_codes.join("");
       return { key1, key2 };
     },
-    testShortcut(opt: { key1: string; key2: string; step: "keydown" | "keyup" }) {
+    testShortcut(opt: { key1: string; key2: string; step: "keydown" | "keyup" }, event: KeyboardEvent) {
       const { key1, key2, step } = opt;
       // const group_handler1 = _shortcut_map[key1];
       // const single_handler2 = _shortcut_map[key2];
-      // console.log("[BIZ]shortcut - test shortcut", key1, key2, step);
+      // console.log("[BIZ]shortcut - test shortcut", key1, key2, step, _shortcut_map);
       if (step === "keyup" && key1.includes("+")) {
         // console.log("[]invoke key1");
-        methods.invokeHandlers(key1);
+        methods.invokeHandlers(event, key1);
         return;
       }
       // if (key2) {
@@ -71,7 +76,7 @@ export function ShortcutModel(props: {}) {
       // }
       if (step === "keydown" && key2) {
         // console.log("[]invoke key2");
-        methods.invokeHandlers(key2);
+        methods.invokeHandlers(event, key2);
         return;
 
         // const handler2 = _shortcut_map[key2];
@@ -89,19 +94,19 @@ export function ShortcutModel(props: {}) {
         // }
       }
     },
-    handleKeydown(event: { code: string }) {
+    handleKeydown(event: { code: string; preventDefault: () => void }) {
       // if (_is_long_press) {
       //   methods.handleKeyup(event, { fake: true });
       //   return;
       // }
-      // console.log("[]handleKeydown", _pressed_codes.join(""));
+      // console.log("[]handleKeydown", event.code);
       if (_pressed_codes.join("") === event.code && _shortcut_map[[event.code, event.code].join("")]) {
         _pressed_codes.push(event.code);
       } else {
         _pressed_codes = [event.code];
       }
       _pressed_code_map[event.code] = true;
-      methods.testShortcut({ ...methods.buildShortcut(), step: "keydown" });
+      methods.testShortcut({ ...methods.buildShortcut(), step: "keydown" }, event);
       methods.clearPressedKeys();
       // _pressed_codes.push(event.code);
       // methods.testShortcut({ step: "keydown" });
@@ -115,7 +120,7 @@ export function ShortcutModel(props: {}) {
       //   }, 800);
       // }
     },
-    handleKeyup(event: { code: string }, opt: Partial<{ fake: boolean }> = {}) {
+    handleKeyup(event: { code: string; preventDefault: () => void }, opt: Partial<{ fake: boolean }> = {}) {
       // if (opt.fake) {
       //   methods.testShortcut({ step: "keyup" });
       //   return;
@@ -125,7 +130,7 @@ export function ShortcutModel(props: {}) {
       //   clearTimeout(_long_press_timer);
       //   _long_press_timer = null;
       // }
-      methods.testShortcut({ ...methods.buildShortcut(), step: "keyup" });
+      methods.testShortcut({ ...methods.buildShortcut(), step: "keyup" }, event);
       // //       console.log("[BIZ]shortcut - before delete code", event.code);
       delete _pressed_code_map[event.code];
     },
@@ -133,7 +138,7 @@ export function ShortcutModel(props: {}) {
   const ui = {};
 
   let _handlers: Handler<TheTypesOfEvents[Events.Shortcut]>[] = [];
-  let _shortcut_map: Record<string, Function> = {};
+  let _shortcut_map: Record<string, (event: { code: string; preventDefault: () => void }) => void> = {};
   let _pressed_codes: string[] = [];
   let _pressed_code_map: Record<string, boolean> = {};
   let _continuous_timer: NodeJS.Timeout | number | null = null;

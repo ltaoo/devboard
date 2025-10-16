@@ -58,8 +58,6 @@ const Input = (props: { store: InputCore<any> } & JSX.HTMLAttributes<HTMLInputEl
       //   store.handleChange(event);
       // }}
       onKeyDown={(event) => {
-        // event.stopPropagation();
-        // event.preventDefault();
         store.handleKeyDown(event);
       }}
       onBlur={() => {

@@ -17,7 +17,7 @@ type TheTypesOfEvents<T> = {
   [Events.Change]: T;
   [Events.Blur]: T;
   [Events.Enter]: T;
-  [Events.KeyDown]: { key: string; preventDefault: () => void };
+  [Events.KeyDown]: { code: string; preventDefault: () => void };
   [Events.Focus]: void;
   [Events.Clear]: void;
   [Events.Click]: { x: number; y: number };
@@ -35,9 +35,10 @@ export type InputProps<T> = {
   autoComplete?: boolean;
   ignoreEnterEvent?: boolean;
   onChange?: (v: T) => void;
-  onKeyDown?: (v: { key: string; preventDefault: () => void }) => void;
+  onKeyDown?: (v: { code: string; preventDefault: () => void }) => void;
   onEnter?: (v: T) => void;
-  onBlur?: (v: T) => void;
+  onFocus?: () => void;
+  onBlur?: () => void;
   onClear?: () => void;
   onMounted?: () => void;
 };
@@ -100,6 +101,7 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
       ignoreEnterEvent = false,
       onChange,
       onBlur,
+      onFocus,
       onEnter,
       onClear,
       onMounted,
@@ -126,6 +128,9 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
     if (props.onKeyDown) {
       this.onKeyDown(props.onKeyDown);
     }
+    if (onFocus) {
+      this.onFocus(onFocus);
+    }
     if (onBlur) {
       this.onBlur(onBlur);
     }
@@ -139,8 +144,8 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
   setMounted() {
     this.emit(Events.Mounted);
   }
-  handleKeyDown(event: { key: string; preventDefault: () => void }) {
-    if (!this.ignoreEnterEvent && event.key === "Enter") {
+  handleKeyDown(event: { code: string; preventDefault: () => void }) {
+    if (!this.ignoreEnterEvent && event.code === "Enter") {
       this.handleEnter();
       return;
     }
@@ -157,6 +162,7 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
     this.isFocus = true;
   }
   handleBlur() {
+    this.isFocus = false;
     if (this.value === this.valueUsed) {
       return;
     }
@@ -201,8 +207,15 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
     this.isFocus = true;
     this.emit(Events.StateChange, { ...this.state });
   }
+  setBlur() {
+    this.isFocus = false;
+    this.emit(Events.StateChange, { ...this.state });
+  }
   focus() {
     console.log("请在 connect 中实现 focus 方法");
+  }
+  blur() {
+    console.log("请在 connect 中实现 blur 方法");
   }
   enable() {
     this.disabled = true;

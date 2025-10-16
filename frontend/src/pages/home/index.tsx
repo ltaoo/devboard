@@ -13,12 +13,7 @@ import { RelativeTime } from "@/components/relative_time";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { WaterfallView } from "@/components/ui/waterfall/waterfall";
 import { Flex } from "@/components/flex/flex";
-import {
-  buildOptionFromWaterfallCell,
-  SelectWithKeyboardModel,
-  WithTagsInput,
-  WithTagsInputModel,
-} from "@/components/with-tags-input";
+import { buildOptionFromWaterfallCell, WithTagsInput, WithTagsInputModel } from "@/components/with-tags-input";
 import { DynamicContent } from "@/components/dynamic-content";
 import {
   DynamicContentWithClick,
@@ -47,7 +42,17 @@ import {
   processPartialPasteEvent,
   writePasteEvent,
 } from "@/biz/paste/service";
-import { d1, d2, d3, d4 } from "@mock/created_paste_event";
+import { ShortcutModel } from "@/biz/shortcut/shortcut";
+import { ListSelectModel } from "@/domains/list-select";
+
+const copy_buttons = [
+  {
+    content: <Copy class="w-4 h-4 text-w-fg-0" />,
+  },
+  {
+    content: <Check class="w-4 h-4 text-green-500" />,
+  },
+];
 
 function HomeIndexViewModel(props: ViewComponentProps) {
   const request = {
@@ -134,6 +139,14 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$view.setScrollTop(0);
       _added_records = [];
       ui.$waterfall.methods.resetRange();
+    },
+    clickPasteWithIdx() {
+      const idx = ui.$select.state.idx;
+      const $cell = ui.$waterfall.$items[idx];
+      const $click = ui.$list_click.methods.get($cell.state.payload.id);
+      if ($click) {
+        $click.methods.click();
+      }
     },
     async copyPasteRecord(v: PasteRecord) {
       console.log("[PAGE]home/index - copyPasteRecord");
@@ -304,20 +317,27 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     $input_search: WithTagsInputModel({
       app: props.app,
       defaultValue: "",
-      onEnter() {
+      async onEnter(event) {
         // await ui.$waterfall.methods.cleanColumns();
-        request.paste.list.search({
+        const r = await request.paste.list.search({
           keyword: ui.$input_search.state.value.keyword,
           types: ui.$input_search.state.value.tags.map((tag) => tag.id),
         });
+        if (r.error) {
+          return;
+        }
+        ui.$select.methods.resetIdx();
+        if (event.code === "enter") {
+          ui.$input_search.methods.blur();
+        }
       },
     }),
     $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 12, size: 10, buffer: 4 }),
-    $select: SelectWithKeyboardModel({
-      app: props.app,
+    $select: ListSelectModel({
       $view,
     }),
     $list_click: ModelInList<DynamicContentWithClickModel>({}),
+    $shortcut: ShortcutModel({}),
   };
 
   let _selected_files = [] as SelectedFile[];
@@ -351,6 +371,70 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   };
   const bus = base<TheTypesOfEvents>();
 
+  ui.$shortcut.methods.register({
+    "KeyK,ArrowUp"(event) {
+      console.log("[]shortcut - KeyK", ui.$input_search.isFocus);
+      if (ui.$input_search.isFocus) {
+        ui.$input_search.methods.moveToPrevOption({ step: 1 });
+        return;
+      }
+      event.preventDefault();
+      ui.$select.methods.moveToPrevOption({ step: 1 });
+    },
+    "ControlRight+KeyU"() {
+      ui.$select.methods.moveToPrevOption({ step: 3, force: true });
+    },
+    "KeyJ,ArrowDown"() {
+      console.log("[]shortcut - KeyJ", ui.$input_search.isFocus);
+      // console.log("[]shortcut - moveToNextOption");
+      if (ui.$input_search.isFocus) {
+        ui.$input_search.methods.moveToNextOption({ step: 1 });
+        return;
+      }
+      ui.$select.methods.moveToNextOption({ step: 1 });
+    },
+    "ControlRight+KeyD"() {
+      ui.$select.methods.moveToNextOption({ step: 3, force: true });
+    },
+    KeyGKeyG() {
+      ui.$select.methods.resetIdx();
+      methods.backToTop();
+    },
+    Space() {
+      console.log("[PAGE]home/index - key Space", ui.$input_search.isFocus);
+      if (ui.$input_search.isFocus) {
+        return;
+      }
+      const idx = ui.$select.state.idx;
+      const $cell = ui.$waterfall.$items[idx];
+      methods.previewPasteContent($cell.state.payload);
+    },
+    Enter() {
+      if (ui.$input_search.isFocus) {
+        return;
+      }
+      methods.clickPasteWithIdx();
+    },
+    "MetaLeft+KeyR"() {
+      props.history.reload();
+    },
+    "ShiftRight+Digit3"() {
+      ui.$input_search.methods.openSelect({ force: true });
+    },
+    "MetaLeft+KeyF"() {
+      ui.$input_search.methods.focus();
+    },
+    Escape() {
+      ui.$input_search.methods.blur();
+    },
+    // ArrowDown() {
+    //   ui.$keyboard.methods.moveToNextOption();
+    // },
+    // ArrowUp() {
+    //   ui.$keyboard.methods.moveToPrevOption();
+    // },
+  });
+
   request.paste.list.onStateChange(() => methods.refresh());
   request.paste.list.onDataSourceChange(({ dataSource, reason }) => {
     if (["init", "reload", "refresh", "search"].includes(reason)) {
@@ -362,6 +446,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         ui.$list_click.methods.set(
           paste.id,
           DynamicContentWithClickModel({
+            options: copy_buttons,
             onClick() {
               methods.copyPasteRecord(paste);
             },
@@ -387,6 +472,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$list_click.methods.set(
         paste.id,
         DynamicContentWithClickModel({
+          options: copy_buttons,
           onClick() {
             methods.copyPasteRecord(paste);
           },
@@ -399,31 +485,13 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   });
   ui.$waterfall.onStateChange(() => methods.refresh());
   ui.$select.onStateChange(() => methods.refresh());
-  ui.$select.onShortcut(({ keys }) => {
-    if (keys === "gg") {
-      ui.$select.methods.resetIdx();
-      methods.backToTop();
-    }
-    if (keys === "space") {
-      const idx = ui.$select.state.idx;
-      const $cell = ui.$waterfall.$items[idx];
-      // console.log("[PAGE]home/index - before previewPasteContent", idx);
-      methods.previewPasteContent($cell.state.payload);
-    }
-    if (keys === "enter") {
-      const idx = ui.$select.state.idx;
-      const $cell = ui.$waterfall.$items[idx];
-      const $click = ui.$list_click.methods.get($cell.state.payload.id);
-      if ($click) {
-        $click.methods.click();
-      }
-    }
-    if (keys === "reload") {
-      props.history.reload();
-    }
-  });
   ui.$back_to_top.onStateChange(() => methods.refresh());
-
+  const unlisten = props.app.onKeydown((event) => {
+    ui.$shortcut.methods.handleKeydown(event);
+  });
+  const unlisten2 = props.app.onKeyup((event) => {
+    ui.$shortcut.methods.handleKeyup(event);
+  });
   Events.On("clipboard:update", (event) => {
     const created_paste_event = event.data[0];
     if (!created_paste_event) {
@@ -452,6 +520,8 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       const r = await request.paste.list.init();
     },
     destroy() {
+      unlisten();
+      unlisten2();
       bus.destroy();
     },
     onStateChange(handler: Handler<TheTypesOfEvents[EventNames.StateChange]>) {
@@ -480,11 +550,11 @@ export const HomeIndexView = (props: ViewComponentProps) => {
           "w-full": !props.app.env.pc,
         }}
       >
-        {/* <div class="p-4 pb-0">
+        <div class="p-4 pb-0">
           <WithTagsInput store={vm.ui.$input_search} />
-        </div> */}
+        </div>
         <WaterfallView
-          class="p-2"
+          class="relative p-4"
           store={vm.ui.$waterfall}
           // showFallback={state().paste_event.empty}
           fallback={
@@ -673,17 +743,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                                   vm.methods.handleClickCopyBtn(v);
                                 }}
                               >
-                                <DynamicContentWithClick
-                                  store={vm.ui.$list_click.methods.get(v.id)!}
-                                  options={[
-                                    {
-                                      content: <Copy class="w-4 h-4 text-w-fg-0" />,
-                                    },
-                                    {
-                                      content: <Check class="w-4 h-4 text-green-500" />,
-                                    },
-                                  ]}
-                                />
+                                <DynamicContentWithClick store={vm.ui.$list_click.methods.get(v.id)!} />
                               </div>
                             </Show>
                             <Show when={["JSON"].includes(v.type)}>
