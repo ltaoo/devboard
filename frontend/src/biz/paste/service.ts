@@ -100,9 +100,12 @@ export function processPartialPasteEvent(
       const base_content_height = 40;
       const estimated__content_height = (() => {
         if (categories.includes("text")) {
-          if (text.length > 80) {
-            return 112;
+          const line_count = text.length / 32;
+          let height = 6 + line_count * 32 + 6;
+          if (height > 76) {
+            return 76;
           }
+          return height;
         }
         if (categories.includes("code")) {
           const lines = text.split("\n");
@@ -114,7 +117,7 @@ export function processPartialPasteEvent(
         }
         return 40;
       })();
-      return 94 + estimated__content_height - base_content_height;
+      return 92 + estimated__content_height - base_content_height;
     })(),
     type: v.content_type,
     created_at: dayjs(v.created_at),

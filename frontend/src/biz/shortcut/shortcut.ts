@@ -148,11 +148,13 @@ export function ShortcutModel(props: {}) {
   let _state = {};
   enum Events {
     Shortcut,
+    Keydown,
     StateChange,
     Error,
   }
   type TheTypesOfEvents = {
     [Events.Shortcut]: { key: string };
+    [Events.Keydown]: KeyboardEvent;
     [Events.StateChange]: typeof _state;
     [Events.Error]: BizError;
   };

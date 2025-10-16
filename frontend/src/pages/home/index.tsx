@@ -98,10 +98,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // if (ui.$view.getScrollTop() === 0) {
       //   need_adjust_scroll_top = true;
       // }
-      console.log("[]before  need_adjust_scroll_top", ui.$view.getScrollTop());
+      // console.log("[]before  need_adjust_scroll_top", ui.$view.getScrollTop());
       // console.log("[]before setScrollTop", ui.$view.getScrollTop(), added_height, h, h2, h2 - h);
       ui.$view.setScrollTop(ui.$view.getScrollTop() + added_height);
-      console.log("[]after setScrollTop", ui.$view.getScrollTop());
+      // console.log("[]after setScrollTop", ui.$view.getScrollTop());
       const $created_items = ui.$waterfall.methods.unshiftItems([vv], { skipUpdateHeight: true });
       const $first = $created_items[0];
       if (!$first) {
@@ -109,9 +109,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }
       ui.$select.methods.unshiftOption(buildOptionFromWaterfallCell($first));
       $first.onHeightChange(([height, difference]) => {
-        console.log("[]before setScrollTop in onHeightChange", ui.$view.getScrollTop(), difference);
+        // console.log("[]before setScrollTop in onHeightChange", ui.$view.getScrollTop(), difference);
         ui.$view.addScrollTop(difference);
-        console.log("[]after setScrollTop in onHeightChange", ui.$view.getScrollTop());
+        // console.log("[]after setScrollTop in onHeightChange", ui.$view.getScrollTop());
         ui.$select.methods.updateOption(buildOptionFromWaterfallCell($first));
       });
       $first.onTopChange(() => {
@@ -422,6 +422,8 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$input_search.methods.openSelect({ force: true });
     },
     "MetaLeft+KeyF"() {
+      ui.$select.methods.resetIdx();
+      methods.backToTop();
       ui.$input_search.methods.focus();
     },
     Escape() {
@@ -487,6 +489,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   ui.$select.onStateChange(() => methods.refresh());
   ui.$back_to_top.onStateChange(() => methods.refresh());
   const unlisten = props.app.onKeydown((event) => {
+    console.log("[PAGE]onKeydown", event.code);
     ui.$shortcut.methods.handleKeydown(event);
   });
   const unlisten2 = props.app.onKeyup((event) => {
@@ -570,19 +573,12 @@ export const HomeIndexView = (props: ViewComponentProps) => {
             return (
               <div
                 classList={{
-                  "paste-event-card group relative p-2 rounded-md outline outline-2 outline-w-fg-3": true,
+                  "paste-event-card group relative p-2 rounded-md outline outline-2 outline-w-fg-3 select-text": true,
                   "bg-w-fg-5": state().highlighted_idx === idx,
                 }}
                 onClick={() => {
                   vm.ui.$select.methods.handleEnterMenuOption(idx);
                 }}
-                // onPointerEnter={() => {
-                //   vm.ui.$select.methods.handleEnterMenuOption(idx);
-                // }}
-                // onPointerMove={() => {
-                //   console.log('[]trigger move');
-                //   vm.ui.$select.methods.handleMoveAtMenuOption();
-                // }}
               >
                 <div class="">
                   {/* <div class="absolute left-0 top-0">{state().highlighted_idx}</div> */}
@@ -591,10 +587,6 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                     classList={{
                       "relative min-h-[40px] max-h-[120px] overflow-hidden rounded-md": true,
                     }}
-                    // onClick={(event) => {
-                    //   event.stopPropagation();
-                    //   vm.methods.handleClickPasteContent(v);
-                    // }}
                   >
                     {/* <div
                     classList={{
@@ -603,7 +595,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                     }}
                   ></div> */}
                     {/* <div class="absolute right-0">{idx}</div> */}
-                    <Switch fallback={<div class="p-2 text-w-fg-0">{v.text}</div>}>
+                    <Switch fallback={<div class="p-2 text-w-fg-0 break-all">{v.text}</div>}>
                       <Match when={v.type === "file" && v.files}>
                         <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
                           <For each={v.files}>
@@ -665,9 +657,6 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       </Match>
                       <Match when={v.type === "html"}>
                         <HTMLCard html={v.text} />
-                      </Match>
-                      <Match when={v.type === "text"}>
-                        <div class="p-2 text-w-fg-0">{v.text}</div>
                       </Match>
                       <Match when={v.type === "image" && v.image_url}>
                         <div class="cursor-pointer">

@@ -89,7 +89,7 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
     },
     moveToPrevOption(opt: Partial<{ step: number; force: boolean }> = {}) {
       const { step = 1, force = false } = opt;
-      // console.log("[COMPONENT]with-tags-input - moveToPrevOption", _opt_idx, _options.length);
+      console.log("[COMPONENT]with-tags-input - moveToPrevOption", _opt_idx, _options.length);
       const cur_option = _options[_opt_idx];
       _opt_idx -= step;
       if (_opt_idx < 0) {
