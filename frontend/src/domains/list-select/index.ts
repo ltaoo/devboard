@@ -19,6 +19,10 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
       _options = [..._options, ...list];
       _displayed_options = _options;
     },
+    deleteOptionById(id: string) {
+      _options = _options.filter((opt) => opt.id !== id);
+      _displayed_options = _options;
+    },
     unshiftOption(v: OptionWithTopInList) {
       // console.log("[COMPONENT]with-tags-input - unshiftOption", v);
       _options.unshift(v);

@@ -108,6 +108,15 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         return;
       }
       ui.$select.methods.unshiftOption(buildOptionFromWaterfallCell($first));
+      ui.$list_click.methods.set(
+        d.id,
+        DynamicContentWithClickModel({
+          options: copy_buttons,
+          onClick() {
+            methods.copyPasteRecord(d);
+          },
+        })
+      );
       $first.onHeightChange(([height, difference]) => {
         // console.log("[]before setScrollTop in onHeightChange", ui.$view.getScrollTop(), difference);
         ui.$view.addScrollTop(difference);
@@ -121,7 +130,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     prepareLoadRecord(data: PasteRecord) {
       const scroll_height = ui.$view.getScrollHeight();
       const client_height = ui.$view.getScrollClientHeight();
-      console.log(scroll_height, client_height);
+      // console.log(scroll_height, client_height);
       const has_scroll_bar = scroll_height > client_height;
       if (has_scroll_bar) {
         _added_records.push(data);
@@ -164,6 +173,25 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         return;
       }
       request.paste.preview.run({ id: v.id });
+    },
+    async deletePaste(v: PasteRecord) {
+      // ui.$waterfall.methods.resetRange();
+      // ui.$view.setScrollTop(0);
+      // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
+      request.paste.list.deleteItem((record) => {
+        return record.id === v.id;
+      });
+      ui.$waterfall.methods.deleteCell((record) => {
+        return record.id === v.id;
+      });
+      ui.$select.methods.deleteOptionById(v.id);
+      if (request.paste.list.response.dataSource.length < 10 && !request.paste.list.response.noMore) {
+        request.paste.list.loadMore();
+      }
+      const r = await request.paste.delete.run({ id: v.id });
+      // if (r.error) {
+      //   return;
+      // }
     },
     backToTop() {
       ui.$view.setScrollTop(0);
@@ -224,22 +252,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }
     },
     async handleClickTrashBtn(v: PasteRecord) {
-      // ui.$waterfall.methods.resetRange();
-      // ui.$view.setScrollTop(0);
-      // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
-      request.paste.list.deleteItem((record) => {
-        return record.id === v.id;
-      });
-      ui.$waterfall.methods.deleteCell((record) => {
-        return record.id === v.id;
-      });
-      if (request.paste.list.response.dataSource.length < 10 && !request.paste.list.response.noMore) {
-        request.paste.list.loadMore();
-      }
-      const r = await request.paste.delete.run({ id: v.id });
-      // if (r.error) {
-      //   return;
-      // }
+      methods.deletePaste(v);
     },
     handleClickFileBtn(v: PasteRecord) {
       const time = parseInt(String(new Date().valueOf() / 1000));
@@ -417,6 +430,12 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     "MetaLeft+KeyR"() {
       props.history.reload();
+    },
+    "MetaLeft+Backspace"() {
+      console.log("[PAGE]home/index - MetaLeft+Backspace");
+      const idx = ui.$select.state.idx;
+      const $cell = ui.$waterfall.$items[idx];
+      methods.deletePaste($cell.state.payload);
     },
     "ShiftRight+Digit3"() {
       ui.$input_search.methods.openSelect({ force: true });
