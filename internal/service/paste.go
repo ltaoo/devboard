@@ -178,6 +178,16 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 			return Error(err)
 		}
 	}
+	if record.ContentType == "html" {
+		s.Biz.ManuallyWriteClipboardTime = time.Now()
+		text := record.Html
+		if text == "" {
+			text = record.Text
+		}
+		if err := clipboard.WriteText(text); err != nil {
+			return Error(err)
+		}
+	}
 	if record.ContentType == "image" {
 		s.Biz.ManuallyWriteClipboardTime = time.Now()
 		decoded_data, err := base64.StdEncoding.DecodeString(record.ImageBase64)

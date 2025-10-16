@@ -39,23 +39,39 @@ export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types
 export function processPartialPasteEvent(
   v: UnpackedRequestPayload<ReturnType<typeof fetchPasteEventList>>["list"][number]
 ) {
-  const categories = v.categories.map((cate) => cate.label);
+  const categories = (v.categories ?? []).map((cate) => cate.label);
+  const files = (() => {
+    if (v.file_list_json) {
+      const r = parseJSONStr<
+        {
+          name: string;
+          absolute_path: string;
+          mime_type: string;
+        }[]
+      >(v.file_list_json);
+      if (r.error) {
+        return null;
+      }
+      return r.data;
+    }
+  })();
+  const text = (() => {
+    const tt = v.text;
+    if (v.content_type === "html") {
+      // 旧数据错误地写入了 text 字段，前端做个兼容？
+      return v.html || tt;
+    }
+    if (categories.includes("time")) {
+      const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
+      return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
+    }
+    return tt;
+  })();
   return {
     ...v,
     origin_text: v.text,
     types: categories,
-    text: (() => {
-      const tt = v.text;
-      if (v.content_type === "html") {
-        // 旧数据错误地写入了 text 字段，前端做个兼容？
-        return v.html || tt;
-      }
-      if (categories.includes("time")) {
-        const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
-        return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
-      }
-      return tt;
-    })(),
+    text,
     language: (() => {
       if (categories.includes("code")) {
         return categories.filter((c) => c !== "code").join("/");
@@ -79,24 +95,26 @@ export function processPartialPasteEvent(
       }
       return r;
     })(),
-    files: (() => {
-      if (v.file_list_json) {
-        const r = parseJSONStr<
-          {
-            name: string;
-            absolute_path: string;
-            mime_type: string;
-          }[]
-        >(v.file_list_json);
-        if (r.error) {
-          return null;
-        }
-        return r.data;
-      }
-    })(),
+    files,
     height: (() => {
-      // @todo 根据内容类型及所需空间（文本、图片）估算大概值
-      return 94;
+      const base_content_height = 40;
+      const estimated__content_height = (() => {
+        if (categories.includes("text")) {
+          if (text.length > 80) {
+            return 112;
+          }
+        }
+        if (categories.includes("code")) {
+          const lines = text.split("\n");
+          let height = lines.length * 16 + (lines.length - 1) * 2;
+          if (height > 120) {
+            height = 120;
+          }
+          return height;
+        }
+        return 40;
+      })();
+      return 94 + estimated__content_height - base_content_height;
     })(),
     type: v.content_type,
     created_at: dayjs(v.created_at),

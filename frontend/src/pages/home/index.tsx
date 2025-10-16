@@ -13,9 +13,18 @@ import { RelativeTime } from "@/components/relative_time";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { WaterfallView } from "@/components/ui/waterfall/waterfall";
 import { Flex } from "@/components/flex/flex";
-import { SelectWithKeyboardModel, WithTagsInput, WithTagsInputModel } from "@/components/with-tags-input";
+import {
+  buildOptionFromWaterfallCell,
+  SelectWithKeyboardModel,
+  WithTagsInput,
+  WithTagsInputModel,
+} from "@/components/with-tags-input";
 import { DynamicContent } from "@/components/dynamic-content";
-import { DynamicContentWithClick } from "@/components/dynamic-content/with-click";
+import {
+  DynamicContentWithClick,
+  DynamicContentWithClickModel,
+  ModelInList,
+} from "@/components/dynamic-content/with-click";
 import { CodeCard } from "@/components/code-card";
 
 import { RequestCore, TheResponseOfRequestCore } from "@/domains/request";
@@ -93,30 +102,15 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       if (!$first) {
         return;
       }
-      ui.$select.methods.unshiftOption({
-        id: $first.state.payload.id,
-        label: $first.state.payload.id,
-        top: $first.state.top,
-        height: $first.state.height,
-      });
+      ui.$select.methods.unshiftOption(buildOptionFromWaterfallCell($first));
       $first.onHeightChange(([height, difference]) => {
         console.log("[]before setScrollTop in onHeightChange", ui.$view.getScrollTop(), difference);
         ui.$view.addScrollTop(difference);
         console.log("[]after setScrollTop in onHeightChange", ui.$view.getScrollTop());
-        ui.$select.methods.updateOption({
-          id: $first.state.payload.id,
-          label: $first.state.payload.id,
-          height: $first.state.height,
-          top: $first.state.top,
-        });
+        ui.$select.methods.updateOption(buildOptionFromWaterfallCell($first));
       });
       $first.onTopChange(() => {
-        ui.$select.methods.updateOption({
-          id: $first.state.payload.id,
-          label: $first.state.payload.id,
-          height: $first.state.height,
-          top: $first.state.top,
-        });
+        ui.$select.methods.updateOption(buildOptionFromWaterfallCell($first));
       });
     },
     prepareLoadRecord(data: PasteRecord) {
@@ -142,13 +136,14 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$waterfall.methods.resetRange();
     },
     async copyPasteRecord(v: PasteRecord) {
+      console.log("[PAGE]home/index - copyPasteRecord");
       const r = await request.paste.write.run({ id: v.id });
       if (r.error) {
         return;
       }
-      props.app.tip({
-        text: ["已复制至粘贴板"],
-      });
+      // props.app.tip({
+      //   text: ["已复制至粘贴板"],
+      // });
     },
     previewPasteContent(v: PasteRecord) {
       if (v.types.includes("url")) {
@@ -322,6 +317,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       app: props.app,
       $view,
     }),
+    $list_click: ModelInList<DynamicContentWithClickModel>({}),
   };
 
   let _selected_files = [] as SelectedFile[];
@@ -360,16 +356,18 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     if (["init", "reload", "refresh", "search"].includes(reason)) {
       ui.$waterfall.methods.cleanColumns();
       ui.$waterfall.methods.appendItems(dataSource);
-      ui.$select.methods.setOptions(
-        ui.$waterfall.$items.map(($item) => {
-          return {
-            id: $item.state.payload.id,
-            label: $item.state.payload.id,
-            top: $item.state.top,
-            height: $item.state.height,
-          };
-        })
-      );
+      ui.$select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
+      for (let i = 0; i < dataSource.length; i += 1) {
+        const paste = dataSource[i];
+        ui.$list_click.methods.set(
+          paste.id,
+          DynamicContentWithClickModel({
+            onClick() {
+              methods.copyPasteRecord(paste);
+            },
+          })
+        );
+      }
       return;
     }
     const existing_ids = ui.$waterfall.$items.map((v) => v.state.payload.id);
@@ -383,24 +381,21 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }
     }
     ui.$waterfall.methods.appendItems(added_items);
-    ui.$select.methods.setOptions(
-      ui.$waterfall.$items.map(($item) => {
-        return {
-          id: $item.state.payload.id,
-          label: $item.state.payload.id,
-          top: $item.state.top,
-          height: $item.state.height,
-        };
-      })
-    );
+    ui.$select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
+    for (let i = 0; i < added_items.length; i += 1) {
+      const paste = added_items[i];
+      ui.$list_click.methods.set(
+        paste.id,
+        DynamicContentWithClickModel({
+          onClick() {
+            methods.copyPasteRecord(paste);
+          },
+        })
+      );
+    }
   });
   ui.$waterfall.onCellUpdate(({ $item }) => {
-    ui.$select.methods.updateOption({
-      id: $item.state.payload.id,
-      label: $item.state.payload.id,
-      top: $item.state.top,
-      height: $item.state.height,
-    });
+    ui.$select.methods.updateOption(buildOptionFromWaterfallCell($item));
   });
   ui.$waterfall.onStateChange(() => methods.refresh());
   ui.$select.onStateChange(() => methods.refresh());
@@ -418,8 +413,13 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     if (keys === "enter") {
       const idx = ui.$select.state.idx;
       const $cell = ui.$waterfall.$items[idx];
-      // console.log("[PAGE]home/index - before previewPasteContent", idx);
-      methods.copyPasteRecord($cell.state.payload);
+      const $click = ui.$list_click.methods.get($cell.state.payload.id);
+      if ($click) {
+        $click.methods.click();
+      }
+    }
+    if (keys === "reload") {
+      props.history.reload();
     }
   });
   ui.$back_to_top.onStateChange(() => methods.refresh());
@@ -433,9 +433,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     methods.prepareLoadRecord(vv);
   });
   Events.On("m:refresh", (event) => {
-    request.paste.list.refresh();
-    ui.$select.methods.resetIdx();
-    methods.backToTop();
+    props.history.reload();
   });
 
   return {
@@ -596,9 +594,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                         </div>
                       </Match>
                       <Match when={v.type === "html"}>
-                        <div class="p-2 text-w-fg-0">
-                          <HTMLCard html={v.text} />
-                        </div>
+                        <HTMLCard html={v.text} />
                       </Match>
                       <Match when={v.type === "text"}>
                         <div class="p-2 text-w-fg-0">{v.text}</div>
@@ -669,24 +665,27 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                             >
                               <Trash class="w-4 h-4 text-w-fg-0" />
                             </div>
-                            <div
-                              class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                vm.methods.handleClickCopyBtn(v);
-                              }}
-                            >
-                              <DynamicContentWithClick
-                                options={[
-                                  {
-                                    content: <Copy class="w-4 h-4 text-w-fg-0" />,
-                                  },
-                                  {
-                                    content: <Check class="w-4 h-4 text-green-500" />,
-                                  },
-                                ]}
-                              />
-                            </div>
+                            <Show when={vm.ui.$list_click.methods.get(v.id)}>
+                              <div
+                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  vm.methods.handleClickCopyBtn(v);
+                                }}
+                              >
+                                <DynamicContentWithClick
+                                  store={vm.ui.$list_click.methods.get(v.id)!}
+                                  options={[
+                                    {
+                                      content: <Copy class="w-4 h-4 text-w-fg-0" />,
+                                    },
+                                    {
+                                      content: <Check class="w-4 h-4 text-green-500" />,
+                                    },
+                                  ]}
+                                />
+                              </div>
+                            </Show>
                             <Show when={["JSON"].includes(v.type)}>
                               <div
                                 class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"

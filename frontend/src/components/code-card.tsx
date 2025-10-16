@@ -84,7 +84,7 @@ export function CodeCard(props: { id: string | number; language?: string | null;
 
   return (
     <pre class="w-full h-full">
-      <code ref={$code} class={"w-full h-full font-[12px] hljs " + props.language}>
+      <code ref={$code} class={"w-full h-full text-[13px] hljs " + props.language}>
         {props.code}
       </code>
     </pre>
