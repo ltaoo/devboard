@@ -1,14 +1,12 @@
 /**
  * @file 输入框
  */
-import { createSignal, JSX, onMount } from "solid-js";
-import { effect } from "solid-js/web";
+import { JSX, onMount } from "solid-js";
 
 import { useViewModelStore } from "@/hooks";
 
 import { InputCore } from "@/domains/ui/form/input";
 import { connect } from "@/domains/ui/form/input/connect.web";
-import { ValueInputInterface } from "@/domains/ui/form/types";
 
 const Input = (props: { store: InputCore<any> } & JSX.HTMLAttributes<HTMLInputElement>) => {
   let ref: HTMLInputElement | undefined;

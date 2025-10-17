@@ -53,6 +53,9 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
     moveToNextOption(opt: Partial<{ step: number; force: boolean }> = {}) {
       const { step = 1, force = false } = opt;
       // console.log("[COMPONENT]with-tags-input - moveToNextOption", _opt_idx, _options.length);
+      if (_opt_idx === _options.length - 1) {
+        return;
+      }
       _opt_idx += step;
       if (_opt_idx > _options.length - 1) {
         _opt_idx = _options.length - 1;
@@ -95,6 +98,9 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
       const { step = 1, force = false } = opt;
       console.log("[COMPONENT]with-tags-input - moveToPrevOption", _opt_idx, _options.length);
       const cur_option = _options[_opt_idx];
+      if (_opt_idx === 0) {
+        return;
+      }
       _opt_idx -= step;
       if (_opt_idx < 0) {
         _opt_idx = 0;
