@@ -6,7 +6,6 @@ import { createSignal, JSX } from "solid-js";
 import { DialogCore } from "@/domains/ui/dialog";
 import { Presence } from "@/components/ui/presence";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/utils";
 
 import { Portal as PortalPrimitive } from "./portal";
 
@@ -30,7 +29,7 @@ const Overlay = (
   return (
     <Presence
       store={props.store.present}
-      class={cn(props.class)}
+      class={props.class}
       classList={props.classList}
       onClick={() => {
         if (!props.store.closeable) {
@@ -46,7 +45,7 @@ const Content = (
   props: { store: DialogCore; enterClassName?: string; exitClassName?: string } & JSX.HTMLAttributes<HTMLElement>
 ) => {
   return (
-    <Presence store={props.store.present} class={cn(props.class)} classList={props.classList}>
+    <Presence store={props.store.present} class={props.class} classList={props.classList}>
       {props.children}
     </Presence>
   );
@@ -76,15 +75,15 @@ const Close = (props: { store: DialogCore } & JSX.HTMLAttributes<HTMLElement>) =
 };
 
 const Header = (props: {} & JSX.HTMLAttributes<HTMLElement>) => {
-  return <div class={cn(props.class)}>{props.children}</div>;
+  return <div class={props.class}>{props.children}</div>;
 };
 
 const Footer = (props: {} & JSX.HTMLAttributes<HTMLDivElement>) => {
-  return <div class={cn(props.class)}>{props.children}</div>;
+  return <div class={props.class}>{props.children}</div>;
 };
 
 const Title = (props: {} & JSX.HTMLAttributes<HTMLElement>) => {
-  return <div class={cn(props.class)}>{props.children}</div>;
+  return <div class={props.class}>{props.children}</div>;
 };
 
 const Submit = (props: { store: DialogCore } & JSX.HTMLAttributes<HTMLButtonElement>) => {

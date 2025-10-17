@@ -10,7 +10,6 @@ import * as DialogPrimitive from "@/packages/ui/dialog";
 import { Show } from "@/packages/ui/show";
 
 import { DialogCore } from "@/domains/ui/dialog";
-import { cn } from "@/utils/index";
 
 export function Dialog(props: { store: DialogCore; app: ViewComponentProps["app"] } & JSX.HTMLAttributes<HTMLElement>) {
   const [state, vm] = useViewModelStore(props.store);

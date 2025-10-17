@@ -6,7 +6,6 @@ import { ArrowDown, LoaderCircle } from "lucide-solid";
 
 import * as ScrollViewPrimitive from "@/packages/ui/scroll-view";
 import { ScrollViewCore } from "@/domains/ui/scroll-view";
-import { cn } from "@/utils/index";
 
 export const ScrollView = (
   props: { store: ScrollViewCore; extra?: JSX.Element } & JSX.HTMLAttributes<HTMLDivElement>
@@ -40,10 +39,11 @@ export const ScrollView = (
         <div class="absolute left-0 bottom-0 w-full min-h-[30px] py-[10px]">
           <ScrollViewPrimitive.Progress class="w-[50px] h-[50px] mx-auto rounded-full bg-w-bg-0" store={props.store}>
             <div
-              class={cn(
-                "inline-flex justify-center items-center w-full h-full",
-                rotate() ? "rotate-[180deg]" : "rotate-[0deg]"
-              )}
+              classList={{
+                "inline-flex justify-center items-center w-full h-full": true,
+                "rotate-[180deg]": rotate(),
+                "rotate-[0deg]": !rotate(),
+              }}
               style={{
                 transition: "all 300ms",
               }}

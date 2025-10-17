@@ -11,7 +11,6 @@ import { Show } from "@/packages/ui/show";
 
 import { DropdownMenuCore } from "@/domains/ui/dropdown-menu";
 import { MenuItemCore } from "@/domains/ui/menu/item";
-import { cn, sleep } from "@/utils";
 
 export const DropdownMenu = (props: { store: DropdownMenuCore } & JSX.HTMLAttributes<HTMLElement>) => {
   // const [state, setState] = createSignal(store.state);
@@ -132,14 +131,13 @@ const ItemWithSubMenu = (props: { store: MenuItemCore } & JSX.HTMLAttributes<HTM
   return (
     <DropdownMenuPrimitive.Sub store={props.store.menu}>
       <DropdownMenuPrimitive.SubTrigger
-        class={cn(
-          "flex cursor-default select-none items-center rounded-sm py-1.5 px-2 font-medium outline-none focus:bg-slate-100 data-[state=open]:bg-slate-100 dark:focus:bg-slate-700 dark:data-[state=open]:bg-slate-700",
-          {
-            "pl-8": !!icon(),
-            "bg-slate-100": state().focused,
-          },
-          props.class
-        )}
+        classList={{
+          "flex cursor-default select-none items-center rounded-sm py-1.5 px-2 font-medium outline-none focus:bg-slate-100 data-[state=open]:bg-slate-100 dark:focus:bg-slate-700 dark:data-[state=open]:bg-slate-700":
+            true,
+          "pl-8": !!icon(),
+          "bg-slate-100": state().focused,
+          [props.class ?? ""]: true,
+        }}
         store={props.store}
       >
         <Show when={!!icon()}>
@@ -152,11 +150,13 @@ const ItemWithSubMenu = (props: { store: MenuItemCore } & JSX.HTMLAttributes<HTM
       </DropdownMenuPrimitive.SubTrigger>
       <DropdownMenuPrimitive.Portal store={props.store.menu}>
         <DropdownMenuPrimitive.SubContent
-          class={cn(
-            "z-50 min-w-[8rem] overflow-hidden rounded-md border-2 border-slate-100 bg-white p-1 text-slate-700 shadow-md dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400",
-            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 ",
-            props.class
-          )}
+          classList={{
+            "z-50 min-w-[8rem] overflow-hidden rounded-md border-2 border-slate-100 bg-white p-1 text-slate-700 shadow-md dark:border-slate-800 dark:bg-slate-800 dark:text-slate-400":
+              true,
+            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 ":
+              true,
+            [props.class ?? ""]: true,
+          }}
           store={props.store.menu}
         >
           <For each={items()}>
@@ -166,9 +166,10 @@ const ItemWithSubMenu = (props: { store: MenuItemCore } & JSX.HTMLAttributes<HTM
               }
               return (
                 <DropdownMenuPrimitive.Item
-                  class={cn(
-                    "relative flex cursor-default select-none items-center rounded-sm py-1.5 px-2 font-medium outline-none focus:bg-slate-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 dark:focus:bg-slate-700"
-                  )}
+                  classList={{
+                    "relative flex cursor-default select-none items-center rounded-sm py-1.5 px-2 font-medium outline-none focus:bg-slate-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 dark:focus:bg-slate-700":
+                      true,
+                  }}
                   store={item}
                 >
                   <div title={props.store.tooltip}>{item.label}</div>

@@ -3,9 +3,6 @@ import { createSignal, For } from "solid-js";
 import { pages } from "@/store/views";
 import { PageKeys, ViewComponentProps } from "@/store/types";
 
-import { RouteViewCore } from "@/domains/route_view";
-import { cn } from "@/utils";
-
 import { KeepAliveRouteView } from "./ui/keep-alive-route-view";
 
 export function RouteChildren(props: ViewComponentProps) {

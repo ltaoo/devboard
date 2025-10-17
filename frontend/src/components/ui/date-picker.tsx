@@ -2,10 +2,10 @@ import { createSignal } from "solid-js";
 import { CalendarIcon } from "lucide-solid";
 
 import * as PopoverPrimitive from "@/packages/ui/popover";
-import { DatePickerCore } from "@/domains/ui/date-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/utils";
+
+import { DatePickerCore } from "@/domains/ui/date-picker";
 
 export function DatePicker(props: { store: DatePickerCore }) {
   const { store } = props;
@@ -19,7 +19,10 @@ export function DatePicker(props: { store: DatePickerCore }) {
         <Button
           variant={"outline"}
           icon={<CalendarIcon class="mr-2 h-4 w-4" />}
-          class={cn("flex justify-start w-full text-left font-normal", !state().date && "text-muted-foreground")}
+          classList={{
+            "flex justify-start w-full text-left font-normal": true,
+            "text-muted-foreground": !state().date,
+          }}
           store={store.$btn}
         >
           {state().date ? state().date : <span>选择日期</span>}

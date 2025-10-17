@@ -795,6 +795,9 @@ func write_text(text string) error {
 
 	return nil
 }
+func write_html(text string) error {
+	return fmt.Errorf("not supported")
+}
 
 func write_image(image_bytes []byte) error {
 	open_clipboard()

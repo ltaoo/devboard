@@ -323,6 +323,27 @@ func write_text(text string) error {
 	return nil
 }
 
+func write_html(text string) error {
+	bytes := []byte(text)
+	__pasteboard := objc.ID(_NSPasteboard).Send(_generalPasteboard)
+	if __pasteboard == 0 {
+		return fmt.Errorf("获取粘贴板失败")
+	}
+	__data := objc.ID(_NSData).Send(_dataWithBytesLength, unsafe.SliceData(bytes), len(bytes))
+	if __data == 0 {
+		return fmt.Errorf("初始化数据失败")
+	}
+	__r := __pasteboard.Send(_clearContents)
+	if __r == 0 {
+		return fmt.Errorf("清空粘贴板失败")
+	}
+	__r2 := __pasteboard.Send(_setDataForType, __data, _NSPasteboardTypeHTML)
+	if __r2 == 0 {
+		return fmt.Errorf("写入文本失败")
+	}
+	return nil
+}
+
 func write_image(bytes []byte) error {
 	__pasteboard := objc.ID(_NSPasteboard).Send(_generalPasteboard)
 	if __pasteboard == 0 {

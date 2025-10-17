@@ -6,7 +6,6 @@ import { createSignal, onCleanup, onMount, JSX } from "solid-js";
 
 import { MenuCore } from "@/domains/ui/menu";
 import { MenuItemCore } from "@/domains/ui/menu/item";
-import { cn } from "@/utils/index";
 
 import * as PopperPrimitive from "./popper";
 import { Presence } from "./presence";
@@ -116,8 +115,11 @@ const ItemImpl = (props: { store: MenuItemCore } & JSX.HTMLAttributes<HTMLDivEle
         }
         props.ref = $item;
       }}
-      class={cn("menu__item-impl", props.class)}
-      classList={props.classList}
+      classList={{
+        "menu__item-impl": true,
+        [props.class ?? ""]: true,
+        ...props.classList,
+      }}
       role="menuitem"
       aria-haspopup="menu"
       aria-disabled={state().disabled || undefined}

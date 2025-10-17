@@ -6,7 +6,6 @@ import { ViewComponentProps } from "@/store/types";
 import { DialogCore } from "@/domains/ui/dialog";
 import * as DialogPrimitive from "@/packages/ui/dialog";
 import { Show } from "@/packages/ui/show";
-import { cn } from "@/utils/index";
 
 type SheetProps = {
   position?: "bottom" | "top" | "left" | "right";

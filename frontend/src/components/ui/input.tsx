@@ -6,7 +6,6 @@ import { Input as InputPrimitive } from "@/packages/ui/input";
 
 import { InputCore } from "@/domains/ui/form/input";
 import { connect } from "@/domains/ui/form/input/connect.web";
-import { cn } from "@/utils";
 
 const Input = (props: { store: InputCore<any>; prefix?: JSX.Element; class?: string }) => {
   // const { store, prefix } = props;
@@ -53,14 +52,15 @@ const Input = (props: { store: InputCore<any>; prefix?: JSX.Element; class?: str
         })()}
       </div>
       <InputPrimitive
-        class={cn(
-          "flex items-center h-10 w-full rounded-xl leading-none border-2 border-w-fg-3 py-2 px-3 text-w-fg-0 bg-transparent",
-          "focus:outline-none focus:ring-w-bg-3",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          "placeholder:text-w-fg-2",
-          props.prefix ? "pl-8" : "",
-          props.class
-        )}
+        classList={{
+          "flex items-center h-10 w-full rounded-xl leading-none border-2 border-w-fg-3 py-2 px-3 text-w-fg-0 bg-transparent":
+            true,
+          "focus:outline-none focus:ring-w-bg-3": true,
+          "disabled:cursor-not-allowed disabled:opacity-50": true,
+          "placeholder:text-w-fg-2": true,
+          "pl-8": !!props.prefix,
+          [props.class ?? ""]: true,
+        }}
         style={{
           "vertical-align": "bottom",
         }}

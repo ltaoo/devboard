@@ -5,7 +5,6 @@ import { DragZoneCore } from "@/domains/ui/drag-zone";
 import { readFileAsArrayBuffer, readFileAsURL } from "@/utils/browser";
 import { ImageCore } from "@/domains/ui";
 import { ImageUploadCore } from "@/domains/ui/form/image-upload/index";
-import { cn } from "@/utils";
 
 import { DragZone } from "./drag-zone";
 import { LazyImage } from "./image";
@@ -18,7 +17,12 @@ export function ImageUpload(props: { store: ImageUploadCore } & JSX.HTMLAttribut
   store.onStateChange((v) => setState(v));
 
   return (
-    <div class={cn(props.class, "relative")}>
+    <div
+      classList={{
+        relative: true,
+        [props.class ?? ""]: true,
+      }}
+    >
       {/* <Show when={state().url}>
         <div class="absolute inset-0 h-full">
           <LazyImage class="h-full object-cover" store={store.ui.img} />

@@ -4,7 +4,6 @@ import { MoreHorizontal } from "lucide-solid";
 import { useViewModelStore } from "@/hooks";
 
 import { TabHeaderCore } from "@/domains/ui/tab-header";
-import { cn } from "@/utils";
 
 export const HomeViewTabHeader = (props: { store: TabHeaderCore<any>; onMoreClick?: () => void }) => {
   const [state, vm] = useViewModelStore(props.store);
@@ -22,7 +21,7 @@ export const HomeViewTabHeader = (props: { store: TabHeaderCore<any>; onMoreClic
         </div>
       </div>
       <div
-        class={cn("__a tabs w-full overflow-x-auto scroll--hidden")}
+        class="__a tabs w-full overflow-x-auto scroll--hidden"
         //       style="{{style}}"
         onAnimationStart={(event) => {
           const { width, height, left } = event.currentTarget.getBoundingClientRect();

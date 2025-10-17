@@ -1,9 +1,7 @@
 import { JSX } from "solid-js/jsx-runtime";
 
-import { cn } from "@/utils";
-
 export const Label = (props: JSX.HTMLAttributes<HTMLDivElement> & JSX.AriaAttributes) => (
-  <div ref={props.ref} class={cn(props.class)}>
+  <div ref={props.ref} class={props.class} classList={props.classList}>
     {props.children}
   </div>
 );

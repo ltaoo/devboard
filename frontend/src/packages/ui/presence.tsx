@@ -4,7 +4,6 @@
 import { JSX, createSignal } from "solid-js";
 
 import { PresenceCore } from "@/domains/ui/presence";
-import { cn } from "@/utils";
 
 import { Show } from "./show";
 
@@ -18,8 +17,11 @@ export const Presence = (props: { store: PresenceCore } & JSX.HTMLAttributes<HTM
   return (
     <Show when={state().mounted}>
       <div
-        class={cn("presence", props.class)}
-        classList={props.classList}
+        classList={{
+          presence: true,
+          [props.class ?? ""]: true,
+          ...props.classList,
+        }}
         role="presentation"
         data-state={state().visible ? "open" : "closed"}
         onAnimationEnd={() => {

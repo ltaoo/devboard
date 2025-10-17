@@ -10,7 +10,6 @@ import { useViewModelStore } from "@/hooks";
 import * as SelectPrimitive from "@/packages/ui/select";
 import * as PopperPrimitive from "@/packages/ui/popper";
 import { SelectCore } from "@/domains/ui";
-import { cn, sleep } from "@/utils/index";
 
 import { Presence } from "./presence";
 
@@ -27,10 +26,11 @@ export const Select = (props: { store: SelectCore<any>; position?: "popper" } & 
   return (
     <div class="relative">
       <div
-        class={cn(
-          "flex h-10 w-full items-center justify-between rounded-xl border-2 border-w-fg-3 bg-transparent px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          props.class
-        )}
+        classList={{
+          "flex h-10 w-full items-center justify-between rounded-xl border-2 border-w-fg-3 bg-transparent px-3 py-2 ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50":
+            true,
+          [props.class ?? ""]: true,
+        }}
         onClick={(event) => {
           const client = event.currentTarget.getBoundingClientRect();
           const { clientHeight, clientWidth } = window.document.documentElement;

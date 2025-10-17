@@ -29,7 +29,6 @@ import { base, Handler } from "@/domains/base";
 import { RequestCore } from "@/domains/request";
 import { RouteMenusModel } from "@/domains/route_view";
 import { openWindow } from "@/biz/services";
-import { cn } from "@/utils/index";
 
 function HomeLayoutViewModel(props: ViewComponentProps) {
   const request = {
