@@ -162,6 +162,10 @@ export class ListCore<
   response: Response<T> = { ...DEFAULT_RESPONSE };
   rowKey: string;
 
+  get state() {
+    return this.response;
+  }
+
   constructor(fetch: S, options: ListProps<T> = {}) {
     super();
 

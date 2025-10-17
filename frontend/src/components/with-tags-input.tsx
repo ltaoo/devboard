@@ -14,7 +14,6 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { InputCore, InputProps, PopoverCore, ScrollViewCore, SelectCore } from "@/domains/ui";
 import { ListSelectModel, OptionWithTopInList } from "@/domains/list-select";
-import { ShortcutModel } from "@/biz/shortcut/shortcut";
 
 export function WithTagsInputModel(
   props: { app: ViewComponentProps["app"] } & {
@@ -31,7 +30,7 @@ export function WithTagsInputModel(
         const h = 6 + 24 + 6;
         return {
           id: opt.id,
-          label: opt.id,
+          label: `#${opt.id}`,
           height: h,
           top: idx * h,
         };
@@ -41,6 +40,9 @@ export function WithTagsInputModel(
       ui.$list_select.methods.setOptions(_displayed_options);
     },
     selectMenuOption(idx: number) {
+      if (_displayed_options.length === 0) {
+        return;
+      }
       ui.$input_select.hide();
       const matched = { ..._displayed_options[idx] };
       const existing = _selected_options.find((v) => v.id === matched.id);
@@ -69,16 +71,16 @@ export function WithTagsInputModel(
     },
     openSelect(opt: Partial<{ force: boolean }> = {}) {
       const with_keyboard = _state.isFocus && ui.$input.value === "";
-      // console.log("[COMPONENT]with-input - openSelect", _state.isFocus, ui.$input.value, opt.force, with_keyboard);
-      if (opt.force && !_state.isFocus) {
+      console.log("[COMPONENT]with-input - openSelect", ui.$input.value, opt.force, _state.isFocus);
+      if (opt.force && ui.$input.value === "") {
         ui.$input.focus();
         ui.$input_select.toggle({
           x: 80,
           y: 48,
         });
-      }
-      if (with_keyboard) {
+      } else if (with_keyboard) {
         ui.$input.focus();
+        ui.$input.setValue("");
         ui.$input_select.toggle({
           x: 80,
           y: 48,
@@ -98,6 +100,35 @@ export function WithTagsInputModel(
       methods.selectMenuOption(idx);
       ui.$input.focus();
     },
+    handleKeydownEnter() {
+      if (ui.$input_select.visible) {
+        methods.selectMenuOption(ui.$list_select.state.idx);
+        return;
+      }
+      props.onEnter?.({
+        code: "enter",
+        value: ui.$input.value,
+      });
+      return;
+    },
+    handleKeydownBackspace() {
+      console.log("[COMPONENT]with-input - handleKeydownBackspace", ui.$input.value);
+      if (ui.$input.value === "#") {
+        ui.$input.setValue("");
+        ui.$input_select.hide();
+        return;
+      }
+      if (ui.$input.value === "" && _selected_options.length !== 0) {
+        _selected_options = _selected_options.slice(0, -1);
+        _displayed_options = _options;
+        methods.refresh();
+        props.onEnter?.({
+          code: "backspace",
+          value: ui.$input.value,
+        });
+        return;
+      }
+    },
   };
   const $view = new ScrollViewCore({});
   const ui = {
@@ -105,75 +136,14 @@ export function WithTagsInputModel(
     $input: new InputCore({
       defaultValue: props.defaultValue,
       ignoreEnterEvent: true,
-      // onFocus() {
-      //   console.log("[COMPONENT]with-input - onFocus");
-      //   _focus = true;
-      // },
-      // onBlur() {
-      //   console.log("[COMPONENT]with-input - onBlur");
-      //   _focus = false;
-      // },
       onChange(v) {
-        console.log("[]onChange - ", ui.$input.value, v);
-        if (v === "#") {
-          return;
-        }
-        // if (ui.$input.value === "#" && v === "#") {
-        //   return;
-        // }
+        console.log("[COMPONENT]with-input - onChange - ", ui.$input.value, v);
         if (ui.$input_select.visible) {
           _displayed_options = _options.filter((opt) => {
             return opt.label.toLowerCase().includes(v);
           });
           ui.$list_select.methods.resetIdx();
           methods.refresh();
-        }
-        // const last_char = v[v.length - 1];
-        // if (last_char !== " ") {
-        //   return;
-        // }
-        // const is_tag = v.match(/^#[a-zA-Z0-9-]{1,} /);
-        // if (!is_tag) {
-        //   return;
-        // }
-        // _options = [..._options, v.trim()];
-        // methods.refresh();
-        // ui.$input.setValue("");
-      },
-      onKeyDown(event) {
-        // console.log("[COMPONENT]WithTagsInput - on keydown", ui.$input.value, event.code);
-        if (event.code === "Enter") {
-          if (ui.$input_select.visible) {
-            methods.selectMenuOption(ui.$list_select.state.idx);
-            return;
-          }
-          props.onEnter?.({
-            code: "enter",
-            value: ui.$input.value,
-          });
-          return;
-        }
-        if (ui.$input_select.visible) {
-          if (event.code === "ArrowUp" || event.code === "ArrowDown") {
-            return;
-          }
-        }
-        if (ui.$input.value === "" && event.code === "Digit3") {
-          event.preventDefault();
-          // methods.openSelect();
-          return;
-        }
-        if (event.code === "Backspace") {
-          if (ui.$input.value === "" && _selected_options.length !== 0) {
-            _selected_options = _selected_options.slice(0, -1);
-            _displayed_options = _options;
-            methods.refresh();
-            props.onEnter?.({
-              code: "backspace",
-              value: ui.$input.value,
-            });
-            return;
-          }
         }
       },
     }),
@@ -206,6 +176,9 @@ export function WithTagsInputModel(
     get isFocus() {
       return ui.$input.isFocus;
     },
+    get isOpen() {
+      return ui.$input_select.state.visible;
+    },
   };
   enum Events {
     StateChange,
@@ -226,6 +199,9 @@ export function WithTagsInputModel(
     state: _state,
     get isFocus() {
       return _state.isFocus;
+    },
+    get isOpen() {
+      return _state.isOpen;
     },
     ready() {},
     destroy() {

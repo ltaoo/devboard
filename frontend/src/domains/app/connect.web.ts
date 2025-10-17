@@ -155,12 +155,12 @@ export function connect<T extends { storage: StorageCore<any> }>(app: Applicatio
     app.safeArea = !!matched;
   }
   ownerDocument.addEventListener("keydown", (event) => {
-    // console.log("[DOMAIN]app/connect - keydown", event.code);
+    // console.log("[DOMAIN]app/connect - keydown", event.code, event.metaKey);
     const e = event as any;
     app.keydown(e);
   });
   ownerDocument.addEventListener("keyup", (event) => {
-    // console.log("[DOMAIN]app/connect - keyup", event.code);
+    // console.log("[DOMAIN]app/connect - keyup", event.code, event.metaKey);
     const e = event as any;
     app.keyup(e);
   });

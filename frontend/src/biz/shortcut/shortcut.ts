@@ -49,57 +49,19 @@ export function ShortcutModel(props: {}) {
     },
     testShortcut(opt: { key1: string; key2: string; step: "keydown" | "keyup" }, event: KeyboardEvent) {
       const { key1, key2, step } = opt;
-      // const group_handler1 = _shortcut_map[key1];
-      // const single_handler2 = _shortcut_map[key2];
       // console.log("[BIZ]shortcut - test shortcut", key1, key2, step, _shortcut_map);
-      if (step === "keyup" && key1.includes("+")) {
+      if (step === "keydown" && key2 && _shortcut_map[key2]) {
+        methods.invokeHandlers(event, key2);
+        return;
+      }
+
+      if (step === "keydown" && key1.includes("+")) {
         // console.log("[]invoke key1");
         methods.invokeHandlers(event, key1);
         return;
       }
-      // if (key2) {
-      // methods.invokeHandlers(key1);
-      // return;
-      // const handler = _shortcut_map[key];
-      // //   console.log("[BIZ]shortcut - handleKeyup", key, _shortcut_map, handler);
-      // if (handler) {
-      //   if (opt.step === "keydown") {
-      //     _duplicate_check_map[key] = true;
-      //   }
-      //   if (opt.step === "keyup") {
-      //     _duplicate_check_map[key] = true;
-      //     return;
-      //   }
-      //   handler();
-      //   return;
-      // }
-      // }
-      if (step === "keydown" && key2) {
-        // console.log("[]invoke key2");
-        methods.invokeHandlers(event, key2);
-        return;
-
-        // const handler2 = _shortcut_map[key2];
-        // //   console.log("[BIZ]shortcut - handleKeyup", key2, _shortcut_map, handler2);
-        // if (handler2) {
-        //   if (opt.step === "keydown") {
-        //     _duplicate_check_map[key] = true;
-        //   }
-        //   if (opt.step === "keyup") {
-        //     _duplicate_check_map[key] = true;
-        //     return;
-        //   }
-        //   handler2();
-        //   return;
-        // }
-      }
     },
     handleKeydown(event: { code: string; preventDefault: () => void }) {
-      // if (_is_long_press) {
-      //   methods.handleKeyup(event, { fake: true });
-      //   return;
-      // }
-      // console.log("[]handleKeydown", event.code);
       if (_pressed_codes.join("") === event.code && _shortcut_map[[event.code, event.code].join("")]) {
         _pressed_codes.push(event.code);
       } else {
@@ -108,30 +70,12 @@ export function ShortcutModel(props: {}) {
       _pressed_code_map[event.code] = true;
       methods.testShortcut({ ...methods.buildShortcut(), step: "keydown" }, event);
       methods.clearPressedKeys();
-      // _pressed_codes.push(event.code);
-      // methods.testShortcut({ step: "keydown" });
-      // methods.clearPressedKeys();
-      // if (_long_press_timer === null) {
-      //   _long_press_timer = setTimeout(() => {
-      //     if (_pressed_code_map[event.code]) {
-      //       _is_long_press = true;
-      //       methods.handleKeyup(event, { fake: true });
-      //     }
-      //   }, 800);
-      // }
     },
     handleKeyup(event: { code: string; preventDefault: () => void }, opt: Partial<{ fake: boolean }> = {}) {
-      // if (opt.fake) {
-      //   methods.testShortcut({ step: "keyup" });
-      //   return;
-      // }
-      // _is_long_press = false;
-      // if (_long_press_timer !== null) {
-      //   clearTimeout(_long_press_timer);
-      //   _long_press_timer = null;
-      // }
       methods.testShortcut({ ...methods.buildShortcut(), step: "keyup" }, event);
-      // //       console.log("[BIZ]shortcut - before delete code", event.code);
+      if (["MetaLeft"].includes(event.code)) {
+        _pressed_code_map = {};
+      }
       delete _pressed_code_map[event.code];
     },
   };
@@ -142,9 +86,6 @@ export function ShortcutModel(props: {}) {
   let _pressed_codes: string[] = [];
   let _pressed_code_map: Record<string, boolean> = {};
   let _continuous_timer: NodeJS.Timeout | number | null = null;
-  let _is_long_press = false;
-  let _long_press_timer: NodeJS.Timeout | number | null = null;
-  let _duplicate_check_map: Record<string, boolean> = {};
   let _state = {};
   enum Events {
     Shortcut,
