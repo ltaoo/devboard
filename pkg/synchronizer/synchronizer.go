@@ -27,6 +27,11 @@ func (s *Synchronizer) PullFromRemote(table_name string) {
 
 }
 
+type TableSynchronizeSetting struct {
+	Name        string
+	IdFieldName string
+}
+
 type SynchronizeMessageType int
 
 const (
@@ -120,7 +125,10 @@ func timestamp_to_time(timestamp string) (time.Time, error) {
 	return r, nil
 }
 
-func BuildLocalSyncToRemoteTasks(table_name string, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
+func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
+	table_name := setting.Name
+	id_field_name := setting.IdFieldName
+
 	result := SynchronizeResult{
 		FileTasks:   []*FileTask{},
 		RecordTasks: []*RecordTask{},
@@ -151,17 +159,17 @@ func BuildLocalSyncToRemoteTasks(table_name string, root_dir string, local_clien
 		log("[LOG]parse last record's last_operation_time failed")
 		return &result
 	}
-	table_lot_time, err := timestamp_to_time(local_table_lot_str)
+	// table_lot_time, err := timestamp_to_time(local_table_lot_str)
 	// log("[LOG]the latest record in table is " + table_last_operation_time)
-	if err != nil {
-		log("[ERROR]format latest_operation_time failed, because " + err.Error())
-		add_message(&SynchronizeMessage{
-			Type:  SynchronizeMessageError,
-			Scope: "database",
-			Text:  err.Error(),
-		})
-		return &result
-	}
+	// if err != nil {
+	// 	log("[ERROR]format latest_operation_time failed, because " + err.Error())
+	// 	add_message(&SynchronizeMessage{
+	// 		Type:  SynchronizeMessageError,
+	// 		Scope: "database",
+	// 		Text:  err.Error(),
+	// 	})
+	// 	return &result
+	// }
 	var file_meta_list []*DayFileMeta
 	table_out_dir := path.Join(root_dir, table_name)
 	remote_table_meta_filepath := path.Join(table_out_dir, "meta")
@@ -211,20 +219,20 @@ func BuildLocalSyncToRemoteTasks(table_name string, root_dir string, local_clien
 			if remote_table_lot_str == local_table_lot_str {
 				return &result
 			}
-			remote_lot_time, err := timestamp_to_time(remote_table_lot_str)
-			if err != nil {
-				log("[ERROR]parse last time in meta failed, because" + err.Error())
-				add_message(&SynchronizeMessage{
-					Type:  SynchronizeMessageError,
-					Scope: "format time",
-					Text:  err.Error() + "[]" + remote_meta_content,
-				})
-				return &result
-			}
+			// remote_lot_time, err := timestamp_to_time(remote_table_lot_str)
+			// if err != nil {
+			// 	log("[ERROR]parse last time in meta failed, because" + err.Error())
+			// 	add_message(&SynchronizeMessage{
+			// 		Type:  SynchronizeMessageError,
+			// 		Scope: "format time",
+			// 		Text:  err.Error() + "[]" + remote_meta_content,
+			// 	})
+			// 	return &result
+			// }
 			// 如果本地数据库，最新的记录时间在 remote 之前，说明需要 先将数据从远端同步到本地，而不能 同步到远端，避免覆盖新的内容
-			log("[LOG]table - compare table'latest_operation_time, local:" + local_table_lot_str + ", remote:" + remote_meta_content)
-			if table_lot_time.Before(remote_lot_time) {
-				log("[LOG]need pull latest records from remote server")
+			log("[LOG]table - compare table'latest_operation_time, local:" + local_table_lot_str + ", remote:" + remote_table_lot_str)
+			if local_table_lot_str != remote_table_lot_str {
+				log("[LOG]need to pull latest records from remote server")
 				add_message(&SynchronizeMessage{
 					Type:  SynchronizeMessageSuccess,
 					Scope: "result",
@@ -316,6 +324,7 @@ func BuildLocalSyncToRemoteTasks(table_name string, root_dir string, local_clien
 			Type:     "new_file",
 			Filepath: day_file_path,
 		}
+		need_create_day_file := false
 		_, err = remote_client.Stat(day_file_path)
 		if err != nil {
 			if !remote_client.IsErrNotFound(err) {
@@ -328,6 +337,7 @@ func BuildLocalSyncToRemoteTasks(table_name string, root_dir string, local_clien
 				continue
 			}
 			log("[LOG]need create day file: " + day_file_path)
+			need_create_day_file = true
 			add_file_task(file_task)
 		} else {
 			// day file is existing
@@ -335,25 +345,31 @@ func BuildLocalSyncToRemoteTasks(table_name string, root_dir string, local_clien
 			add_file_task(file_task)
 		}
 		var lines []string
-		remote_day_file_byte, err := remote_client.Read(day_file_path)
-		if err != nil {
-			log("[ERROR]read day file failed, because " + err.Error())
-			add_message(&SynchronizeMessage{
-				Type:  SynchronizeMessageError,
-				Scope: "webdav",
-				Text:  err.Error(),
-			})
-		} else {
-			lines = SplitToLines(remote_day_file_byte)
-		}
-		log("[LOG]before walk the records in special day " + day)
-		if file_task.Type == "update_file" {
-			file_task.Content = string(remote_day_file_byte)
+		if !need_create_day_file {
+			remote_day_file_byte, err := remote_client.Read(day_file_path)
+			if err != nil {
+				log("[ERROR]read day file failed, because " + err.Error())
+				add_message(&SynchronizeMessage{
+					Type:  SynchronizeMessageError,
+					Scope: "webdav",
+					Text:  err.Error(),
+				})
+			} else {
+				lines = SplitToLines(remote_day_file_byte)
+			}
+			log("[LOG]before walk the records in special day " + day)
+			if file_task.Type == "update_file" {
+				file_task.Content = string(remote_day_file_byte)
+			}
 		}
 		for _, record := range day_records {
-			id, ok := record["id"].(string)
+			id, ok := record[id_field_name].(string)
 			if !ok {
-				log("[ERROR]parse id failed")
+				log("[ERROR]parse local record id failed")
+				t, err := json.Marshal(&record)
+				if err == nil {
+					log("[ERROR]the record content " + string(t))
+				}
 				continue
 			}
 			// if file_task.Type == "new_file" {
@@ -379,7 +395,7 @@ func BuildLocalSyncToRemoteTasks(table_name string, root_dir string, local_clien
 					log("[ERROR]because " + err.Error())
 					continue
 				}
-				if rr["id"] != id {
+				if rr[id_field_name] != id {
 					log("[ERROR]the record id is not same")
 					// 上面的查找失误了，可能是复制的内容包含 id，这里规避掉这种可能
 					continue
@@ -429,12 +445,14 @@ func BuildLocalSyncToRemoteTasks(table_name string, root_dir string, local_clien
 	return &result
 }
 
-func BuildRemoteSyncToLocalTasks(table_name string, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
+func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
 	result := SynchronizeResult{
 		Logs:        []string{},
 		Messages:    []*SynchronizeMessage{},
 		RecordTasks: []*RecordTask{},
 	}
+	table_name := setting.Name
+	id_field_name := setting.IdFieldName
 	log := func(content string) {
 		result.Logs = append(result.Logs, content)
 	}
@@ -539,12 +557,12 @@ func BuildRemoteSyncToLocalTasks(table_name string, root_dir string, local_clien
 		// file_meta_list = append(file_meta_list, parsed_day_meta)
 		remote_day_folder_path := path.Join(table_dir, parsed_day_meta.Name)
 		log("[LOG]walk day file content of " + remote_day_folder_path)
-		day_start, day_end, err := get_day_timestamp_range(parsed_day_meta.Name)
-		if err != nil {
-			log("[ERROR]parse day_file failed, because " + err.Error())
-			continue
-		}
-		local_record_list, err := local_client.FetchRecordOrderByTimeAndBetweenStartAndEndOfTable(day_start, day_end)
+		// day_start, day_end, err := get_day_timestamp_range(parsed_day_meta.Name)
+		// if err != nil {
+		// 	log("[ERROR]parse day_file failed, because " + err.Error())
+		// 	continue
+		// }
+		local_record_list, err := local_client.FetchRecordOrderByTimeAndBetweenStartAndEndOfTable(parsed_day_meta.Name)
 		if err != nil {
 			log("[ERROR]" + err.Error())
 			add_message(&SynchronizeMessage{
@@ -598,7 +616,7 @@ func BuildRemoteSyncToLocalTasks(table_name string, root_dir string, local_clien
 		}
 		local_record_map_by_id := make(map[string]map[string]interface{})
 		for _, record := range local_record_list {
-			id, ok := record["id"].(string)
+			id, ok := record[id_field_name].(string)
 			if ok {
 				local_record_map_by_id[id] = record
 			}
@@ -614,7 +632,7 @@ func BuildRemoteSyncToLocalTasks(table_name string, root_dir string, local_clien
 				log("[ERROR]parse the record JSON failed, because " + err.Error())
 				continue
 			}
-			remote_record_id, ok := remote_record["id"].(string)
+			remote_record_id, ok := remote_record[id_field_name].(string)
 			if !ok {
 				log("[ERROR]get remote record id failed")
 				continue
@@ -622,7 +640,7 @@ func BuildRemoteSyncToLocalTasks(table_name string, root_dir string, local_clien
 			matched_record, exist_same_record := local_record_map_by_id[remote_record_id]
 			// var matched_record map[string]interface{}
 			// for _, local_record := range local_record_list {
-			// 	local_record_id, ok := local_record["id"].(string)
+			// 	local_record_id, ok := local_record[id_field_name].(string)
 			// 	if !ok {
 			// 		log("[ERROR]get local record id failed, remote_id:" + remote_record_id)
 			// 		continue
@@ -713,7 +731,7 @@ func BuildRemoteSyncToLocalTasks(table_name string, root_dir string, local_clien
 			// 	})
 			// 	continue
 			// }
-			log("[LOG]find a record need to update " + remote_record["id"].(string))
+			log("[LOG]find a record need to update " + remote_record[id_field_name].(string))
 			add_record_task(&RecordTask{
 				Type: "update",
 				Id:   remote_record_id,

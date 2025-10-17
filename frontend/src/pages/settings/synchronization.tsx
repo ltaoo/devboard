@@ -181,15 +181,26 @@ function SynchronizationViewModel(props: ViewComponentProps) {
           ui.$btn_synchronize.setLoading(false);
           return;
         }
+        props.app.tip({
+          text: ["从 webdva 同步完成"],
+        });
         const r3 = await request.sync.uploadToWebdav.run(body);
         ui.$btn_synchronize.setLoading(false);
         if (r3.error) {
           return;
         }
         props.app.tip({
-          text: ["同步完成"],
+          text: ["同步到 webdav 完成"],
         });
-        WailsEvents.Emit({ name: "m:refresh", data: {} });
+        const has_update = Object.keys(r2.data)
+          .map((table_name) => {
+            const result = r2.data[table_name];
+            return result.record_tasks.length;
+          })
+          .reduce((a, b) => a + b, 0);
+        if (has_update) {
+          WailsEvents.Emit({ name: "m:refresh", data: {} });
+        }
       },
     }),
     $form_webdav: new ObjectFieldCore({

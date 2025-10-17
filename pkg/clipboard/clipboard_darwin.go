@@ -337,8 +337,12 @@ func write_html(text string) error {
 	if __r == 0 {
 		return fmt.Errorf("清空粘贴板失败")
 	}
-	__r2 := __pasteboard.Send(_setDataForType, __data, _NSPasteboardTypeHTML)
-	if __r2 == 0 {
+	// __r2 := __pasteboard.Send(_setDataForType, __data, _NSPasteboardTypeString)
+	// if __r2 == 0 {
+	// 	return fmt.Errorf("写入文本失败")
+	// }
+	__r3 := __pasteboard.Send(_setDataForType, __data, _NSPasteboardTypeHTML)
+	if __r3 == 0 {
 		return fmt.Errorf("写入文本失败")
 	}
 	return nil

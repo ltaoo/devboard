@@ -48,6 +48,8 @@ export type PasteContentHTML = {};
 export type PasteContentImage = {
   width: number;
   height: number;
+  size: number;
+  size_for_humans: string;
 };
 export type PasteContentFile = {};
 export type PasteContentDetails = MutableRecord<{
@@ -68,7 +70,14 @@ export function processPartialPasteEvent(
       return v.html || tt;
     }
     if (categories.includes("time")) {
-      const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
+      const dt = (() => {
+        if (tt.match(/^[0-9]{1,}$/)) {
+          return dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
+        }
+        // if (tt.match(/\+[0-9]{2}/)) {
+        // }
+        return dayjs(tt);
+      })();
       return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
     }
     return tt;
@@ -134,6 +143,12 @@ export function processPartialPasteEvent(
     height: (() => {
       const base_content_height = 40;
       const estimated__content_height = (() => {
+        if (categories.includes(PasteContentType.Image) && details) {
+          const d = details.data as PasteContentImage;
+          if (d.height) {
+            return d.height;
+          }
+        }
         if (categories.includes("text")) {
           const line_count = text.length / 32;
           let height = 6 + line_count * 32 + 6;

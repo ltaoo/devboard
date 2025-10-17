@@ -281,7 +281,7 @@ func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) 
 			LastOperationType: 1,
 			CreatedAt:         now,
 		}
-		if err := tx.Create(&created_map).Error; err == nil {
+		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
 			errors = append(errors, err)
 		}
@@ -332,7 +332,7 @@ func (s *PasteService) HandlePasteHTML(text string) (*models.PasteEvent, error) 
 			LastOperationType: 1,
 			CreatedAt:         now,
 		}
-		if err := tx.Create(&created_map).Error; err == nil {
+		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
 			errors = append(errors, err)
 		}

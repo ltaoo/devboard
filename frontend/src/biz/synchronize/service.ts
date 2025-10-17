@@ -29,6 +29,8 @@ export function syncToRemote(body: {
       {
         file_operations: {}[];
         file_tasks: {}[];
+        record_tasks: {}[];
+        logs: string[];
       }
     >
   >(LocalToRemote, body);
@@ -47,6 +49,8 @@ export function syncFromRemote(body: {
       {
         file_operations: {}[];
         file_tasks: {}[];
+        record_tasks: {}[];
+        logs: string[];
       }
     >
   >(RemoteToLocal, body);
