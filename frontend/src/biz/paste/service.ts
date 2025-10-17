@@ -14,18 +14,19 @@ import { request } from "@/biz/requests";
 import { ListResponse } from "@/biz/requests/types";
 import { TmpRequestResp, UnpackedRequestPayload } from "@/domains/request/utils";
 import { Result } from "@/domains/result";
-import { Unpacked } from "@/types";
+import { MutableRecord, Unpacked } from "@/types";
 import { parseJSONStr } from "@/utils";
 
 export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types: string[]; keyword: string }>) {
   return request.post<
     ListResponse<{
       id: string;
-      content_type: "text" | "image" | "file" | "html";
+      content_type: PasteContentType;
       text: string;
       image_base64: string;
       file_list_json: string;
       html: string;
+      details: string;
       created_at: string;
       last_modified_time: string;
       categories: {
@@ -36,10 +37,42 @@ export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types
   >(FetchPasteEventList, body);
 }
 
+export enum PasteContentType {
+  Text = "text",
+  HTML = "html",
+  Image = "image",
+  File = "file",
+}
+export type PasteContentText = {};
+export type PasteContentHTML = {};
+export type PasteContentImage = {
+  width: number;
+  height: number;
+};
+export type PasteContentFile = {};
+export type PasteContentDetails = MutableRecord<{
+  [PasteContentType.Text]: PasteContentText;
+  [PasteContentType.HTML]: PasteContentHTML;
+  [PasteContentType.Image]: PasteContentImage;
+  [PasteContentType.File]: PasteContentFile;
+}>;
+
 export function processPartialPasteEvent(
   v: UnpackedRequestPayload<ReturnType<typeof fetchPasteEventList>>["list"][number]
 ) {
   const categories = (v.categories ?? []).map((cate) => cate.label);
+  const text = (() => {
+    const tt = v.text;
+    if (v.content_type === PasteContentType.HTML) {
+      // 旧数据错误地写入了 text 字段，前端做个兼容？
+      return v.html || tt;
+    }
+    if (categories.includes("time")) {
+      const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
+      return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
+    }
+    return tt;
+  })();
   const files = (() => {
     if (v.file_list_json) {
       const r = parseJSONStr<
@@ -55,17 +88,18 @@ export function processPartialPasteEvent(
       return r.data;
     }
   })();
-  const text = (() => {
-    const tt = v.text;
-    if (v.content_type === "html") {
-      // 旧数据错误地写入了 text 字段，前端做个兼容？
-      return v.html || tt;
+  const details = (() => {
+    if (v.details) {
+      const r = parseJSONStr<unknown>(v.details);
+      if (r.error) {
+        return null;
+      }
+      return {
+        type: v.content_type,
+        data: r.data,
+      } as PasteContentDetails;
     }
-    if (categories.includes("time")) {
-      const dt = dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
-      return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
-    }
-    return tt;
+    return null;
   })();
   return {
     ...v,
@@ -79,6 +113,7 @@ export function processPartialPasteEvent(
       return null;
     })(),
     image_url: v.image_base64 ? `data:image/png;base64,${v.image_base64}` : null,
+    details,
     operations: (() => {
       const r: string[] = [];
       if (v.text.includes("复制打开抖音")) {
@@ -139,11 +174,12 @@ export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEv
 export function fetchPasteEventProfile(body: { id: string }) {
   return request.post<{
     id: string;
-    content_type: "text" | "image" | "file" | "html";
+    content_type: PasteContentType;
     text: string;
     image_base64: string;
     file_list_json: string;
     html: string;
+    details: string;
     created_at: string;
     last_modified_time: string;
     categories: {

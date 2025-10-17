@@ -1,10 +1,11 @@
 package service
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
+	"image/png"
 	"mime"
 	"net/url"
 	"os"
@@ -21,6 +22,7 @@ import (
 	"devboard/internal/transformer"
 	"devboard/models"
 	"devboard/pkg/clipboard"
+	"devboard/pkg/util"
 )
 
 type PasteService struct {
@@ -172,23 +174,40 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 	if err := s.Biz.DB.Where("id = ?", body.EventId).First(&record).Error; err != nil {
 		return Error(err)
 	}
-	if record.ContentType == "text" {
-		s.Biz.ManuallyWriteClipboardTime = time.Now()
-		if err := clipboard.WriteText(record.Text); err != nil {
-			return Error(err)
-		}
+	is_text := record.ContentType == "text"
+	is_html := record.ContentType == "html"
+	is_image := record.ContentType == "image"
+	is_file := record.ContentType == "file"
+
+	if record.Html != "" {
+		is_html = true
 	}
-	if record.ContentType == "html" {
+	if record.ImageBase64 != "" {
+		is_image = true
+	}
+	if record.FileListJSON != "" {
+		is_file = true
+	}
+
+	if is_html {
 		s.Biz.ManuallyWriteClipboardTime = time.Now()
 		text := record.Html
 		if text == "" {
 			text = record.Text
 		}
-		if err := clipboard.WriteText(text); err != nil {
+		if err := clipboard.WriteHTML(text); err != nil {
 			return Error(err)
 		}
+		return Ok(nil)
 	}
-	if record.ContentType == "image" {
+	if is_text {
+		s.Biz.ManuallyWriteClipboardTime = time.Now()
+		if err := clipboard.WriteText(record.Text); err != nil {
+			return Error(err)
+		}
+		return Ok(nil)
+	}
+	if is_image {
 		s.Biz.ManuallyWriteClipboardTime = time.Now()
 		decoded_data, err := base64.StdEncoding.DecodeString(record.ImageBase64)
 		if err != nil {
@@ -197,8 +216,9 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 		if err := clipboard.WriteImage(decoded_data); err != nil {
 			return Error(err)
 		}
+		return Ok(nil)
 	}
-	if record.ContentType == "file" {
+	if is_file {
 		s.Biz.ManuallyWriteClipboardTime = time.Now()
 		var files []FileInPasteBoard
 		if err := json.Unmarshal([]byte(record.FileListJSON), &files); err != nil {
@@ -220,8 +240,186 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 		if err := clipboard.WriteFiles(file_paths); err != nil {
 			return Error(err)
 		}
+		return Ok(nil)
 	}
-	return Ok(nil)
+	return Error(fmt.Errorf("invalid record data"))
+}
+
+func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) {
+	var created_paste_event models.PasteEvent
+	now := time.Now()
+	created_paste_event = models.PasteEvent{
+		Id:                uuid.New().String(),
+		ContentType:       "text",
+		Text:              text,
+		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+		LastOperationType: 1,
+	}
+	tx := s.Biz.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			return
+		}
+	}()
+	if err := tx.Create(&created_paste_event).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	var errors []error
+	categories := transformer.TextContentDetector(text)
+	for _, c := range categories {
+		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
+			Id:    c,
+			Label: c,
+		})
+		created_map := models.PasteEventCategoryMapping{
+			Id:                uuid.New().String(),
+			PasteEventId:      created_paste_event.Id,
+			CategoryId:        c,
+			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+			LastOperationType: 1,
+			CreatedAt:         now,
+		}
+		if err := tx.Create(&created_map).Error; err == nil {
+			tx.Rollback()
+			errors = append(errors, err)
+		}
+	}
+	if len(errors) != 0 {
+		return nil, errors[0]
+	}
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	return &created_paste_event, nil
+}
+
+func (s *PasteService) HandlePasteHTML(text string) (*models.PasteEvent, error) {
+	var created_paste_event models.PasteEvent
+	now := time.Now()
+	created_paste_event = models.PasteEvent{
+		Id:                uuid.New().String(),
+		ContentType:       "html",
+		Html:              text,
+		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+		LastOperationType: 1,
+	}
+	tx := s.Biz.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			return
+		}
+	}()
+	if err := tx.Create(&created_paste_event).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	var errors []error
+	categories := []string{"html"}
+	for _, c := range categories {
+		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
+			Id:    c,
+			Label: c,
+		})
+		created_map := models.PasteEventCategoryMapping{
+			Id:                uuid.New().String(),
+			PasteEventId:      created_paste_event.Id,
+			CategoryId:        c,
+			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+			LastOperationType: 1,
+			CreatedAt:         now,
+		}
+		if err := tx.Create(&created_map).Error; err == nil {
+			tx.Rollback()
+			errors = append(errors, err)
+		}
+	}
+	if len(errors) != 0 {
+		return nil, errors[0]
+	}
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	return &created_paste_event, nil
+}
+
+type PNGFileInfo struct {
+	Width         int    `json:"width"`
+	Height        int    `json:"height"`
+	Size          int    `json:"size"`
+	SizeForHumans string `json:"size_for_humans"`
+}
+
+func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, error) {
+	var created_paste_event models.PasteEvent
+	now := time.Now()
+	encoded := base64.StdEncoding.EncodeToString(image_bytes)
+	details := "{}"
+	reader := bytes.NewReader(image_bytes)
+	info, err := png.DecodeConfig(reader)
+	if err == nil {
+		d := PNGFileInfo{
+			Width:         info.Width,
+			Height:        info.Height,
+			Size:          len(image_bytes),
+			SizeForHumans: util.AutoByteSize(int64(len(image_bytes))),
+		}
+		t, err := json.Marshal(&d)
+		if err == nil {
+			details = string(t)
+		}
+	}
+	created_paste_event = models.PasteEvent{
+		Id:                uuid.New().String(),
+		ContentType:       "image",
+		ImageBase64:       encoded,
+		Details:           details,
+		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+		LastOperationType: 1,
+	}
+	tx := s.Biz.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			return
+		}
+	}()
+	if err := tx.Create(&created_paste_event).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	var errors []error
+	categories := []string{"image"}
+	for _, c := range categories {
+		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
+			Id:    c,
+			Label: c,
+		})
+		created_map := models.PasteEventCategoryMapping{
+			Id:                uuid.New().String(),
+			PasteEventId:      created_paste_event.Id,
+			CategoryId:        c,
+			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+			LastOperationType: 1,
+			CreatedAt:         now,
+		}
+		if err := tx.Create(&created_map).Error; err != nil {
+			tx.Rollback()
+			errors = append(errors, err)
+		}
+	}
+	if len(errors) != 0 {
+		return nil, errors[0]
+	}
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	return &created_paste_event, nil
 }
 
 func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, error) {
@@ -256,66 +454,33 @@ func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, erro
 			MimeType:     mime_type,
 		})
 	}
-	if len(results) != 0 {
-		content, err := json.Marshal(&results)
-		if err != nil {
-			return nil, err
-		}
-		created_paste_event = models.PasteEvent{
-			Id:                uuid.New().String(),
-			ContentType:       "file",
-			FileListJSON:      string(content),
-			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-			LastOperationType: 1,
-		}
-		// created_paste_event.Content = created_paste_content
-		if err := s.Biz.DB.Create(&created_paste_event).Error; err != nil {
-			log.Fatalf("Failed to create paste event: %v", err)
-			return nil, err
-		}
-		categories := []string{"file"}
-		for _, c := range categories {
-			created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-				Id:    c,
-				Label: c,
-			})
-			created_map := models.PasteEventCategoryMapping{
-				Id:                uuid.New().String(),
-				PasteEventId:      created_paste_event.Id,
-				CategoryId:        c,
-				LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-				LastOperationType: 1,
-				CreatedAt:         now,
-			}
-			if err := s.Biz.DB.Create(&created_map).Error; err != nil {
-			}
-		}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("No valid file")
 	}
-	return &created_paste_event, nil
-}
-
-func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) {
-	var created_paste_event models.PasteEvent
-	now := time.Now()
-	// if prev_paste_event.Id != 0 {
-	// 	prev_type := prev_paste_event.ContentType
-	// 	prev_text := prev_paste_event.Content.Text
-	// 	if prev_type == "text" && prev_text == text {
-	// 		return
-	// 	}
-	// }
+	content, err := json.Marshal(&results)
+	if err != nil {
+		return nil, err
+	}
 	created_paste_event = models.PasteEvent{
 		Id:                uuid.New().String(),
-		ContentType:       "text",
-		Text:              text,
+		ContentType:       "file",
+		FileListJSON:      string(content),
 		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
 		LastOperationType: 1,
 	}
-	if err := s.Biz.DB.Create(&created_paste_event).Error; err != nil {
-		log.Fatalf("Failed to create paste event: %v", err)
+	tx := s.Biz.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			return
+		}
+	}()
+	if err := tx.Create(&created_paste_event).Error; err != nil {
+		tx.Rollback()
 		return nil, err
 	}
-	categories := transformer.TextContentDetector(text)
+	var errors []error
+	categories := []string{"file"}
 	for _, c := range categories {
 		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
 			Id:    c,
@@ -329,85 +494,17 @@ func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) 
 			LastOperationType: 1,
 			CreatedAt:         now,
 		}
-		if err := s.Biz.DB.Create(&created_map).Error; err == nil {
+		if err := tx.Create(&created_map).Error; err != nil {
+			tx.Rollback()
+			errors = append(errors, err)
 		}
 	}
-	return &created_paste_event, nil
-}
-
-func (s *PasteService) HandlePasteHTML(text string) (*models.PasteEvent, error) {
-	var created_paste_event models.PasteEvent
-	now := time.Now()
-	created_paste_event = models.PasteEvent{
-		Id:                uuid.New().String(),
-		ContentType:       "html",
-		Html:              text,
-		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-		LastOperationType: 1,
+	if len(errors) != 0 {
+		return nil, errors[0]
 	}
-	if err := s.Biz.DB.Create(&created_paste_event).Error; err != nil {
-		log.Fatalf("Failed to create paste event: %v", err)
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
 		return nil, err
-	}
-	categories := []string{"html"}
-	for _, c := range categories {
-		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-			Id:    c,
-			Label: c,
-		})
-		created_map := models.PasteEventCategoryMapping{
-			Id:                uuid.New().String(),
-			PasteEventId:      created_paste_event.Id,
-			CategoryId:        c,
-			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-			LastOperationType: 1,
-			CreatedAt:         now,
-		}
-		if err := s.Biz.DB.Create(&created_map).Error; err == nil {
-		}
-	}
-	return &created_paste_event, nil
-}
-
-func (s *PasteService) HandlePastePNG(f []byte) (*models.PasteEvent, error) {
-	var created_paste_event models.PasteEvent
-	now := time.Now()
-	encoded := base64.StdEncoding.EncodeToString(f)
-	// if prev_paste_event.Id != 0 {
-	// 	prev_type := prev_paste_event.ContentType
-	// 	prev_image_base64 := prev_paste_event.Content.ImageBase64
-	// 	if prev_type == "image" && prev_image_base64 == encoded {
-	// 		return
-	// 	}
-	// }
-	created_paste_event = models.PasteEvent{
-		Id:                uuid.New().String(),
-		ContentType:       "image",
-		ImageBase64:       encoded,
-		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-		LastOperationType: 1,
-	}
-	// created_paste_event.Content = created_paste_content
-	if err := s.Biz.DB.Create(&created_paste_event).Error; err != nil {
-		log.Fatalf("Failed to create paste event: %v", err)
-		return nil, err
-	}
-	categories := []string{"image"}
-	for _, c := range categories {
-		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-			Id:    c,
-			Label: c,
-		})
-		created_map := models.PasteEventCategoryMapping{
-			Id:                uuid.New().String(),
-			PasteEventId:      created_paste_event.Id,
-			CategoryId:        c,
-			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
-			LastOperationType: 1,
-			CreatedAt:         now,
-		}
-		if err := s.Biz.DB.Create(&created_map).Error; err != nil {
-		}
 	}
 	return &created_paste_event, nil
 }

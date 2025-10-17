@@ -73,7 +73,7 @@ export function WithTagsInputModel(
           };
         })
         .reduce((a, b) => ({ ...a, ...b }), {});
-      return [..._options].filter((opt) => {
+      return [..._displayed_options].filter((opt) => {
         return !selected_option_map_by_id[opt.id];
       });
     },
@@ -253,7 +253,7 @@ export function WithTagsInput(props: { store: WithTagsInputModel }) {
           <For each={state().tag.list}>
             {(tag) => {
               return (
-                <div class="bg-w-bg-5 rounded-md px-2">
+                <div class="bg-w-fg-3 rounded-md px-2">
                   <div class="text-w-fg-0 text-sm whitespace-nowrap">{tag.label}</div>
                 </div>
               );

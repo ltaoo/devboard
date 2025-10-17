@@ -17,6 +17,7 @@ import { BizError } from "@/domains/error";
 import { PasteEventProfileModel } from "@/biz/paste/paste_profile";
 import { isCodeContent } from "@/biz/paste/utils";
 import { toNumber } from "@/utils/primitive";
+import { PasteContentImage, PasteContentType } from "@/biz/paste/service";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
@@ -82,69 +83,80 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
           <div>{state().error?.message}</div>
         </Match>
         <Match when={state().profile}>
-          <div class="content">
-            <Switch
-              fallback={
-                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
-                  <div class="break-all">{state().profile?.text!}</div>
-                </div>
-              }
-            >
-              <Match when={state().profile?.type === "html"}>
-                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
-                  <HTMLCard html={state().profile!.text!} />
-                </div>
-              </Match>
-              <Match when={state().profile?.type === "image"}>
-                <Show when={state().profile!.image_url}>
-                  <ImageContentPreview url={state().profile!.image_url!} />
-                </Show>
-              </Match>
-              <Match when={state().profile?.type === "file"}>
-                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
-                  <For each={state().profile?.files}>
-                    {(file) => {
-                      return (
-                        <div>
-                          <div class="text-w-fg-0">{file.name}</div>
-                          <div class="text-sm text-w-fg-1">{file.absolute_path}</div>
-                        </div>
-                      );
-                    }}
-                  </For>
-                </div>
-              </Match>
-              <Match when={state().profile?.types.includes("JSON")}>
-                <JSONContentPreview text={state().profile?.text!} />
-              </Match>
-              <Match when={isCodeContent(state().profile?.types)}>
-                <CodeCard
-                  id={state().profile?.id!}
-                  language={state().profile?.language}
-                  linenumber
-                  code={state().profile?.text!}
-                />
-              </Match>
-            </Switch>
-          </div>
-          <div class="h-[124px]">
-            <div class="fixed bottom-0 p-4 left-1/2 -translate-x-1/2">
-              <div class="flex w-[80vw] px-6 py-4 backdrop-blur-md bg-white/30 border border-white/20 rounded-xl shadow-lg">
-                <div>
-                  <div class="flex gap-1">
-                    <For each={state().profile?.categories}>
-                      {(cate) => {
+          <div class="content flex h-full">
+            <div class="content__preview relative flex-1 h-full">
+              <Switch
+                fallback={
+                  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
+                    <div class="break-all">{state().profile?.text!}</div>
+                  </div>
+                }
+              >
+                <Match when={state().profile?.type === "html"}>
+                  <div class="overflow-y-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[80vh] p-4 rounded-md bg-w-bg-3">
+                    <HTMLCard html={state().profile!.text!} />
+                  </div>
+                </Match>
+                <Match when={state().profile?.type === "image"}>
+                  <Show when={state().profile!.image_url}>
+                    <ImageContentPreview url={state().profile!.image_url!} />
+                  </Show>
+                </Match>
+                <Match when={state().profile?.type === "file"}>
+                  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
+                    <For each={state().profile?.files}>
+                      {(file) => {
                         return (
-                          <div class="px-2 py-1 rounded-md bg-w-fg-3">
-                            <div class="text-w-fg-0 text-[12px]">{cate.label}</div>
+                          <div>
+                            <div class="text-w-fg-0">{file.name}</div>
+                            <div class="text-sm text-w-fg-1">{file.absolute_path}</div>
                           </div>
                         );
                       }}
                     </For>
                   </div>
-                  <div class="mt-2 text-w-fg-0">{state().profile?.created_at_text}</div>
+                </Match>
+                <Match when={state().profile?.types.includes("JSON")}>
+                  <JSONContentPreview text={state().profile?.text!} />
+                </Match>
+                <Match when={isCodeContent(state().profile?.types)}>
+                  <CodeCard
+                    id={state().profile?.id!}
+                    language={state().profile?.language}
+                    linenumber
+                    code={state().profile?.text!}
+                  />
+                </Match>
+              </Switch>
+            </div>
+            <div class="content_profile w-[280px] h-full p-4 bg-w-bg-3">
+              <div>
+                <div class="paste_categories flex gap-1">
+                  <For each={state().profile?.categories}>
+                    {(cate) => {
+                      return (
+                        <div class="px-2 py-1 rounded-md bg-w-fg-3">
+                          <div class="text-w-fg-0 text-[12px]">{cate.label}</div>
+                        </div>
+                      );
+                    }}
+                  </For>
                 </div>
-                <div></div>
+                <Show when={state().profile?.details}>
+                  <div class="paste__profile">
+                    <Show when={state().profile?.details?.type === PasteContentType.Image}>
+                      <div>
+                        <div class="flex items-center">
+                          <div>{(state().profile?.details?.data as PasteContentImage).width}</div>
+                          <div>x</div>
+                          <div>{(state().profile?.details?.data as PasteContentImage).height}</div>
+                        </div>
+                      </div>
+                    </Show>
+                  </div>
+                  <div></div>
+                </Show>
+                <div class="paste_created_at mt-2 text-w-fg-0">{state().profile?.created_at_text}</div>
               </div>
             </div>
           </div>

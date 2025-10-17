@@ -55,7 +55,7 @@ export function ImageContentPreview(props: { url: string }) {
   return (
     <div class="absolute inset-0">
       <div class="">
-        <img class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw]" src={state().url} />
+        <img class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[80vh] object-contain" src={state().url} />
       </div>
     </div>
   );
