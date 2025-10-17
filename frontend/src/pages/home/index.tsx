@@ -107,7 +107,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       if (!$first) {
         return;
       }
-      ui.$select.methods.unshiftOption(buildOptionFromWaterfallCell($first));
+      ui.$list_select.methods.unshiftOption(buildOptionFromWaterfallCell($first));
       ui.$list_click.methods.set(
         d.id,
         DynamicContentWithClickModel({
@@ -121,10 +121,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         // console.log("[]before setScrollTop in onHeightChange", ui.$view.getScrollTop(), difference);
         ui.$view.addScrollTop(difference);
         // console.log("[]after setScrollTop in onHeightChange", ui.$view.getScrollTop());
-        ui.$select.methods.updateOption(buildOptionFromWaterfallCell($first));
+        ui.$list_select.methods.updateOption(buildOptionFromWaterfallCell($first));
       });
       $first.onTopChange(() => {
-        ui.$select.methods.updateOption(buildOptionFromWaterfallCell($first));
+        ui.$list_select.methods.updateOption(buildOptionFromWaterfallCell($first));
       });
     },
     prepareLoadRecord(data: PasteRecord) {
@@ -150,7 +150,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$waterfall.methods.resetRange();
     },
     clickPasteWithIdx() {
-      const idx = ui.$select.state.idx;
+      const idx = ui.$list_select.state.idx;
       const $cell = ui.$waterfall.$items[idx];
       const $click = ui.$list_click.methods.get($cell.state.payload.id);
       if ($click) {
@@ -176,7 +176,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       if (r.error) {
         return;
       }
-      ui.$select.methods.resetIdx();
+      ui.$list_select.methods.resetIdx();
       methods.backToTop();
       // if (event.code === "enter") {
       //   ui.$input_search.methods.blur();
@@ -199,7 +199,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$waterfall.methods.deleteCell((record) => {
         return record.id === v.id;
       });
-      ui.$select.methods.deleteOptionById(v.id);
+      ui.$list_select.methods.deleteOptionById(v.id);
       if (request.paste.list.response.dataSource.length < 10 && !request.paste.list.response.noMore) {
         request.paste.list.loadMore();
       }
@@ -276,6 +276,16 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         content: v.text,
       });
     },
+    handleHotkeyCopy(event: { code: string }) {
+      if (ui.$input_search.isFocus) {
+        if (event.code === "Enter") {
+          ui.$input_search.methods.handleKeydownEnter();
+          return;
+        }
+        return;
+      }
+      methods.clickPasteWithIdx();
+    },
   };
   const $view = new ScrollViewCore({
     async onPullToRefresh() {
@@ -351,7 +361,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       },
     }),
     $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 12, size: 10, buffer: 4 }),
-    $select: ListSelectModel({
+    $list_select: ListSelectModel({
       $view,
     }),
     $list_click: ModelInList<DynamicContentWithClickModel>({}),
@@ -378,7 +388,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       return _selected_files;
     },
     get highlighted_idx() {
-      return ui.$select.state.idx;
+      return ui.$list_select.state.idx;
     },
   };
   enum EventNames {
@@ -392,54 +402,59 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   ui.$shortcut.methods.register({
     "KeyK,ArrowUp"(event) {
       console.log("[]shortcut - KeyK", ui.$input_search.isFocus, event.code);
-      if (ui.$input_search.isFocus || ui.$input_search.isOpen) {
+      if (ui.$input_search.isFocus) {
         if (ui.$input_search.isOpen && event.code === "ArrowUp") {
+          ui.$input_search.methods.moveToPrevOption({ step: 1 });
           event.preventDefault();
+          return;
         }
-        ui.$input_search.methods.moveToPrevOption({ step: 1 });
-        return;
       }
       event.preventDefault();
-      ui.$select.methods.moveToPrevOption({ step: 1 });
+      ui.$list_select.methods.moveToPrevOption({ step: 1 });
     },
     "ControlRight+KeyU"() {
-      ui.$select.methods.moveToPrevOption({ step: 3, force: true });
+      ui.$list_select.methods.moveToPrevOption({ step: 3, force: true });
     },
     "KeyJ,ArrowDown"(event) {
-      console.log("[]shortcut - KeyJ", ui.$input_search.isFocus);
+      console.log("[]shortcut - KeyJ", ui.$input_search.isFocus, ui.$input_search.isOpen, event.code);
       // console.log("[]shortcut - moveToNextOption");
       if (ui.$input_search.isFocus) {
-        if (ui.$input_search.isOpen && event.code === "ArrowDown") {
+        if (event.code === "ArrowDown") {
+          if (ui.$input_search.isOpen) {
+            event.preventDefault();
+            ui.$input_search.methods.moveToNextOption({ step: 1 });
+            return;
+          }
           event.preventDefault();
+          ui.$list_select.methods.moveToNextOption({ step: 1 });
+          return;
         }
-        ui.$input_search.methods.moveToNextOption({ step: 1 });
         return;
       }
       event.preventDefault();
-      ui.$select.methods.moveToNextOption({ step: 1 });
+      ui.$list_select.methods.moveToNextOption({ step: 1 });
     },
     "ControlRight+KeyD"() {
-      ui.$select.methods.moveToNextOption({ step: 3, force: true });
+      ui.$list_select.methods.moveToNextOption({ step: 3, force: true });
     },
     KeyGKeyG() {
-      ui.$select.methods.resetIdx();
+      ui.$list_select.methods.resetIdx();
       methods.backToTop();
+    },
+    KeyYKeyY(event) {
+      methods.handleHotkeyCopy(event);
     },
     Space() {
       console.log("[PAGE]home/index - key Space", ui.$input_search.isFocus);
       if (ui.$input_search.isFocus) {
         return;
       }
-      const idx = ui.$select.state.idx;
+      const idx = ui.$list_select.state.idx;
       const $cell = ui.$waterfall.$items[idx];
       methods.previewPasteContent($cell.state.payload);
     },
-    Enter() {
-      if (ui.$input_search.isFocus) {
-        ui.$input_search.methods.handleKeydownEnter();
-        return;
-      }
-      methods.clickPasteWithIdx();
+    Enter(event) {
+      methods.handleHotkeyCopy(event);
     },
     Backspace() {
       if (ui.$input_search.isFocus) {
@@ -452,7 +467,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     "MetaLeft+Backspace"() {
       // console.log("[PAGE]home/index - MetaLeft+Backspace");
-      const idx = ui.$select.state.idx;
+      const idx = ui.$list_select.state.idx;
       const $cell = ui.$waterfall.$items[idx];
       methods.deletePaste($cell.state.payload);
     },
@@ -460,8 +475,12 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       console.log("[PAGE]home/index - ShiftRight+Digit3");
       ui.$input_search.methods.openSelect({ force: true });
     },
-    "MetaLeft+KeyF"() {
-      ui.$select.methods.resetIdx();
+    "MetaLeft+KeyF,ShiftLeft+KeyA,KeyO"(event) {
+      if (ui.$input_search.isFocus) {
+        return;
+      }
+      event.preventDefault();
+      ui.$list_select.methods.resetIdx();
       methods.backToTop();
       ui.$input_search.methods.focus();
     },
@@ -475,7 +494,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     if (["init", "reload", "refresh", "search"].includes(reason)) {
       ui.$waterfall.methods.cleanColumns();
       ui.$waterfall.methods.appendItems(dataSource);
-      ui.$select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
+      ui.$list_select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
       for (let i = 0; i < dataSource.length; i += 1) {
         const paste = dataSource[i];
         ui.$list_click.methods.set(
@@ -501,7 +520,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }
     }
     ui.$waterfall.methods.appendItems(added_items);
-    ui.$select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
+    ui.$list_select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
     for (let i = 0; i < added_items.length; i += 1) {
       const paste = added_items[i];
       ui.$list_click.methods.set(
@@ -516,10 +535,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     }
   });
   ui.$waterfall.onCellUpdate(({ $item }) => {
-    ui.$select.methods.updateOption(buildOptionFromWaterfallCell($item));
+    ui.$list_select.methods.updateOption(buildOptionFromWaterfallCell($item));
   });
   ui.$waterfall.onStateChange(() => methods.refresh());
-  ui.$select.onStateChange(() => methods.refresh());
+  ui.$list_select.onStateChange(() => methods.refresh());
   ui.$back_to_top.onStateChange(() => methods.refresh());
   const unlisten = props.app.onKeydown((event) => {
     console.log("[PAGE]onKeydown", event.code);
@@ -612,10 +631,13 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                   "bg-w-fg-5": state().highlighted_idx === idx,
                 }}
                 onClick={() => {
-                  vm.ui.$select.methods.handleEnterMenuOption(idx);
+                  vm.ui.$list_select.methods.handleEnterMenuOption(idx);
                 }}
               >
-                <div class="">
+                <Show when={state().highlighted_idx === idx}>
+                  <div class="absolute left-[-4px] top-1/2 -translate-y-1/2 w-[4px] h-[36px] rounded-md bg-green-500"></div>
+                </Show>
+                <div class="paste-event-card__content">
                   {/* <div class="absolute left-0 top-0">{state().highlighted_idx}</div> */}
                   {/* <div class="absolute left-2 top-2">{v.id}</div> */}
                   <div
