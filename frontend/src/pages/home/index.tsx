@@ -167,6 +167,21 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       //   text: ["已复制至粘贴板"],
       // });
     },
+    async searchWithKeyword(event: { code: string }) {
+      const body = {
+        keyword: ui.$input_search.state.value.keyword,
+        types: ui.$input_search.state.value.tags.map((tag) => tag.id),
+      };
+      const r = await request.paste.list.search(body);
+      if (r.error) {
+        return;
+      }
+      ui.$select.methods.resetIdx();
+      methods.backToTop();
+      // if (event.code === "enter") {
+      //   ui.$input_search.methods.blur();
+      // }
+    },
     previewPasteContent(v: PasteRecord) {
       if (v.types.includes("url")) {
         Browser.OpenURL(v.text);
@@ -332,17 +347,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       defaultValue: "",
       async onEnter(event) {
         // await ui.$waterfall.methods.cleanColumns();
-        const r = await request.paste.list.search({
-          keyword: ui.$input_search.state.value.keyword,
-          types: ui.$input_search.state.value.tags.map((tag) => tag.id),
-        });
-        if (r.error) {
-          return;
-        }
-        ui.$select.methods.resetIdx();
-        if (event.code === "enter") {
-          ui.$input_search.methods.blur();
-        }
+        methods.searchWithKeyword(event);
       },
     }),
     $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 12, size: 10, buffer: 4 }),
@@ -386,8 +391,11 @@ function HomeIndexViewModel(props: ViewComponentProps) {
 
   ui.$shortcut.methods.register({
     "KeyK,ArrowUp"(event) {
-      console.log("[]shortcut - KeyK", ui.$input_search.isFocus);
-      if (ui.$input_search.isFocus) {
+      console.log("[]shortcut - KeyK", ui.$input_search.isFocus, event.code);
+      if (ui.$input_search.isFocus || ui.$input_search.isOpen) {
+        if (ui.$input_search.isOpen && event.code === "ArrowUp") {
+          event.preventDefault();
+        }
         ui.$input_search.methods.moveToPrevOption({ step: 1 });
         return;
       }
@@ -397,13 +405,17 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     "ControlRight+KeyU"() {
       ui.$select.methods.moveToPrevOption({ step: 3, force: true });
     },
-    "KeyJ,ArrowDown"() {
+    "KeyJ,ArrowDown"(event) {
       console.log("[]shortcut - KeyJ", ui.$input_search.isFocus);
       // console.log("[]shortcut - moveToNextOption");
       if (ui.$input_search.isFocus) {
+        if (ui.$input_search.isOpen && event.code === "ArrowDown") {
+          event.preventDefault();
+        }
         ui.$input_search.methods.moveToNextOption({ step: 1 });
         return;
       }
+      event.preventDefault();
       ui.$select.methods.moveToNextOption({ step: 1 });
     },
     "ControlRight+KeyD"() {
@@ -424,20 +436,28 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     Enter() {
       if (ui.$input_search.isFocus) {
+        ui.$input_search.methods.handleKeydownEnter();
         return;
       }
       methods.clickPasteWithIdx();
+    },
+    Backspace() {
+      if (ui.$input_search.isFocus) {
+        ui.$input_search.methods.handleKeydownBackspace();
+        return;
+      }
     },
     "MetaLeft+KeyR"() {
       props.history.reload();
     },
     "MetaLeft+Backspace"() {
-      console.log("[PAGE]home/index - MetaLeft+Backspace");
+      // console.log("[PAGE]home/index - MetaLeft+Backspace");
       const idx = ui.$select.state.idx;
       const $cell = ui.$waterfall.$items[idx];
       methods.deletePaste($cell.state.payload);
     },
     "ShiftRight+Digit3"() {
+      console.log("[PAGE]home/index - ShiftRight+Digit3");
       ui.$input_search.methods.openSelect({ force: true });
     },
     "MetaLeft+KeyF"() {
@@ -448,12 +468,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     Escape() {
       ui.$input_search.methods.blur();
     },
-    // ArrowDown() {
-    //   ui.$keyboard.methods.moveToNextOption();
-    // },
-    // ArrowUp() {
-    //   ui.$keyboard.methods.moveToPrevOption();
-    // },
   });
 
   request.paste.list.onStateChange(() => methods.refresh());
@@ -512,6 +526,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     ui.$shortcut.methods.handleKeydown(event);
   });
   const unlisten2 = props.app.onKeyup((event) => {
+    console.log("[PAGE]onKeyup", event.code);
     ui.$shortcut.methods.handleKeyup(event);
   });
   Events.On("clipboard:update", (event) => {
@@ -578,6 +593,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
         <WaterfallView
           class="relative p-4"
           store={vm.ui.$waterfall}
+          list={vm.request.paste.list}
           // showFallback={state().paste_event.empty}
           fallback={
             <Show when={state().paste_event.empty}>

@@ -1,25 +1,29 @@
 /**
  * @file 支持多列的瀑布流组件
  */
-import { For, JSX, Show } from "solid-js";
+import { For, JSX, Match, Show, Switch } from "solid-js";
 
 import { useViewModelStore } from "@/hooks";
 
 import { WaterfallModel } from "@/domains/ui/waterfall/waterfall";
 import { WaterfallColumnModel } from "@/domains/ui/waterfall/column";
 import { WaterfallCellModel } from "@/domains/ui/waterfall/cell";
-import { Keyed } from "@/components/keyed";
+import { ListCore } from "@/domains/list";
+import { ArrowDown, Bird, Loader } from "lucide-solid";
 
 export function WaterfallView<T extends Record<string, unknown>>(
   props: {
     store: WaterfallModel<T>;
-    // showFallback?: boolean;
+    list: ListCore<any>;
     fallback?: JSX.Element;
+    /** 骨架屏 */
+    skeleton?: JSX.Element;
     extra?: JSX.Element;
     render: (payload: T, idx: number) => JSX.Element;
   } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
   const [state, vm] = useViewModelStore(props.store);
+  const [list, $list] = useViewModelStore(props.list);
 
   // console.log("[COMPONENT]ui/waterfall/waterfall - render", props.showFallback);
 
@@ -31,17 +35,70 @@ export function WaterfallView<T extends Record<string, unknown>>(
       }}
     >
       {props.extra}
-      <Show when={state().items.length} fallback={props.fallback}>
-        <For each={state().columns}>
-          {(column, idx) => {
-            const $column = vm.$columns[idx()];
-            if (!$column) {
-              return null;
+      <Switch>
+        <Match when={list().initial}>{props.skeleton}</Match>
+        <Match when={list().error}>
+          <div>{list().error?.message}</div>
+        </Match>
+        <Match when={list().empty}>
+          <div class="w-full h-[360px] center flex items-center justify-center">
+            <div class="flex flex-col items-center justify-center text-w-fg-1">
+              <Bird class="w-24 h-24" />
+              <div class="mt-4 flex items-center space-x-2">
+                <Show when={list().loading}>
+                  <Loader class="w-6 h-6 animate-spin" />
+                </Show>
+                <div class="text-center text-xl">{list().loading ? "加载中" : "列表为空"}</div>
+              </div>
+            </div>
+          </div>
+        </Match>
+        <Match when={!list().empty}>
+          <For each={state().columns}>
+            {(column, idx) => {
+              const $column = vm.$columns[idx()];
+              if (!$column) {
+                return null;
+              }
+              return <WaterfallColumnView store={$column} render={props.render} />;
+            }}
+          </For>
+          <Show
+            when={list().noMore}
+            fallback={
+              <div class="mt-4 flex justify-center py-4 text-w-fg-1">
+                <div
+                  class="flex items-center space-x-2 cursor-pointer"
+                  onClick={() => {
+                    $list.loadMore();
+                  }}
+                >
+                  <Show when={list().loading} fallback={<ArrowDown class="w-6 h-6" />}>
+                    <Loader class="w-6 h-6 animate-spin" />
+                  </Show>
+                  <div class="text-center text-sm">{list().loading ? "加载中" : "加载更多"}</div>
+                </div>
+              </div>
             }
-            return <WaterfallColumnView store={$column} render={props.render} />;
-          }}
-        </For>
-      </Show>
+          >
+            <div class="mt-4 flex justify-center py-4 text-w-fg-1 text-sm">
+              <div class="flex items-center space-x-2">
+                <Show when={list().loading}>
+                  <Loader class="w-6 h-6 animate-spin" />
+                </Show>
+                <div
+                  class="text-center"
+                  onClick={() => {
+                    $list.loadMoreForce();
+                  }}
+                >
+                  没有数据了
+                </div>
+              </div>
+            </div>
+          </Show>
+        </Match>
+      </Switch>
     </div>
   );
 }
