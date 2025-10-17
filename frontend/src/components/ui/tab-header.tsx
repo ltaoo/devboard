@@ -1,7 +1,6 @@
 import { For, Show, createSignal, onMount } from "solid-js";
 
 import { TabHeaderCore } from "@/domains/ui/tab-header";
-import { cn } from "@/utils";
 
 export const TabHeader = (props: { store: TabHeaderCore<any> }) => {
   const { store } = props;
@@ -16,7 +15,7 @@ export const TabHeader = (props: { store: TabHeaderCore<any> }) => {
 
   return (
     <div
-      class={cn("__a tabs w-full overflow-x-auto scroll--hidden")}
+      class="__a tabs w-full overflow-x-auto scroll--hidden"
       //       style="{{style}}"
       onAnimationStart={(event) => {
         const { width, height, left } = event.currentTarget.getBoundingClientRect();

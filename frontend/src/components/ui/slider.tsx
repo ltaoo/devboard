@@ -1,1 +1,3 @@
-import { cn } from "@/utils";
+export function Slider() {
+  return <div></div>;
+}

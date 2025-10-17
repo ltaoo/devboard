@@ -6,7 +6,6 @@ import { Image, ImageOff } from "lucide-solid";
 
 import { ImageCore, ImageStep } from "@/domains/ui/image";
 import { connect } from "@/domains/ui/image/connect.web";
-import { cn } from "@/utils";
 
 export function LazyImage(props: { store: ImageCore; alt?: string } & JSX.HTMLAttributes<HTMLImageElement>) {
   const { store } = props;

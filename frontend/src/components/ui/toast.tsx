@@ -6,7 +6,6 @@ import { Loader } from "lucide-solid";
 
 import * as ToastPrimitive from "@/packages/ui/toast";
 import { ToastCore } from "@/domains/ui/toast";
-import { cn } from "@/utils";
 
 export const Toast = (props: { store: ToastCore }) => {
   const [state, setState] = createSignal(props.store.state);

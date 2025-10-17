@@ -5,10 +5,10 @@ import { JSX } from "solid-js";
 import { VariantProps, cva } from "class-variance-authority";
 import { Loader } from "lucide-solid";
 
-import { ButtonCore } from "@/domains/ui/button";
 import * as ButtonPrimitive from "@/packages/ui/button";
 import { Show } from "@/packages/ui/show";
-import { cn } from "@/utils";
+
+import { ButtonCore } from "@/domains/ui/button";
 
 const buttonVariants = cva(
   "overflow-hidden inline-flex items-center justify-center text-md rounded-xl transition-colors disabled:opacity-50 disabled:pointer-events-none",
@@ -47,7 +47,7 @@ function Button<T = unknown>(
   const { store, variant, size } = props;
 
   return (
-    <ButtonPrimitive.Root store={store} class={buttonVariants({ variant, size, class: cn(props.class, "space-x-2") })}>
+    <ButtonPrimitive.Root store={store} class={buttonVariants({ variant, size, class: `${props.class} space-x-2` })}>
       <Show when={props.icon}>
         <ButtonPrimitive.Prefix store={store}>{props.icon}</ButtonPrimitive.Prefix>
       </Show>

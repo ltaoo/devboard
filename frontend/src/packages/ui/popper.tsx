@@ -5,7 +5,6 @@
 import { JSX, Show, createSignal, onMount } from "solid-js";
 
 import { PopperCore } from "@/domains/ui/popper";
-import { cn } from "@/utils";
 
 import { Arrow as ArrowPrimitive } from "./arrow";
 
@@ -34,7 +33,10 @@ const Anchor = (props: { store: PopperCore } & JSX.HTMLAttributes<HTMLElement>) 
             },
           });
         }}
-        class={cn("popper__anchor", props.class)}
+        classList={{
+          popper__anchor: true,
+          [props.class ?? ""]: true,
+        }}
       >
         {props.children}
       </div>
@@ -108,8 +110,11 @@ const Content = (props: { store: PopperCore } & JSX.HTMLAttributes<HTMLElement>)
       }}
     >
       <div
-        class={cn("popper__content", props.class)}
-        classList={props.classList}
+        classList={{
+          popper__content: true,
+          [props.class ?? ""]: true,
+          ...props.classList,
+        }}
         data-side={placedSide()}
         data-align={placedAlign()}
         // style={{
@@ -157,7 +162,10 @@ const Arrow = (
   return (
     <span
       ref={$arrow}
-      class={cn("popper__arrow", props.class)}
+      classList={{
+        popper__arrow: true,
+        [props.class ?? ""]: true,
+      }}
       style={{
         position: "absolute",
         left: "20px",

@@ -119,6 +119,11 @@ func WriteText(text string) error {
 	defer lock.Unlock()
 	return write_text(text)
 }
+func WriteHTML(text string) error {
+	lock.Lock()
+	defer lock.Unlock()
+	return write_html(text)
+}
 func WriteImage(data []byte) error {
 	lock.Lock()
 	defer lock.Unlock()

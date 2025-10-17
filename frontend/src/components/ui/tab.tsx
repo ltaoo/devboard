@@ -1,7 +1,6 @@
 import { For, Show, createSignal, onMount } from "solid-js";
 
 import { TabHeaderCore } from "@/domains/ui/tab-header";
-import { cn } from "@/utils";
 
 export const Tab = (props: { store: TabHeaderCore<any> }) => {
   const { store } = props;
@@ -19,7 +18,7 @@ export const Tab = (props: { store: TabHeaderCore<any> }) => {
   return (
     <div
       id="tabs-outer"
-      class={cn("__a tabs")}
+      class="__a tabs"
       style="{{style}}"
       onAnimationStart={() => {
         // updateContainer()
@@ -37,7 +36,10 @@ export const Tab = (props: { store: TabHeaderCore<any> }) => {
               return (
                 <div
                   id="tab-{{index}}"
-                  class={cn("__a p-4 item-class", current === index() ? "active-item-class" : "")}
+                  classList={{
+                    "__a p-4 item-class": true,
+                    "active-item-class": current === index(),
+                  }}
                   style="{{current === index ? activeItemStyle : itemStyle}}"
                   data-index="{{index}}"
                   data-text="{{item.text}}"

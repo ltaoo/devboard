@@ -1,7 +1,6 @@
 import dayjs from "dayjs";
 import "dayjs/locale/zh-cn";
 import relative_time from "dayjs/plugin/relativeTime";
-import { twMerge } from "tailwind-merge";
 
 import { Result } from "@/domains/result/index";
 import { JSONObject } from "@/types/index";
@@ -10,10 +9,6 @@ import { cn as nzhcn } from "./nzh";
 
 dayjs.extend(relative_time);
 dayjs.locale("zh-cn");
-
-export function cn(...inputs: any[]) {
-  return twMerge(inputs);
-}
 
 export function toFixed(v: any, n: number = 2) {
   return Number(Number(v).toFixed(n));
