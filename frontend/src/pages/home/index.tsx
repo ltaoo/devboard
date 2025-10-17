@@ -298,18 +298,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     async onReachBottom() {
       // console.log("[PAGE]home/index - onReachBottom");
       await request.paste.list.loadMore();
-      // await request.paste.list.modifyResponse((prev) => {
-      //   return {
-      //     ...prev,
-      //     noMore: true,
-      //     dataSource: [
-      //       ...prev.dataSource,
-      //       ...[d12, d13, d14, d15, d16, d17, d18, d19, d20, d21, d22].map((v) => {
-      //         return processPartialPasteEvent(v);
-      //       }),
-      //     ],
-      //   };
-      // });
       $view.finishLoadingMore();
     },
     onScroll(pos) {

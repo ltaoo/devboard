@@ -143,20 +143,31 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                   </For>
                 </div>
                 <Show when={state().profile?.details}>
-                  <div class="paste__profile">
+                  <div class="paste__profile mt-4">
                     <Show when={state().profile?.details?.type === PasteContentType.Image}>
-                      <div>
-                        <div class="flex items-center">
-                          <div>{(state().profile?.details?.data as PasteContentImage).width}</div>
-                          <div>x</div>
-                          <div>{(state().profile?.details?.data as PasteContentImage).height}</div>
+                      <div class="details__image text-w-fg-0">
+                        <div>
+                          <div>宽高</div>
+                          <div class="flex items-center">
+                            <div>{(state().profile?.details?.data as PasteContentImage).width}</div>
+                            <div>x</div>
+                            <div>{(state().profile?.details?.data as PasteContentImage).height}</div>
+                          </div>
+                        </div>
+                        <div class="">
+                          <div>大小</div>
+                          <div>{(state().profile?.details?.data as PasteContentImage).size_for_humans}</div>
                         </div>
                       </div>
                     </Show>
                   </div>
-                  <div></div>
                 </Show>
-                <div class="paste_created_at mt-2 text-w-fg-0">{state().profile?.created_at_text}</div>
+                <div class="fields mt-4">
+                  <div class="field text-w-fg-0">
+                    <div>创建时间</div>
+                    <div class="paste_created_at">{state().profile?.created_at_text}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
