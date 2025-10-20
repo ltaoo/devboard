@@ -8,7 +8,7 @@ import { Browser, Dialogs, Events } from "@wailsio/runtime";
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
 import { HTMLCard } from "@/components/html-card";
-import { Button, ListView, ScrollView, Skeleton } from "@/components/ui";
+import { Button, ListView, Popover, ScrollView, Skeleton, Textarea } from "@/components/ui";
 import { RelativeTime } from "@/components/relative_time";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { WaterfallView } from "@/components/ui/waterfall/waterfall";
@@ -24,7 +24,7 @@ import { CodeCard } from "@/components/code-card";
 
 import { RequestCore, TheResponseOfRequestCore } from "@/domains/request";
 import { base, Handler } from "@/domains/base";
-import { ButtonCore, DialogCore, ScrollViewCore } from "@/domains/ui";
+import { ButtonCore, DialogCore, InputCore, PopoverCore, ScrollViewCore } from "@/domains/ui";
 import { WaterfallModel } from "@/domains/ui/waterfall/waterfall";
 import { WaterfallCellModel } from "@/domains/ui/waterfall/cell";
 import { ListCore } from "@/domains/list";
@@ -44,6 +44,8 @@ import {
 } from "@/biz/paste/service";
 import { ShortcutModel } from "@/biz/shortcut/shortcut";
 import { ListSelectModel } from "@/domains/list-select";
+import { createRemark } from "@/biz/remark/service";
+import { RefCore } from "@/domains/ui/cur";
 
 const copy_buttons = [
   {

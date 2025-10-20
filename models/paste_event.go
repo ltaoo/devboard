@@ -21,6 +21,7 @@ type PasteEvent struct {
 	DeletedAt         gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
 	Categories []CategoryNode `json:"categories" gorm:"many2many:paste_event_category_mapping;joinForeignKey:paste_event_id;JoinReferences:category_id"`
+	Remarks    []Remark       `json:"remark" gorm:"ForeignKey:PasteEventId"`
 }
 
 func (PasteEvent) TableName() string {

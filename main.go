@@ -90,6 +90,7 @@ func main() {
 			ActivationPolicy: application.ActivationPolicyAccessory,
 		},
 	})
+	biz.SetApp(app)
 
 	greet_service := application.NewService(&service.GreetService{})
 	fs_service := application.NewServiceWithOptions(&service.FileService{
@@ -126,6 +127,10 @@ func main() {
 		App: app,
 		Biz: biz,
 	})
+	remark_service := application.NewService(&service.RemarkService{
+		App: app,
+		Biz: biz,
+	})
 	app.RegisterService(greet_service)
 	app.RegisterService(fs_service)
 	app.RegisterService(common_service)
@@ -135,6 +140,7 @@ func main() {
 	app.RegisterService(douyin_service)
 	app.RegisterService(config_service)
 	app.RegisterService(category_service)
+	app.RegisterService(remark_service)
 
 	hk := _biz.NewHotkey()
 
