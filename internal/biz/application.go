@@ -77,7 +77,9 @@ func (a *BizApp) ShowErrorWindow(search string) {
 		return
 	}
 	win := a.App.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Error",
+		Title:               "Error - Devboard",
+		MaximiseButtonState: application.ButtonDisabled,
+		MinimiseButtonState: application.ButtonDisabled,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
@@ -93,5 +95,5 @@ func (a *BizApp) ShowErrorWindow(search string) {
 	win.OnWindowEvent(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		delete(a.Windows, url)
 	})
-	win.Focus()
+	win.Show()
 }

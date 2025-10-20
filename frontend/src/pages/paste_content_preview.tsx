@@ -9,8 +9,8 @@ import { JSONContentPreview } from "@/components/preview-panels/json";
 import { CodeCard } from "@/components/code-card";
 import { HTMLCard } from "@/components/html-card";
 import { ImageContentPreview } from "@/components/preview-panels/image";
-import { ScrollView } from "@/components/ui";
-import { ScrollViewCore } from "@/domains/ui";
+import { Button, ScrollView, Textarea } from "@/components/ui";
+import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
@@ -18,10 +18,17 @@ import { PasteEventProfileModel } from "@/biz/paste/paste_profile";
 import { isCodeContent } from "@/biz/paste/utils";
 import { toNumber } from "@/utils/primitive";
 import { PasteContentImage, PasteContentType } from "@/biz/paste/service";
+import { RequestCore } from "@/domains/request";
+import { createRemark } from "@/biz/remark/service";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
 
+  const request = {
+    remark: {
+      create: new RequestCore(createRemark, { client: props.client }),
+    },
+  };
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -32,6 +39,21 @@ function PreviewPasteEventModel(props: ViewComponentProps) {
   };
   const ui = {
     $view: new ScrollViewCore({}),
+    $textarea_remark: new InputCore({ defaultValue: "" }),
+    $btn_create_remark: new ButtonCore({
+      onClick() {
+        const content = ui.$textarea_remark.value;
+        if (!content) {
+          return;
+        }
+        const paste_id = props.view.query.id;
+        if (!paste_id) {
+          return;
+        }
+        request.remark.create.run({ content, paste_event_id: paste_id });
+        ui.$textarea_remark.clear();
+      },
+    }),
   };
 
   let _state = {
@@ -167,6 +189,10 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                     <div>创建时间</div>
                     <div class="paste_created_at">{state().profile?.created_at_text}</div>
                   </div>
+                </div>
+                <div>
+                  <Textarea store={vm.ui.$textarea_remark} />
+                  <Button store={vm.ui.$btn_create_remark}>创建</Button>
                 </div>
               </div>
             </div>

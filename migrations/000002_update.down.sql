@@ -1,0 +1,62 @@
+
+CREATE TABLE IF NOT EXISTS paste_event_prev (
+    id TEXT NOT NULL PRIMARY KEY, 
+    content_type TEXT NOT NULL, --内容类型
+    details TEXT NOT NULL DEFAULT '{}', --变更详情
+    text TEXT, --文本内容
+    html TEXT, --html内容
+    file_list_json TEXT, --文件列表json
+    image_base64 TEXT, --图片base64
+    other TEXT, --其他
+    last_operation_time TEXT NOT NULL, --最后一次操作的时间
+    last_operation_type INTEGER NOT NULL, --最后一次操作的类型 1新增 2编辑 3删除
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 创建时间
+    deleted_at TIMESTAMP
+);
+INSERT INTO paste_event_prev (id, content_type, details, text, html, file_list_json, image_base64, other, last_operation_time, last_operation_type, created_at, deleted_at)
+SELECT
+    id,
+    content_type,
+    details,
+    text,
+    html,
+    file_list_json,
+    image_base64,
+    other,
+    last_operation_time,
+    last_operation_type,
+    created_at,
+    deleted_at
+FROM paste_event;
+-- 2.3 删除旧表
+DROP TABLE IF EXISTS paste_event;
+-- 2.4 重命名新表为正式表名
+ALTER TABLE paste_event_prev RENAME TO paste_event;
+
+
+CREATE TABLE IF NOT EXISTS category_hierarchy_prev (
+    parent_id TEXT NOT NULL,
+    child_id TEXT NOT NULL,
+    last_operation_time TEXT NOT NULL, --最后一次操作的时间
+    last_operation_type INTEGER NOT NULL, --最后一次操作的类型 1新增 2编辑 3删除
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+INSERT INTO category_hierarchy_prev (parent_id, child_id, last_operation_time, last_operation_type, created_at, updated_at, deleted_at)
+SELECT
+    parent_id,
+    child_id,
+    last_operation_time,
+    last_operation_type,
+    created_at,
+    updated_at,
+    deleted_at
+FROM category_hierarchy;
+-- 2.3 删除旧表
+DROP TABLE IF EXISTS category_hierarchy;
+-- 2.4 重命名新表为正式表名
+ALTER TABLE category_hierarchy_prev RENAME TO category_hierarchy;
+
+
+DROP TABLE IF EXISTS remark;
