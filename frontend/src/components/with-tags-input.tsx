@@ -25,7 +25,7 @@ export function WithTagsInputModel(
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    setOptions(v: Pick<OptionWithTopInList, "id">[]) {
+    buildOptionWithHeightAndTop(v: Pick<OptionWithTopInList, "id">[]) {
       const options = v.map((opt, idx) => {
         const h = 6 + 24 + 6;
         return {
@@ -35,9 +35,13 @@ export function WithTagsInputModel(
           top: idx * h,
         };
       });
-      _options = options;
+      return options;
+    },
+    setOptions(v: Pick<OptionWithTopInList, "id">[]) {
+      _options = methods.buildOptionWithHeightAndTop(v);
+      _displayed_options = _options;
       _displayed_options = methods.filterDisplayedOptionsWithSelectedOptions();
-      console.log("[]with-input setOptions", _displayed_options.length);
+      // console.log("[]with-input setOptions", _options.length, _displayed_options.length);
       ui.$list_select.methods.setOptions(_displayed_options);
     },
     selectMenuOption(idx: number) {
@@ -157,14 +161,16 @@ export function WithTagsInputModel(
       ignoreEnterEvent: true,
       onChange(v) {
         console.log("[COMPONENT]with-input - onChange - ", ui.$input.value, v);
-        if (ui.$input_select.visible) {
-          _displayed_options = _options.filter((opt) => {
-            return opt.label.toLowerCase().includes(v);
-          });
-          _displayed_options = methods.filterDisplayedOptionsWithSelectedOptions();
-          ui.$list_select.methods.resetIdx();
-          methods.refresh();
+        if (!ui.$input_select.visible) {
+          return;
         }
+        _displayed_options = _options.filter((opt) => {
+          return opt.label.toLowerCase().includes(v);
+        });
+        _displayed_options = methods.filterDisplayedOptionsWithSelectedOptions();
+        ui.$list_select.methods.setOptions(methods.buildOptionWithHeightAndTop(_displayed_options));
+        ui.$list_select.methods.resetIdx();
+        methods.refresh();
       },
     }),
     $input_select: new PopoverCore({
@@ -281,7 +287,7 @@ export function WithTagsInput(props: { store: WithTagsInputModel }) {
         <ScrollView
           store={vm.ui.$view}
           classList={{
-            "z-50 min-w-[4rem] w-36 max-h-56 overflow-y-auto rounded-xl p-1 text-w-fg-0 shadow-md": true,
+            "z-50 min-w-[4rem] w-36 max-h-56 overflow-y-auto p-1 text-w-fg-0": true,
             "scroll--hidden": true,
           }}
         >
@@ -304,7 +310,7 @@ export function WithTagsInput(props: { store: WithTagsInputModel }) {
                   classList={{
                     "relative flex cursor-default select-none items-center rounded-xl py-1.5 px-2 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50":
                       true,
-                    "bg-w-bg-5": opt.selected,
+                    "bg-w-bg-3": opt.selected,
                   }}
                   onPointerEnter={() => {
                     vm.methods.handleEnterMenuOption(idx());
