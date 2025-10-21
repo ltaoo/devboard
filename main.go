@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"net/url"
 	"runtime"
 	"time"
 
@@ -326,7 +327,7 @@ func main() {
 		cfg, err := config.LoadConfig()
 		if err != nil {
 			t := fmt.Sprintf("Failed to load config: %v", err)
-			biz.ShowErrorWindow("?title=InitializeFailed&desc=" + t)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
 			win.Hide()
 			return
 		}
@@ -336,14 +337,14 @@ func main() {
 		if err != nil {
 			t := fmt.Sprintf("Failed to connect to database, %v", err)
 			fmt.Println(t)
-			biz.ShowErrorWindow("?title=InitializeFailed&desc=" + t)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
 			win.Hide()
 			return
 		}
 		migrator := db.NewMigrator(cfg, logger, &migrations)
 		if err := migrator.MigrateUp(); err != nil {
 			t := fmt.Sprintf("Failed to run migrations, %v", err)
-			biz.ShowErrorWindow("?title=InitializeFailed&desc=" + t)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
 			win.Hide()
 			return
 		}

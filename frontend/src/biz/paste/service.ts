@@ -58,7 +58,7 @@ export type PasteContentDetails = MutableRecord<{
   [PasteContentType.Image]: PasteContentImage;
   [PasteContentType.File]: PasteContentFile;
 }>;
-
+const PasteCardHeightCache = new Map<string, number>();
 export function processPartialPasteEvent(
   v: UnpackedRequestPayload<ReturnType<typeof fetchPasteEventList>>["list"][number]
 ) {
@@ -110,6 +110,42 @@ export function processPartialPasteEvent(
     }
     return null;
   })();
+  const height = (() => {
+    const cached_height = PasteCardHeightCache.get(v.id);
+    if (cached_height) {
+      console.log("using cached height", cached_height);
+      return cached_height;
+    }
+    const base_content_height = 40;
+    const estimated__content_height = (() => {
+      if (categories.includes(PasteContentType.Image) && details) {
+        const d = details.data as PasteContentImage;
+        if (d.height) {
+          return d.height;
+        }
+      }
+      if (categories.includes("text")) {
+        const line_count = text.length / 32;
+        let height = 6 + line_count * 32 + 6;
+        if (height > 76) {
+          return 76;
+        }
+        return height;
+      }
+      if (categories.includes("code")) {
+        const lines = text.split("\n");
+        let height = lines.length * 16 + (lines.length - 1) * 2;
+        if (height > 120) {
+          height = 120;
+        }
+        return height;
+      }
+      return 40;
+    })();
+    const h = 92 + estimated__content_height - base_content_height;
+    PasteCardHeightCache.set(v.id, h);
+    return h;
+  })();
   return {
     ...v,
     origin_text: v.text,
@@ -140,35 +176,7 @@ export function processPartialPasteEvent(
       return r;
     })(),
     files,
-    height: (() => {
-      const base_content_height = 40;
-      const estimated__content_height = (() => {
-        if (categories.includes(PasteContentType.Image) && details) {
-          const d = details.data as PasteContentImage;
-          if (d.height) {
-            return d.height;
-          }
-        }
-        if (categories.includes("text")) {
-          const line_count = text.length / 32;
-          let height = 6 + line_count * 32 + 6;
-          if (height > 76) {
-            return 76;
-          }
-          return height;
-        }
-        if (categories.includes("code")) {
-          const lines = text.split("\n");
-          let height = lines.length * 16 + (lines.length - 1) * 2;
-          if (height > 120) {
-            height = 120;
-          }
-          return height;
-        }
-        return 40;
-      })();
-      return 92 + estimated__content_height - base_content_height;
-    })(),
+    height,
     type: v.content_type,
     created_at: dayjs(v.created_at),
     created_at_text: dayjs(v.created_at).format("YYYY-MM-DD HH:mm:ss"),
@@ -201,6 +209,11 @@ export function fetchPasteEventProfile(body: { id: string }) {
       id: string;
       label: string;
     }[];
+    remarks: {
+      id: string;
+      content: string;
+      created_at: string;
+    }[];
   }>(FetchPasteEventProfile, { event_id: body.id });
 }
 export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPasteEventProfile>) {
@@ -212,6 +225,12 @@ export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPast
   return Result.Ok({
     ...v,
     ...vv,
+    remarks: v.remarks.map((remark) => {
+      return {
+        ...remark,
+        created_at_text: dayjs(remark.created_at).format("YYYY-MM-DD HH:mm:ss"),
+      };
+    }),
   });
 }
 

@@ -61,7 +61,11 @@ func TestBuildLocalToRemoteTasks(t *testing.T) {
 		),
 	))
 	remote_client.SetFS(fsys)
-	result := synchronizer.BuildLocalSyncToRemoteTasks("paste_event", "/devboard", local_client, remote_client)
+	table := synchronizer.TableSynchronizeSetting{
+		Name:        "paste_event",
+		IdFieldName: "id",
+	}
+	result := synchronizer.BuildLocalSyncToRemoteTasks(table, "/devboard", local_client, remote_client)
 	for _, log := range result.Logs {
 		fmt.Println(log)
 	}
