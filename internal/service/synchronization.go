@@ -108,6 +108,9 @@ func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 	}, {
 		Name:        "paste_event_category_mapping",
 		IdFieldName: "id",
+	}, {
+		Name:        "remark",
+		IdFieldName: "id",
 	}}
 	results := make(map[string]*synchronizer.SynchronizeResult)
 	for _, t := range tables {
@@ -214,7 +217,7 @@ func (s *SyncService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
 		Name:        "category_hierarchy",
 		IdFieldName: "id",
 	}, {
-		Name:        "paste_event_category_mapping",
+		Name:        "remark",
 		IdFieldName: "id",
 	}}
 	results := make(map[string]*synchronizer.SynchronizeResult)

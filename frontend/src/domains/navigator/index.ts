@@ -382,7 +382,7 @@ function buildQuery(path: string) {
   if (!search) {
     return {} as Record<string, string>;
   }
-  return qs.parse(search) as Record<string, string>;
+  return qs.parse(decodeURIComponent(search)) as Record<string, string>;
 }
 
 type ExtractDefinedKeys<T, K extends keyof T> = {

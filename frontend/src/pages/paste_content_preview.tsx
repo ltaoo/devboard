@@ -109,13 +109,13 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
             <div class="content__preview relative flex-1 h-full">
               <Switch
                 fallback={
-                  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
+                  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[60vw] p-4 rounded-md bg-w-bg-3">
                     <div class="break-all">{state().profile?.text!}</div>
                   </div>
                 }
               >
                 <Match when={state().profile?.type === "html"}>
-                  <div class="overflow-y-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] h-[80vh] p-4 rounded-md bg-w-bg-3">
+                  <div class="overflow-y-auto absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[60vw] max-h-[80vh] p-4 rounded-md bg-w-bg-3">
                     <HTMLCard html={state().profile!.text!} />
                   </div>
                 </Match>
@@ -125,7 +125,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                   </Show>
                 </Match>
                 <Match when={state().profile?.type === "file"}>
-                  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[60vw] p-4 rounded-md bg-w-bg-3">
+                  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[60vw] p-4 rounded-md bg-w-bg-3">
                     <For each={state().profile?.files}>
                       {(file) => {
                         return (
@@ -184,15 +184,32 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                     </Show>
                   </div>
                 </Show>
-                <div class="fields mt-4">
+                <div class="fields mt-4 space-y-8">
                   <div class="field text-w-fg-0">
                     <div>创建时间</div>
                     <div class="paste_created_at">{state().profile?.created_at_text}</div>
                   </div>
-                </div>
-                <div>
-                  <Textarea store={vm.ui.$textarea_remark} />
-                  <Button store={vm.ui.$btn_create_remark}>创建</Button>
+                  <div class="field text-w-fg-0">
+                    <div>备注</div>
+                    <div class="mt-1 space-y-1">
+                      <For each={state().profile?.remarks}>
+                        {(remark) => {
+                          return (
+                            <div>
+                              <div>{remark.content}</div>
+                              <div class="text-w-fg-1 text-[12px]">{remark.created_at_text}</div>
+                            </div>
+                          );
+                        }}
+                      </For>
+                    </div>
+                    <div class="mt-2">
+                      <Textarea store={vm.ui.$textarea_remark} />
+                      <Button class="mt-1" store={vm.ui.$btn_create_remark}>
+                        添加
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

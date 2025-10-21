@@ -233,12 +233,16 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			log("[LOG]table - compare table'latest_operation_time, local:" + local_table_lot_str + ", remote:" + remote_table_lot_str)
 			if local_table_lot_str != remote_table_lot_str {
 				log("[LOG]need to pull latest records from remote server")
-				add_message(&SynchronizeMessage{
-					Type:  SynchronizeMessageSuccess,
-					Scope: "result",
-					Text:  "Please pull the remote records to local.",
-				})
-				return &result
+				ms1, _ := strconv.ParseInt(local_table_lot_str, 10, 64)
+				ms2, _ := strconv.ParseInt(remote_table_lot_str, 10, 64)
+				if ms1 < ms2 {
+					add_message(&SynchronizeMessage{
+						Type:  SynchronizeMessageSuccess,
+						Scope: "result",
+						Text:  "Please pull the remote records to local.",
+					})
+					return &result
+				}
 			}
 			add_file_task(&FileTask{
 				Type:     "update_line",

@@ -160,7 +160,56 @@ func (s *CategoryService) PreloadAll() func(db *gorm.DB) *gorm.DB {
 	}
 }
 
+type CategoryTree struct {
+	models.CategoryNode
+	Parents []CategoryTree `json:"parents"`
+}
+
 func (s *CategoryService) GetCategoryTreeOptimized() *Result {
+	if err := s.Biz.Ensure(); err != nil {
+		return Error(err)
+	}
+
+	// 获取所有叶子节点
+	var leafNodes []models.CategoryNode
+	s.Biz.DB.Where("NOT EXISTS (SELECT 1 FROM category_hierarchy WHERE category_hierarchy.parent_id = category_node.id)").
+		Find(&leafNodes)
+
+	var results []CategoryTree
+
+	for _, leaf := range leafNodes {
+		tree := CategoryTree{CategoryNode: leaf}
+		// 递归获取父节点
+		var buildTree func(node *CategoryTree) error
+		buildTree = func(node *CategoryTree) error {
+			var parents []models.CategoryNode
+			err := s.Biz.DB.Table("category_node").
+				Joins("JOIN category_hierarchy ON category_node.id = category_hierarchy.parent_id").
+				Where("category_hierarchy.child_id = ?", node.Id).
+				Find(&parents).Error
+			if err != nil {
+				return err
+			}
+
+			for _, parent := range parents {
+				parentTree := CategoryTree{CategoryNode: parent}
+				if err := buildTree(&parentTree); err != nil {
+					return err
+				}
+				node.Parents = append(node.Parents, parentTree)
+			}
+			return nil
+		}
+
+		if err := buildTree(&tree); err != nil {
+			return Error(err)
+		}
+		results = append(results, tree)
+	}
+	return Ok(results)
+}
+
+func (s *CategoryService) GetCategoryTreeOptimized2() *Result {
 	if err := s.Biz.Ensure(); err != nil {
 		return Error(err)
 	}
