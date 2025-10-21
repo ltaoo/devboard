@@ -10,16 +10,17 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
       bus.emit(Events.StateChange, { ..._state });
     },
     setOptions(list: OptionWithTopInList[]) {
-      // console.log("[COMPONENT]with-tags-input - setOptions", v[0]);
+      // console.log("[COMPONENT]with-tags-input - setOptions", list);
       _options = list;
       _displayed_options = _options;
     },
     appendOptions(list: OptionWithTopInList[]) {
-      // console.log("[COMPONENT]with-tags-input - setOptions", v[0]);
+      // console.log("[COMPONENT]with-tags-input - setOptions", list);
       _options = [..._options, ...list];
       _displayed_options = _options;
     },
     deleteOptionById(id: string) {
+      // console.log("[COMPONENT]with-tags-input - deleteOptionById", id);
       _options = _options.filter((opt) => opt.id !== id);
       _displayed_options = _options;
     },
@@ -52,8 +53,12 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
     },
     moveToNextOption(opt: Partial<{ step: number; force: boolean }> = {}) {
       const { step = 1, force = false } = opt;
-      // console.log("[COMPONENT]with-tags-input - moveToNextOption", _opt_idx, _options.length);
-      if (_opt_idx === _options.length - 1) {
+      console.log("[COMPONENT]with-tags-input - moveToNextOption", _opt_idx, _options);
+      if (_options.length === 0) {
+        return;
+      }
+      const is_last_one = _opt_idx === _options.length - 1;
+      if (is_last_one) {
         return;
       }
       _opt_idx += step;
@@ -73,6 +78,8 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
       if (target_option && target_option.top !== undefined) {
         const cur_option_in_up_area = target_option.top + target_option.height - scroll_top < 0;
         const cur_option_in_bottom_area = Math.abs(target_option.top - scroll_top) > client_height;
+        // console.log("[COMPONENT]with-tag - moveToNext need goto option", cur_option_in_up_area, cur_option_in_bottom_area);
+        // console.log(target_option.top, scroll_top, client_height);
         if (!force && (cur_option_in_up_area || cur_option_in_bottom_area)) {
           const closest_opt_idx = _options.findIndex((opt) => {
             return opt.top && opt.top >= scroll_top;

@@ -434,11 +434,12 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     KeyYKeyY(event) {
       methods.handleHotkeyCopy(event);
     },
-    Space() {
+    Space(event) {
       console.log("[PAGE]home/index - key Space", ui.$input_search.isFocus);
       if (ui.$input_search.isFocus) {
         return;
       }
+      event.preventDefault();
       const idx = ui.$list_select.state.idx;
       const $cell = ui.$waterfall.$items[idx];
       methods.previewPasteContent($cell.state.payload);
