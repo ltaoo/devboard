@@ -58,7 +58,7 @@ func (s *PasteService) FetchPasteEventList(body FetchPasteEventListBody) *Result
 	pb := models.NewPaginationBuilder[models.PasteEvent](query).
 		SetLimit(body.PageSize).
 		SetPage(body.Page).
-		SetOrderBy("datetime(paste_event.created_at) DESC")
+		SetOrderBy("paste_event.created_at DESC")
 	var list1 []models.PasteEvent
 	if err := pb.Build().Preload("Categories").Find(&list1).Error; err != nil {
 		return Error(err)
@@ -248,12 +248,14 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	now := time.Now()
+	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event = models.PasteEvent{
 		Id:                uuid.New().String(),
 		ContentType:       "text",
 		Text:              text,
-		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+		LastOperationTime: now_timestamp,
 		LastOperationType: 1,
+		CreatedAt:         now_timestamp,
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -277,9 +279,9 @@ func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) 
 			Id:                uuid.New().String(),
 			PasteEventId:      created_paste_event.Id,
 			CategoryId:        c,
-			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+			LastOperationTime: now_timestamp,
 			LastOperationType: 1,
-			CreatedAt:         now,
+			CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -299,12 +301,14 @@ func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) 
 func (s *PasteService) HandlePasteHTML(text string) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	now := time.Now()
+	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event = models.PasteEvent{
 		Id:                uuid.New().String(),
 		ContentType:       "html",
 		Html:              text,
-		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+		LastOperationTime: now_timestamp,
 		LastOperationType: 1,
+		CreatedAt:         now_timestamp,
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -328,9 +332,9 @@ func (s *PasteService) HandlePasteHTML(text string) (*models.PasteEvent, error) 
 			Id:                uuid.New().String(),
 			PasteEventId:      created_paste_event.Id,
 			CategoryId:        c,
-			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+			LastOperationTime: now_timestamp,
 			LastOperationType: 1,
-			CreatedAt:         now,
+			CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -355,8 +359,8 @@ type PNGFileInfo struct {
 }
 
 func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, error) {
-	var created_paste_event models.PasteEvent
 	now := time.Now()
+	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	encoded := base64.StdEncoding.EncodeToString(image_bytes)
 	details := "{}"
 	reader := bytes.NewReader(image_bytes)
@@ -373,13 +377,14 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, e
 			details = string(t)
 		}
 	}
-	created_paste_event = models.PasteEvent{
+	created_paste_event := models.PasteEvent{
 		Id:                uuid.New().String(),
 		ContentType:       "image",
 		ImageBase64:       encoded,
 		Details:           details,
-		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+		LastOperationTime: now_timestamp,
 		LastOperationType: 1,
+		CreatedAt:         now_timestamp,
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -403,9 +408,9 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, e
 			Id:                uuid.New().String(),
 			PasteEventId:      created_paste_event.Id,
 			CategoryId:        c,
-			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+			LastOperationTime: now_timestamp,
 			LastOperationType: 1,
-			CreatedAt:         now,
+			CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -425,6 +430,7 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, e
 func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	now := time.Now()
+	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	var results []FileInPasteBoard
 	for _, f := range files {
 		info, err := os.Stat(f)
@@ -465,8 +471,9 @@ func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, erro
 		Id:                uuid.New().String(),
 		ContentType:       "file",
 		FileListJSON:      string(content),
-		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+		LastOperationTime: now_timestamp,
 		LastOperationType: 1,
+		CreatedAt:         now_timestamp,
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -490,9 +497,9 @@ func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, erro
 			Id:                uuid.New().String(),
 			PasteEventId:      created_paste_event.Id,
 			CategoryId:        c,
-			LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+			LastOperationTime: now_timestamp,
 			LastOperationType: 1,
-			CreatedAt:         now,
+			CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -518,14 +525,15 @@ func (s *PasteService) MockPasteText(body MockPasteTextBody) *Result {
 		return Error(fmt.Errorf("Missing the text."))
 	}
 	now := time.Now()
+	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event := models.PasteEvent{
 		Id:                uuid.New().String(),
 		ContentType:       "text",
 		Text:              body.Text,
-		LastOperationTime: strconv.FormatInt(now.UnixMilli(), 10),
+		LastOperationTime: now_timestamp,
 		LastOperationType: 1,
 		Categories:        []models.CategoryNode{},
-		CreatedAt:         now,
+		CreatedAt:         now_timestamp,
 	}
 	s.App.Event.Emit("clipboard:update", created_paste_event)
 	return Ok(created_paste_event)

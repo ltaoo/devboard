@@ -25,12 +25,10 @@ SELECT
     other,
     last_operation_time,
     last_operation_type,
-    created_at,
+    datetime(CAST(created_at AS INTEGER)/1000, 'unixepoch', 'localtime'),
     deleted_at
 FROM paste_event;
--- 2.3 删除旧表
 DROP TABLE IF EXISTS paste_event;
--- 2.4 重命名新表为正式表名
 ALTER TABLE paste_event_prev RENAME TO paste_event;
 
 
@@ -57,6 +55,32 @@ FROM category_hierarchy;
 DROP TABLE IF EXISTS category_hierarchy;
 -- 2.4 重命名新表为正式表名
 ALTER TABLE category_hierarchy_prev RENAME TO category_hierarchy;
+
+
+CREATE TABLE IF NOT EXISTS paste_event_category_mapping_prev (
+  id TEXT PRIMARY KEY,
+  paste_event_id TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  last_operation_time TEXT NOT NULL, --最后一次操作的时间
+  last_operation_type INTEGER NOT NULL, --最后一次操作的类型 1新增 2编辑 3删除
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP,
+  FOREIGN KEY (paste_event_id) REFERENCES paste_event(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES category_node(id) ON DELETE CASCADE,
+  UNIQUE (paste_event_id, category_id)
+);
+INSERT INTO paste_event_category_mapping_prev (id, paste_event_id, category_id, last_operation_time, last_operation_type, created_at, deleted_at)
+SELECT
+   id,
+   paste_event_id,
+   category_id,
+   last_operation_time,
+   last_operation_type,
+   datetime(CAST(created_at AS INTEGER)/1000, 'unixepoch', 'localtime'),
+   deleted_at
+FROM paste_event_category_mapping;
+DROP TABLE IF EXISTS paste_event_category_mapping;
+ALTER TABLE paste_event_category_mapping_prev RENAME TO paste_event_category_mapping;
 
 
 DROP TABLE IF EXISTS remark;

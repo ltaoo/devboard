@@ -335,11 +335,9 @@ export function SynchronizationView(props: ViewComponentProps) {
             </div>
             {/* <div class="flex space-x-1">
               <Button store={vm.ui.$btn_prepare_export}>测试同步至 webdav</Button>
-              <Button store={vm.ui.$btn_export}>同步至 webdav</Button>
             </div>
             <div class="flex space-x-1">
               <Button store={vm.ui.$btn_prepare_import}>测试从 webdav 同步</Button>
-              <Button store={vm.ui.$btn_import}>从 webdav 同步</Button>
             </div> */}
           </div>
         </div>

@@ -185,10 +185,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // }
     },
     previewPasteContent(v: PasteRecord) {
-      if (v.types.includes("url")) {
-        Browser.OpenURL(v.text);
-        return;
-      }
+      // if (v.types.includes("url")) {
+      //   Browser.OpenURL(v.text);
+      //   return;
+      // }
       request.paste.preview.run({ id: v.id });
     },
     async deletePaste(v: PasteRecord) {

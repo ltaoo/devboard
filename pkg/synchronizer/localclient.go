@@ -37,21 +37,29 @@ func (c *DatabaseLocalClient) FetchTableLastRecord() (map[string]interface{}, er
 func (c *DatabaseLocalClient) FetchUniqueDaysOfTable() []string {
 	var dates []string
 	c.DB.Table(c.TableName).
-		Select("strftime('%Y-%m-%d', created_at) as date").
+		Select("strftime('%Y-%m-%d', datetime(created_at/1000, 'unixepoch')) as date").
 		Group("date").
 		Pluck("date", &dates)
 	return dates
 }
 func (c *DatabaseLocalClient) FetchRecordsBetweenSpecialDayOfTable(day_str string) ([]map[string]interface{}, error) {
 	var day_records []map[string]interface{}
-	if err := c.DB.Table(c.TableName).Where("date(created_at) = ?", day_str).Order("last_operation_time DESC").Find(&day_records).Error; err != nil {
+	start, end, err := get_day_timestamp_range(day_str)
+	if err != nil {
+		return nil, fmt.Errorf("parse day str failed, because %v", err.Error())
+	}
+	if err := c.DB.Table(c.TableName).Where("created_at BETWEEN ? AND ?", start, end).Order("last_operation_time DESC").Find(&day_records).Error; err != nil {
 		return nil, fmt.Errorf("search records failed, because %v", err.Error())
 	}
 	return day_records, nil
 }
 func (c *DatabaseLocalClient) FetchRecordOrderByTimeAndBetweenStartAndEndOfTable(day_str string) ([]map[string]interface{}, error) {
 	var latest_records []map[string]interface{}
-	if err := c.DB.Table(c.TableName).Where("date(created_at) = ?", day_str).Order("last_operation_time DESC").Find(&latest_records).Error; err != nil {
+	start, end, err := get_day_timestamp_range(day_str)
+	if err != nil {
+		return nil, fmt.Errorf("parse day str failed, because %v", err.Error())
+	}
+	if err := c.DB.Table(c.TableName).Where("created_at BETWEEN ? AND ?", start, end).Order("last_operation_time DESC").Find(&latest_records).Error; err != nil {
 		return nil, fmt.Errorf("find latest record failed, because %v", err.Error())
 	}
 	return latest_records, nil

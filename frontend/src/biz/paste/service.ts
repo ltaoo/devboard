@@ -178,8 +178,8 @@ export function processPartialPasteEvent(
     files,
     height,
     type: v.content_type,
-    created_at: dayjs(v.created_at),
-    created_at_text: dayjs(v.created_at).format("YYYY-MM-DD HH:mm:ss"),
+    created_at: dayjs(Number(v.created_at)),
+    created_at_text: dayjs(Number(v.created_at)).format("YYYY-MM-DD HH:mm:ss"),
   };
 }
 export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEventList>) {

@@ -99,10 +99,17 @@ func SplitToLines(data []byte) []string {
 	return lines
 }
 func get_day_timestamp_range(date_str string) (start_time, end_time int64, err error) {
+	start, end, err := get_day_time_range(date_str)
+	if err != nil {
+		return 0, 0, err
+	}
+	return start.UnixMilli(), end.UnixMilli(), nil
+}
+func get_day_time_range(date_str string) (start_time, end_time *time.Time, err error) {
 	// 解析日期字符串
 	date, err := time.Parse("2006-01-02", date_str)
 	if err != nil {
-		return 0, 0, fmt.Errorf("invalid date format, expected YYYYMMDD: %v", err)
+		return nil, nil, fmt.Errorf("invalid date format, expected YYYYMMDD: %v", err)
 	}
 	// 获取当天的开始时间(00:00:00)
 	day_start := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, date.Location())
@@ -110,7 +117,7 @@ func get_day_timestamp_range(date_str string) (start_time, end_time int64, err e
 	day_end := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 0, date.Location())
 
 	// 转换为时间戳
-	return day_start.Unix(), day_end.Unix(), nil
+	return &day_start, &day_end, nil
 }
 func timestamp_to_time(timestamp string) (time.Time, error) {
 	if match, _ := regexp.MatchString(`^[0-9]{1,}`, timestamp); !match {
@@ -126,6 +133,10 @@ func timestamp_to_time(timestamp string) (time.Time, error) {
 }
 
 func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
+	defer func(start time.Time) {
+		fmt.Printf("BuildLocalSyncToRemoteTasks %v execute time: %v\n", setting.Name, time.Since(start))
+	}(time.Now())
+
 	table_name := setting.Name
 	id_field_name := setting.IdFieldName
 
@@ -284,7 +295,7 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			log("[LOG]there is no records")
 			continue
 		}
-		log("[LOG]the records count is " + strconv.Itoa(len(day_records)))
+		log("[LOG]the records in database count is " + strconv.Itoa(len(day_records)))
 		local_lot_str, ok := day_records[0]["last_operation_time"].(string)
 		if !ok {
 			continue
@@ -450,6 +461,9 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 }
 
 func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
+	defer func(start time.Time) {
+		fmt.Printf("BuildRemoteSyncToLocalTasks %v execute time: %v\n", setting.Name, time.Since(start))
+	}(time.Now())
 	result := SynchronizeResult{
 		Logs:        []string{},
 		Messages:    []*SynchronizeMessage{},
@@ -576,6 +590,23 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 			})
 			continue
 		}
+		if len(local_record_list) == 0 {
+			log("[LOG]the database don't have any records created between " + parsed_day_meta.Name)
+			continue
+		}
+		last_local_record := local_record_list[0]
+		// // 检查该天远端最新修改时间，和本地该天范围内的最新记录修改时间
+		local_record_lot_str, ok := last_local_record["last_operation_time"].(string)
+		if !ok {
+			continue
+		}
+		remote_record_lot_str := parsed_day_meta.LastOperationTime
+		// fmt.Println("[LOG]compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
+		// log("[LOG]compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
+		if local_record_lot_str == remote_record_lot_str {
+			continue
+		}
+
 		remote_records_byte, err := remote_client.Read(remote_day_folder_path)
 		if err != nil {
 			log("[ERROR]read day file failed, because " + err.Error())
@@ -608,14 +639,6 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 					Data: rr,
 				})
 			}
-			continue
-		}
-		last_local_record := local_record_list[0]
-		// // 检查该天远端最新修改时间，和本地该天范围内的最新记录修改时间
-		remote_record_lot_str := parsed_day_meta.LastOperationTime
-		local_record_lot_str := last_local_record["last_operation_time"].(string)
-		log("[LOG]compare the record'last_operation_time from meta file, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
-		if local_record_lot_str == remote_record_lot_str {
 			continue
 		}
 		local_record_map_by_id := make(map[string]map[string]interface{})

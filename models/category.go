@@ -13,7 +13,7 @@ type CategoryNode struct {
 	IsActive          bool       `json:"is_active" gorm:"default:true"`
 	LastOperationTime string     `json:"last_operation_time"`
 	LastOperationType int        `json:"last_operation_type"`
-	CreatedAt         *time.Time `json:"created_at"`
+	CreatedAt         string     `json:"created_at"`
 	UpdatedAt         *time.Time `json:"updated_at"`
 
 	Parents     []CategoryNode `json:"parents" gorm:"many2many:category_hierarchy;foreignKey:Id;joinForeignKey:ChildId;References:Id;joinReferences:ParentId"`
@@ -30,7 +30,7 @@ type CategoryHierarchy struct {
 	ChildId           string     `gorm:"primaryKey"`
 	LastOperationTime string     `json:"last_operation_time"`
 	LastOperationType int        `json:"last_operation_type"`
-	CreatedAt         *time.Time `json:"created_at"`
+	CreatedAt         string     `json:"created_at"`
 	UpdatedAt         *time.Time `json:"updated_at"`
 }
 
@@ -39,12 +39,12 @@ func (CategoryHierarchy) TableName() string {
 }
 
 type PasteEventCategoryMapping struct {
-	Id                string    `json:"id"`
-	PasteEventId      string    `json:"paste_event_id" gorm:"primaryKey;column:paste_event_id"`
-	CategoryId        string    `json:"category_id" gorm:"primaryKey;column:category_id"`
-	LastOperationTime string    `json:"last_operation_time"`
-	LastOperationType int       `json:"last_operation_type"`
-	CreatedAt         time.Time `json:"created_at"`
+	Id                string `json:"id"`
+	PasteEventId      string `json:"paste_event_id" gorm:"primaryKey;column:paste_event_id"`
+	CategoryId        string `json:"category_id" gorm:"primaryKey;column:category_id"`
+	LastOperationTime string `json:"last_operation_time"`
+	LastOperationType int    `json:"last_operation_type"`
+	CreatedAt         string `json:"created_at"`
 }
 
 func (PasteEventCategoryMapping) TableName() string {
