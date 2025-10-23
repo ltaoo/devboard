@@ -2,7 +2,9 @@ package service
 
 import (
 	"path"
+	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/studio-b12/gowebdav"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -151,7 +153,8 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 	log := func(content string) {
 		result.Logs = append(result.Logs, content)
 	}
-
+	time_pattern := `^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|([+-]\d{2}:\d{2}))$`
+	// var timestamp_regex = regexp.MustCompile(`^[0-9]{8}$`)
 	for _, r := range result.RecordTasks {
 		// var d map[string]interface{}
 		// if err := json.Unmarshal([]byte(r.Content), &d); err != nil {
@@ -159,6 +162,18 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 		// }
 		log("[LOG]apply record task, the type is " + r.Type)
 		if r.Type == "create" {
+			created_at_str, ok := r.Data["created_at"].(string)
+			if !ok {
+				continue
+			}
+			match, _ := regexp.MatchString(time_pattern, created_at_str)
+			if match {
+				t, err := time.Parse(time.RFC3339Nano, created_at_str)
+				if err != nil {
+					continue
+				}
+				r.Data["created_at"] = strconv.Itoa(int(t.UnixMilli()))
+			}
 			if err := db.Table(table_name).Create(r.Data).Error; err != nil {
 				log("[LOG]create record task failed, because " + err.Error())
 				continue

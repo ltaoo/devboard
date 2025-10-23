@@ -75,13 +75,15 @@ func main() {
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
 	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
 	// 'Mac' options tailor the application when running an macOS.
+	// log := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
 	app := application.New(application.Options{
 		Name:        "DevTool Board",
 		Description: "A tools base on clipboard for developer",
 		Services:    []application.Service{},
 		Assets: application.AssetOptions{
-			Handler:    application.AssetFileServerFS(assets),
-			Middleware: NotFoundMiddleware,
+			Handler:        application.AssetFileServerFS(assets),
+			Middleware:     NotFoundMiddleware,
+			DisableLogging: true,
 		},
 		Windows: application.WindowsOptions{
 			DisableQuitOnLastWindowClosed: true,
@@ -90,6 +92,7 @@ func main() {
 			// ApplicationShouldTerminateAfterLastWindowClosed: true,
 			ActivationPolicy: application.ActivationPolicyAccessory,
 		},
+		// Logger: log,
 	})
 	biz.SetApp(app)
 
@@ -245,8 +248,13 @@ func main() {
 	// ctx_menu.Add("Refresh").OnClick(func(ctx *application.Context) {
 	// 	app.Event.Emit("m:refresh")
 	// })
+	refresh_menu_text := "Refresh"
+	if runtime.GOOS == "darwin" {
+		refresh_menu_text = "Reload"
+	}
 	ctx_menu := app.ContextMenu.New()
-	m_refresh := ctx_menu.Add("Reload")
+	m_refresh := ctx_menu.Add(refresh_menu_text)
+	m_refresh.SetAccelerator("Cmd+R")
 	m_refresh.OnClick(func(data *application.Context) {
 		app.Event.Emit("m:refresh")
 	})
@@ -365,7 +373,7 @@ func main() {
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err.Error())
 	}
 }
 

@@ -1,32 +1,50 @@
 ALTER TABLE paste_event ADD COLUMN shortcut TEXT;
 ALTER TABLE paste_event ADD COLUMN device_id TEXT;
 ALTER TABLE paste_event ADD COLUMN app_name TEXT;
+ALTER TABLE paste_event ADD COLUMN created_at_ms TEXT;
+UPDATE paste_event SET created_at_ms = (
+    SELECT CAST((julianday(created_at) - 2440587.5) * 86400000 AS INTEGER)
+);
+ALTER TABLE paste_event DROP COLUMN created_at;
+ALTER TABLE paste_event RENAME COLUMN created_at_ms TO created_at;
 
-
-DELETE FROM category_node;
-INSERT INTO category_node (id, label, last_operation_time, last_operation_type) VALUES
-('text', 'text', '1760313600000', 1),
-('image', 'image', '1760313600000', 1),
-('file', 'file', '1760313600000', 1),
-('html', 'html', '1760313600000', 1),
-('code', 'code', '1760313600000', 1),
-('prompt', 'prompt', '1760313600000', 1),
-('snippet', 'snippet', '1760313600000', 1),
-('url', 'url', '1760313600000', 1),
-('time', 'time', '1760313600000', 1),
-('color', 'color', '1760313600000', 1),
-('command', 'command', '1760313600000', 1),
-('JSON', 'JSON', '1760313600000', 1),
-('XML', 'XML', '1760313600000', 1),
-('HTML', 'HTML', '1760313600000', 1),
-('Go', 'Go', '1760313600000', 1),
-('Rust', 'Rust', '1760313600000', 1),
-('Python', 'Python', '1760313600000', 1),
-('Java', 'Java', '1760313600000', 1),
-('JavaScript', 'JavaScript', '1760313600000', 1),
-('TypeScript', 'TypeScript', '1760313600000', 1),
-('SQL', 'SQL', '1760313600000', 1);
-
+CREATE TABLE IF NOT EXISTS category_node_new (
+  id TEXT PRIMARY KEY,
+  label TEXT NOT NULL,
+  description TEXT,
+  level INTEGER DEFAULT 0, -- 节点层级深度
+  sort_order INTEGER DEFAULT 0, -- 同级节点排序
+  is_active BOOLEAN DEFAULT 1,
+  last_operation_time TEXT NOT NULL, --最后一次操作的时间
+  last_operation_type INTEGER NOT NULL, --最后一次操作的类型 1新增 2编辑 3删除
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  deleted_at TIMESTAMP
+);
+INSERT INTO category_node_new (id, label, last_operation_time, last_operation_type, created_at) VALUES
+('text', 'text', '1760313600000', 1, '1760313600000'),
+('image', 'image', '1760313600000', 1, '1760313600000'),
+('file', 'file', '1760313600000', 1, '1760313600000'),
+('html', 'html', '1760313600000', 1, '1760313600000'),
+('code', 'code', '1760313600000', 1, '1760313600000'),
+('prompt', 'prompt', '1760313600000', 1, '1760313600000'),
+('snippet', 'snippet', '1760313600000', 1, '1760313600000'),
+('url', 'url', '1760313600000', 1, '1760313600000'),
+('time', 'time', '1760313600000', 1, '1760313600000'),
+('color', 'color', '1760313600000', 1, '1760313600000'),
+('command', 'command', '1760313600000', 1, '1760313600000'),
+('JSON', 'JSON', '1760313600000', 1, '1760313600000'),
+('XML', 'XML', '1760313600000', 1, '1760313600000'),
+('HTML', 'HTML', '1760313600000', 1, '1760313600000'),
+('Go', 'Go', '1760313600000', 1, '1760313600000'),
+('Rust', 'Rust', '1760313600000', 1, '1760313600000'),
+('Python', 'Python', '1760313600000', 1, '1760313600000'),
+('Java', 'Java', '1760313600000', 1, '1760313600000'),
+('JavaScript', 'JavaScript', '1760313600000', 1, '1760313600000'),
+('TypeScript', 'TypeScript', '1760313600000', 1, '1760313600000'),
+('SQL', 'SQL', '1760313600000', 1, '1760313600000');
+DROP TABLE IF EXISTS category_node;
+ALTER TABLE category_node_new RENAME TO category_node;
 
 -- 2. 为 `category_hierarchy` 表添加 `id` 主键（TEXT 类型）
 -- 2.1 创建新表（带 `id` 主键）
@@ -36,34 +54,59 @@ CREATE TABLE IF NOT EXISTS category_hierarchy_new (
     child_id TEXT,
     last_operation_time TEXT NOT NULL,
     last_operation_type INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP,
+    created_at TEXT NOT NULL,
+    updated_at TEXT,
     deleted_at TIMESTAMP,
     UNIQUE (parent_id, child_id)
 );
+INSERT INTO category_hierarchy_new (id, parent_id, child_id, last_operation_time, last_operation_type, created_at) VALUES
+('code_JSON', 'code', 'JSON', '1760313600000', 1, '1760313600000'),
+('code_XML', 'code', 'XML', '1760313600000', 1, '1760313600000'),
+('code_HTML', 'code', 'HTML', '1760313600000', 1, '1760313600000'),
+('code_Go', 'code', 'Go', '1760313600000', 1, '1760313600000'),
+('code_Rust', 'code', 'Rust', '1760313600000', 1, '1760313600000'),
+('code_Python', 'code', 'Python', '1760313600000', 1, '1760313600000'),
+('code_Java', 'code', 'Java', '1760313600000', 1, '1760313600000'),
+('code_JavaScript', 'code', 'JavaScript', '1760313600000', 1, '1760313600000'),
+('code_TypeScript', 'code', 'TypeScript', '1760313600000', 1, '1760313600000'),
+('code_SQL', 'code', 'SQL', '1760313600000', 1, '1760313600000'),
+('snippet_JSON', 'snippet', 'JSON', '1760313600000', 1, '1760313600000'),
+('snippet_XML', 'snippet', 'XML', '1760313600000', 1, '1760313600000'),
+('snippet_HTML', 'snippet', 'HTML', '1760313600000', 1, '1760313600000'),
+('snippet_Go', 'snippet', 'Go', '1760313600000', 1, '1760313600000'),
+('snippet_Rust', 'snippet', 'Rust', '1760313600000', 1, '1760313600000'),
+('snippet_Python', 'snippet', 'Python', '1760313600000', 1, '1760313600000'),
+('snippet_Java', 'snippet', 'Java', '1760313600000', 1, '1760313600000'),
+('snippet_JavaScript', 'snippet', 'JavaScript', '1760313600000', 1, '1760313600000'),
+('snippet_TypeScript', 'snippet', 'TypeScript', '1760313600000', 1, '1760313600000'),
+('snippet_SQL', 'snippet', 'SQL', '1760313600000', 1, '1760313600000');
 DROP TABLE IF EXISTS category_hierarchy;
 ALTER TABLE category_hierarchy_new RENAME TO category_hierarchy;
-INSERT INTO category_hierarchy (id, parent_id, child_id, last_operation_time, last_operation_type) VALUES
-('code_JSON', 'code', 'JSON', '1760313600000', 1),
-('code_XML', 'code', 'XML', '1760313600000', 1),
-('code_HTML', 'code', 'HTML', '1760313600000', 1),
-('code_Go', 'code', 'Go', '1760313600000', 1),
-('code_Rust', 'code', 'Rust', '1760313600000', 1),
-('code_Python', 'code', 'Python', '1760313600000', 1),
-('code_Java', 'code', 'Java', '1760313600000', 1),
-('code_JavaScript', 'code', 'JavaScript', '1760313600000', 1),
-('code_TypeScript', 'code', 'TypeScript', '1760313600000', 1),
-('code_SQL', 'code', 'SQL', '1760313600000', 1),
-('snippet_JSON', 'snippet', 'JSON', '1760313600000', 1),
-('snippet_XML', 'snippet', 'XML', '1760313600000', 1),
-('snippet_HTML', 'snippet', 'HTML', '1760313600000', 1),
-('snippet_Go', 'snippet', 'Go', '1760313600000', 1),
-('snippet_Rust', 'snippet', 'Rust', '1760313600000', 1),
-('snippet_Python', 'snippet', 'Python', '1760313600000', 1),
-('snippet_Java', 'snippet', 'Java', '1760313600000', 1),
-('snippet_JavaScript', 'snippet', 'JavaScript', '1760313600000', 1),
-('snippet_TypeScript', 'snippet', 'TypeScript', '1760313600000', 1),
-('snippet_SQL', 'snippet', 'SQL', '1760313600000', 1);
+
+CREATE TABLE IF NOT EXISTS paste_event_category_mapping_new (
+  id TEXT PRIMARY KEY,
+  paste_event_id TEXT NOT NULL,
+  category_id TEXT NOT NULL,
+  last_operation_time TEXT NOT NULL, --最后一次操作的时间
+  last_operation_type INTEGER NOT NULL, --最后一次操作的类型 1新增 2编辑 3删除
+  created_at TEXT NOT NULL,
+  deleted_at TIMESTAMP,
+  FOREIGN KEY (paste_event_id) REFERENCES paste_event(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES category_node(id) ON DELETE CASCADE,
+  UNIQUE (paste_event_id, category_id)
+);
+INSERT INTO paste_event_category_mapping_new (id, paste_event_id, category_id, last_operation_time, last_operation_type, created_at, deleted_at)
+SELECT
+   id,
+   paste_event_id,
+   category_id,
+   last_operation_time,
+   last_operation_type,
+   CAST((julianday(created_at) - 2440587.5) * 86400000 AS INTEGER),
+   deleted_at
+FROM paste_event_category_mapping;
+DROP TABLE IF EXISTS paste_event_category_mapping;
+ALTER TABLE paste_event_category_mapping_new RENAME TO paste_event_category_mapping;
 
 
 CREATE TABLE IF NOT EXISTS remark (
@@ -72,7 +115,7 @@ CREATE TABLE IF NOT EXISTS remark (
   paste_event_id TEXT NOT NULL,
   last_operation_time TEXT NOT NULL, --最后一次操作的时间
   last_operation_type INTEGER NOT NULL, --最后一次操作的类型 1新增 2编辑 3删除
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 创建时间
+  created_at TEXT NOT NULL, -- 创建时间
   deleted_at TIMESTAMP
 );
 
@@ -82,7 +125,7 @@ CREATE TABLE IF NOT EXISTS device (
   mac_address TEXT, --mac地址
   last_operation_time TEXT NOT NULL, --最后一次操作的时间
   last_operation_type INTEGER NOT NULL, --最后一次操作的类型 1新增 2编辑 3删除
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, -- 创建时间
+  created_at TEXT NOT NULL, -- 创建时间
   deleted_at TIMESTAMP
 );
 

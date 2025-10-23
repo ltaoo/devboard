@@ -1,8 +1,6 @@
 package models
 
 import (
-	"time"
-
 	"gorm.io/gorm"
 )
 
@@ -17,7 +15,7 @@ type PasteEvent struct {
 	Details           string         `json:"details"`
 	LastOperationTime string         `json:"last_operation_time"`
 	LastOperationType int            `json:"last_operation_type"`
-	CreatedAt         time.Time      `json:"created_at"`
+	CreatedAt         string         `json:"created_at"`
 	DeletedAt         gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 
 	Categories []CategoryNode `json:"categories" gorm:"many2many:paste_event_category_mapping;joinForeignKey:paste_event_id;JoinReferences:category_id"`
