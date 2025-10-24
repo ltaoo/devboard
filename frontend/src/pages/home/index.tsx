@@ -192,6 +192,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       request.paste.preview.run({ id: v.id });
     },
     async deletePaste(v: PasteRecord) {
+      console.log("[PAGE]home/index - deletePaste", v.id);
       // ui.$waterfall.methods.resetRange();
       // ui.$view.setScrollTop(0);
       // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
@@ -255,11 +256,11 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       methods.backToTop();
     },
     handleClickDownloadBtn(v: PasteRecord) {
-      if (v.operations.includes("douyin_download")) {
+      if (v.operations.includes("douyin_download") && v.text) {
         request.douyin.download.run({ content: v.text });
         return;
       }
-      if (v.operations.includes("json_download")) {
+      if (v.operations.includes("json_download") && v.text) {
         const time = parseInt(String(new Date().valueOf() / 1000));
         request.file.save_file.run({
           filename: `${time}.json`,
@@ -272,6 +273,12 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       methods.deletePaste(v);
     },
     handleClickFileBtn(v: PasteRecord) {
+      if (!v.text) {
+        props.app.tip({
+          text: ["异常数据"],
+        });
+        return;
+      }
       const time = parseInt(String(new Date().valueOf() / 1000));
       request.file.save_file.run({
         filename: `${time}.json`,
@@ -403,6 +410,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$list_select.methods.moveToPrevOption({ step: 1 });
     },
     "ControlRight+KeyU"() {
+      if (ui.$input_search.isFocus) {
+        ui.$input_search.methods.blur();
+      }
       ui.$list_select.methods.moveToPrevOption({ step: 3, force: true });
     },
     "KeyJ,ArrowDown"(event) {
@@ -425,6 +435,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$list_select.methods.moveToNextOption({ step: 1 });
     },
     "ControlRight+KeyD"() {
+      if (ui.$input_search.isFocus) {
+        ui.$input_search.methods.blur();
+      }
       ui.$list_select.methods.moveToNextOption({ step: 3, force: true });
     },
     KeyGKeyG() {
@@ -457,7 +470,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       props.history.reload();
     },
     "MetaLeft+Backspace"() {
-      // console.log("[PAGE]home/index - MetaLeft+Backspace");
+      console.log("[PAGE]home/index - MetaLeft+Backspace");
       const idx = ui.$list_select.state.idx;
       const $cell = ui.$waterfall.$items[idx];
       methods.deletePaste($cell.state.payload);
@@ -532,11 +545,11 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   ui.$list_select.onStateChange(() => methods.refresh());
   ui.$back_to_top.onStateChange(() => methods.refresh());
   const unlisten = props.app.onKeydown((event) => {
-    console.log("[PAGE]onKeydown", event.code);
+    // console.log("[PAGE]onKeydown", event.code);
     ui.$shortcut.methods.handleKeydown(event);
   });
   const unlisten2 = props.app.onKeyup((event) => {
-    console.log("[PAGE]onKeyup", event.code);
+    // console.log("[PAGE]onKeyup", event.code);
     ui.$shortcut.methods.handleKeyup(event);
   });
   Events.On("clipboard:update", (event) => {
@@ -673,12 +686,12 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                           </For>
                         </div>
                       </Match>
-                      <Match when={v.types.includes("url")}>
+                      <Match when={v.types.includes("url") && v.text}>
                         <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
                           <div
                             class="flex items-center gap-1 cursor-pointer"
                             onClick={() => {
-                              vm.methods.handleClickURL(v.text);
+                              vm.methods.handleClickURL(v.text!);
                             }}
                           >
                             <Link class="w-4 h-4" />
@@ -698,13 +711,13 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                           <div class="text-w-fg-1">{v.text}</div>
                         </div>
                       </Match>
-                      <Match when={isCodeContent(v.types)}>
+                      <Match when={isCodeContent(v.types) && v.text}>
                         <div class="w-full overflow-auto">
-                          <CodeCard id={v.id} language={v.language} code={v.text} />
+                          <CodeCard id={v.id} language={v.language} code={v.text!} />
                         </div>
                       </Match>
-                      <Match when={v.type === "html"}>
-                        <HTMLCard html={v.text} />
+                      <Match when={v.type === "html" && v.text}>
+                        <HTMLCard html={v.text!} />
                       </Match>
                       <Match when={v.type === "image" && v.image_url}>
                         <div class="cursor-pointer">

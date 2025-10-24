@@ -133,9 +133,9 @@ func timestamp_to_time(timestamp string) (time.Time, error) {
 }
 
 func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
-	defer func(start time.Time) {
-		fmt.Printf("BuildLocalSyncToRemoteTasks %v execute time: %v\n", setting.Name, time.Since(start))
-	}(time.Now())
+	// defer func(start time.Time) {
+	// 	fmt.Printf("BuildLocalSyncToRemoteTasks %v execute time: %v\n", setting.Name, time.Since(start))
+	// }(time.Now())
 
 	table_name := setting.Name
 	id_field_name := setting.IdFieldName
@@ -152,10 +152,13 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 	add_message := func(msg *SynchronizeMessage) {
 		result.Messages = append(result.Messages, msg)
 	}
+	add_record_task := func(task *RecordTask) {
+		result.RecordTasks = append(result.RecordTasks, task)
+	}
 	add_file_task := func(task *FileTask) {
 		result.FileTasks = append(result.FileTasks, task)
 	}
-	local_last_record, err := local_client.FetchTableLastRecord()
+	local_last_record, err := local_client.FetchTableLastDraftRecord()
 	if err != nil {
 		log("[ERROR]" + err.Error())
 		add_message(&SynchronizeMessage{
@@ -163,6 +166,10 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			Scope: "database",
 			Text:  err.Error(),
 		})
+		return &result
+	}
+	if local_last_record == nil {
+		log("[LOG]skip because don't have draft records")
 		return &result
 	}
 	local_table_lot_str, ok := local_last_record["last_operation_time"].(string)
@@ -225,42 +232,29 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 		})
 		lines := SplitToLines(remote_meta_byte)
 		if len(lines) != 0 {
-			remote_table_lot_str := lines[0]
-			log("[LOG]check need update the table, v1:" + remote_table_lot_str + " v2:" + local_table_lot_str)
-			if remote_table_lot_str == local_table_lot_str {
-				return &result
-			}
-			// remote_lot_time, err := timestamp_to_time(remote_table_lot_str)
-			// if err != nil {
-			// 	log("[ERROR]parse last time in meta failed, because" + err.Error())
-			// 	add_message(&SynchronizeMessage{
-			// 		Type:  SynchronizeMessageError,
-			// 		Scope: "format time",
-			// 		Text:  err.Error() + "[]" + remote_meta_content,
-			// 	})
+			// remote_table_lot_str := lines[0]
+			// log("[LOG]table - compare table'latest_operation_time, local:" + local_table_lot_str + ", remote:" + remote_table_lot_str)
+			// 这样一种场景
+			// 在A电脑新增了10条记录，没有同步。然后到B电脑新增1条记录，将本地同步到远端
+			// 回到A电脑，将远端同步到本地，B电脑新增的1条记录同步到了本地，将其作为最新记录
+			// 然后，在A将本地同步到远端，本地最新记录和远端最新记录是一致的，导致A的10条记录被忽略
+			// 所以需要注释下面这行代码
+			// if local_table_lot_str == remote_table_lot_str {
 			// 	return &result
 			// }
 			// 如果本地数据库，最新的记录时间在 remote 之前，说明需要 先将数据从远端同步到本地，而不能 同步到远端，避免覆盖新的内容
-			log("[LOG]table - compare table'latest_operation_time, local:" + local_table_lot_str + ", remote:" + remote_table_lot_str)
-			if local_table_lot_str != remote_table_lot_str {
-				log("[LOG]need to pull latest records from remote server")
-				ms1, _ := strconv.ParseInt(local_table_lot_str, 10, 64)
-				ms2, _ := strconv.ParseInt(remote_table_lot_str, 10, 64)
-				if ms1 < ms2 {
-					add_message(&SynchronizeMessage{
-						Type:  SynchronizeMessageSuccess,
-						Scope: "result",
-						Text:  "Please pull the remote records to local.",
-					})
-					return &result
-				}
-			}
+			// 什么情况下，可以百分百确定，不需要/不能 将本地同步到远端？
+			// log("[LOG]need to pull latest records from remote server")
+			// ms1, _ := strconv.ParseInt(local_table_lot_str, 10, 64)
+			// ms2, _ := strconv.ParseInt(remote_table_lot_str, 10, 64)
+			// if ms1 > ms2 {
 			add_file_task(&FileTask{
 				Type:     "update_line",
 				Filepath: remote_table_meta_filepath,
 				Line:     0,
 				Content:  local_table_lot_str,
 			})
+			// }
 			for idx := 1; idx < len(lines); idx++ {
 				line := lines[idx]
 				regex := regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{1,})`)
@@ -281,7 +275,7 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 		log("[LOG]walk unique_day " + "[" + day + "]")
 		day_text := day
 		day_file_path := path.Join(table_out_dir, day_text)
-		day_records, err := local_client.FetchRecordsBetweenSpecialDayOfTable(day_text)
+		day_records, err := local_client.FetchDraftRecordsBetweenSpecialDayOfTable(day_text)
 		if err != nil {
 			log("[ERROR]search latest record of table failed, because " + err.Error())
 			add_message(&SynchronizeMessage{
@@ -292,11 +286,11 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			continue
 		}
 		if len(day_records) == 0 {
-			log("[LOG]there is no records")
+			log("[LOG]there is no records need to being sync")
 			continue
 		}
 		log("[LOG]the records in database count is " + strconv.Itoa(len(day_records)))
-		local_lot_str, ok := day_records[0]["last_operation_time"].(string)
+		local_day_lot_str, ok := day_records[0]["last_operation_time"].(string)
 		if !ok {
 			continue
 		}
@@ -310,29 +304,18 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			add_file_task(&FileTask{
 				Type:     "append_line",
 				Filepath: remote_table_meta_filepath,
-				Content:  day + " " + local_lot_str,
+				Content:  day + " " + local_day_lot_str,
 			})
 		} else {
-			log("[LOG]check need update day line in meta file, v1:" + local_lot_str + " v2:" + existing_day_meta.LastOperationTime)
-			if local_lot_str == existing_day_meta.LastOperationTime {
+			log("[LOG]check need update day line in meta file, v1:" + local_day_lot_str + " v2:" + existing_day_meta.LastOperationTime)
+			if local_day_lot_str == existing_day_meta.LastOperationTime {
 				continue
 			}
-			// local_lot_time, err := timestamp_to_time(local_lot_str)
-			// if err != nil {
-			// 	log("[ERROR]parse local lot time failed " + local_lot_str)
-			// 	continue
-			// }
-			// remote_lot_time, err := timestamp_to_time(existing_day_meta.LastOperationTime)
-			// if err != nil {
-			// 	log("[ERROR]parse remote lot time failed " + local_lot_str)
-			// 	continue
-			// }
-			// if local_lot_time.Before(remote_lot_time) { }
 			add_file_task(&FileTask{
 				Type:     "update_line",
 				Filepath: remote_table_meta_filepath,
 				Line:     existing_day_meta.Idx,
-				Content:  day + " " + local_lot_str,
+				Content:  day + " " + local_day_lot_str,
 			})
 		}
 		file_task := &FileTask{
@@ -434,6 +417,10 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 						Line:     matched_line_idx,
 						Content:  string(record_byte),
 					})
+					add_record_task(&RecordTask{
+						Type: "update_sync_status",
+						Id:   id,
+					})
 				}
 			} else {
 				record_byte, err := json.Marshal(record)
@@ -452,6 +439,10 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 					Type:     "append_line",
 					Filepath: day_file_path,
 					Content:  string(record_byte),
+				})
+				add_record_task(&RecordTask{
+					Type: "update_sync_status",
+					Id:   id,
 				})
 			}
 		}
@@ -551,7 +542,7 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 	// 	return &result
 	// }
 
-	log("[LOG]walk the day lines in meta file " + strconv.Itoa(len(meta_file_lines)))
+	log("[LOG]day count in meta file " + strconv.Itoa(len(meta_file_lines)))
 	for idx := 1; idx < len(meta_file_lines); idx++ {
 		meta_line := meta_file_lines[idx]
 		log("[LOG]walk the day[" + meta_line + "]")
@@ -574,7 +565,7 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 		}
 		// file_meta_list = append(file_meta_list, parsed_day_meta)
 		remote_day_folder_path := path.Join(table_dir, parsed_day_meta.Name)
-		log("[LOG]walk day file content of " + remote_day_folder_path)
+		// log("[LOG]walk day file content of " + remote_day_folder_path)
 		// day_start, day_end, err := get_day_timestamp_range(parsed_day_meta.Name)
 		// if err != nil {
 		// 	log("[ERROR]parse day_file failed, because " + err.Error())
@@ -590,23 +581,27 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 			})
 			continue
 		}
+		// 远端存在文件，但本地没有找到记录，说明整个文件内的记录都是新增的
+		if len(local_record_list) != 0 {
+			// log("[LOG]there's no records in database, but has records in remote file")
+			last_local_record := local_record_list[0]
+			// // 检查该天远端最新修改时间，和本地该天范围内的最新记录修改时间
+			local_record_lot_str, ok := last_local_record["last_operation_time"].(string)
+			if !ok {
+				log("[LOG]skip " + parsed_day_meta.Name + " because paste last_operation_time of local record failed")
+				continue
+			}
+			remote_record_lot_str := parsed_day_meta.LastOperationTime
+			// fmt.Println("[LOG]compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
+			log("[LOG]compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
+			if local_record_lot_str == remote_record_lot_str {
+				log("[LOG]skip " + parsed_day_meta.Name)
+				continue
+			}
+		}
 		if len(local_record_list) == 0 {
-			log("[LOG]the database don't have any records created between " + parsed_day_meta.Name)
-			continue
+			log("[LOG]there's no records in database")
 		}
-		last_local_record := local_record_list[0]
-		// // 检查该天远端最新修改时间，和本地该天范围内的最新记录修改时间
-		local_record_lot_str, ok := last_local_record["last_operation_time"].(string)
-		if !ok {
-			continue
-		}
-		remote_record_lot_str := parsed_day_meta.LastOperationTime
-		// fmt.Println("[LOG]compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
-		// log("[LOG]compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
-		if local_record_lot_str == remote_record_lot_str {
-			continue
-		}
-
 		remote_records_byte, err := remote_client.Read(remote_day_folder_path)
 		if err != nil {
 			log("[ERROR]read day file failed, because " + err.Error())
@@ -622,30 +617,13 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 			log("[ERROR]the file " + remote_day_folder_path + " content is empty?")
 			continue
 		}
-		// 远端存在文件，但本地没有找到记录，说明整个文件内的记录都是新增的
-		if len(local_record_list) == 0 {
-			for _, line := range remote_record_lines {
-				if match, _ := regexp.MatchString(`^[0-9]{1,}`, line); match {
-					continue
-				}
-				var rr map[string]interface{}
-				if err := json.Unmarshal([]byte(line), &rr); err != nil {
-					log("[ERROR]parse the record JSON failed, because " + err.Error())
-					continue
-				}
-				log("[LOG]the record need to create")
-				add_record_task(&RecordTask{
-					Type: "create",
-					Data: rr,
-				})
-			}
-			continue
-		}
 		local_record_map_by_id := make(map[string]map[string]interface{})
 		for _, record := range local_record_list {
 			id, ok := record[id_field_name].(string)
 			if ok {
 				local_record_map_by_id[id] = record
+			} else {
+				log("[ERROR]parse id of local record failed ")
 			}
 		}
 		for _, remote_record_text := range remote_record_lines {

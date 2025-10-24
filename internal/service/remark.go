@@ -1,13 +1,10 @@
 package service
 
 import (
+	"github.com/wailsapp/wails/v3/pkg/application"
+
 	"devboard/internal/biz"
 	"devboard/models"
-	"strconv"
-	"time"
-
-	"github.com/google/uuid"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type RemarkService struct {
@@ -24,14 +21,26 @@ func (s *RemarkService) CreateRemark(body CreateRemarkBody) *Result {
 	if err := s.Biz.Ensure(); err != nil {
 		return Error(err)
 	}
-	remark := models.Remark{
-		Id:                uuid.New().String(),
-		Content:           body.Content,
-		PasteEventId:      body.PasteEventId,
-		LastOperationTime: strconv.FormatInt(time.Now().UnixMilli(), 10),
-		LastOperationType: 1,
+	tx := s.Biz.DB.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+			return
+		}
+	}()
+	// now_timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	created_at := models.Remark{
+		Content:      body.Content,
+		PasteEventId: body.PasteEventId,
 	}
-	if err := s.Biz.DB.Create(&remark).Error; err != nil {
+	if err := tx.Create(&created_at).Error; err != nil {
+		return Error(err)
+	}
+	// if err := tx.Model(&models.PasteEvent{}).Where("id = ?", body.PasteEventId).Update("sync_status", 1).Error; err != nil {
+	// 	return Error(err)
+	// }
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
 		return Error(err)
 	}
 	return Ok(nil)

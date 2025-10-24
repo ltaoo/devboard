@@ -1,22 +1,14 @@
 package models
 
-import (
-	"gorm.io/gorm"
-)
-
 type PasteEvent struct {
-	Id                string         `json:"id"`
-	ContentType       string         `json:"content_type"`
-	Text              string         `json:"text"`
-	Html              string         `json:"html"`
-	FileListJSON      string         `json:"file_list_json"`
-	ImageBase64       string         `json:"image_base64"`
-	Other             string         `json:"other"`
-	Details           string         `json:"details"`
-	LastOperationTime string         `json:"last_operation_time"`
-	LastOperationType int            `json:"last_operation_type"`
-	CreatedAt         string         `json:"created_at"`
-	DeletedAt         gorm.DeletedAt `json:"deleted_at" gorm:"index"`
+	BaseModel    `gorm:"embedded"`
+	ContentType  string `json:"content_type"`
+	Text         string `json:"text,omitempty"`
+	Html         string `json:"html,omitempty"`
+	FileListJSON string `json:"file_list_json,omitempty"`
+	ImageBase64  string `json:"image_base64,omitempty"`
+	Other        string `json:"other,omitempty"`
+	Details      string `json:"details"`
 
 	Categories []CategoryNode `json:"categories" gorm:"many2many:paste_event_category_mapping;joinForeignKey:paste_event_id;JoinReferences:category_id"`
 	Remarks    []Remark       `json:"remarks" gorm:"ForeignKey:PasteEventId"`
@@ -26,14 +18,23 @@ func (PasteEvent) TableName() string {
 	return "paste_event"
 }
 
-// type PasteContent struct {
-// 	Id          int            `json:"id"`
-// 	ContentType string         `json:"content_type"`
+type Device struct {
+	BaseModel  `gorm:"embedded"`
+	Name       string `json:"name"`
+	MacAddress string `json:"mac_address"`
+}
 
-// 	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
-// 	CreatedAt   time.Time      `json:"created_at"`
-// }
+func (Device) TableName() string {
+	return "device"
+}
 
-// func (PasteContent) TableName() string {
-// 	return "paste_content"
-// }
+type App struct {
+	BaseModel `gorm:"embedded"`
+	Name      string `json:"name"`
+	UniqueId  string `json:"unique_id"`
+	LogoURL   string `json:"logo_url"`
+}
+
+func (App) TableName() string {
+	return "app"
+}

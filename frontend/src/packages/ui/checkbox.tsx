@@ -59,6 +59,7 @@ const Root = (props: { store: CheckboxCore } & JSX.HTMLAttributes<HTMLButtonElem
         type="button"
         role="checkbox"
         class={props.class}
+        classList={props.classList}
         aria-checked={isIndeterminate(state().checked) ? "mixed" : state().checked}
         aria-required={state().required}
         data-state={getState(state().checked)}

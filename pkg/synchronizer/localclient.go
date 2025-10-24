@@ -11,9 +11,10 @@ import (
 )
 
 type LocalClient interface {
-	FetchTableLastRecord() (map[string]interface{}, error)
+	FetchTableLastDraftRecord() (map[string]interface{}, error)
 	FetchUniqueDaysOfTable() []string
-	FetchRecordsBetweenSpecialDayOfTable(day_str string) ([]map[string]interface{}, error)
+	// 获取未同步的指定时间范围内的所有记录，用于同步到远端
+	FetchDraftRecordsBetweenSpecialDayOfTable(day_str string) ([]map[string]interface{}, error)
 	FetchRecordOrderByTimeAndBetweenStartAndEndOfTable(day string) ([]map[string]interface{}, error)
 	FetchRecordById(id string) ([]map[string]interface{}, error)
 	SetRecords(v []map[string]interface{})
@@ -24,31 +25,31 @@ type DatabaseLocalClient struct {
 	TableName string
 }
 
-func (c *DatabaseLocalClient) FetchTableLastRecord() (map[string]interface{}, error) {
+func (c *DatabaseLocalClient) FetchTableLastDraftRecord() (map[string]interface{}, error) {
 	var records []map[string]interface{}
-	if err := c.DB.Table(c.TableName).Order("last_operation_time DESC").Limit(1).Find(&records).Error; err != nil {
+	if err := c.DB.Table(c.TableName).Where("sync_status = 1").Order("last_operation_time DESC").Limit(1).Find(&records).Error; err != nil {
 		return nil, fmt.Errorf("search latest record of table failed, because %v", err.Error())
 	}
 	if len(records) == 0 {
-		return nil, fmt.Errorf("the table don't have any records, can't synchronize to remote server")
+		return nil, nil
 	}
 	return records[0], nil
 }
 func (c *DatabaseLocalClient) FetchUniqueDaysOfTable() []string {
 	var dates []string
-	c.DB.Table(c.TableName).
+	c.DB.Table(c.TableName).Where("sync_status = 1").
 		Select("strftime('%Y-%m-%d', datetime(created_at/1000, 'unixepoch')) as date").
 		Group("date").
 		Pluck("date", &dates)
 	return dates
 }
-func (c *DatabaseLocalClient) FetchRecordsBetweenSpecialDayOfTable(day_str string) ([]map[string]interface{}, error) {
+func (c *DatabaseLocalClient) FetchDraftRecordsBetweenSpecialDayOfTable(day_str string) ([]map[string]interface{}, error) {
 	var day_records []map[string]interface{}
 	start, end, err := get_day_timestamp_range(day_str)
 	if err != nil {
 		return nil, fmt.Errorf("parse day str failed, because %v", err.Error())
 	}
-	if err := c.DB.Table(c.TableName).Where("created_at BETWEEN ? AND ?", start, end).Order("last_operation_time DESC").Find(&day_records).Error; err != nil {
+	if err := c.DB.Table(c.TableName).Where("sync_status = 1 AND created_at BETWEEN ? AND ?", start, end).Order("last_operation_time DESC").Find(&day_records).Error; err != nil {
 		return nil, fmt.Errorf("search records failed, because %v", err.Error())
 	}
 	return day_records, nil
@@ -90,7 +91,7 @@ func (c *MockLocalClient) SetRecords(v []map[string]interface{}) {
 	c.records = v
 }
 
-func (c *MockLocalClient) FetchTableLastRecord() (map[string]interface{}, error) {
+func (c *MockLocalClient) FetchTableLastDraftRecord() (map[string]interface{}, error) {
 	if len(c.records) == 0 {
 		return nil, errors.New("no records available")
 	}
@@ -128,7 +129,7 @@ func (c *MockLocalClient) FetchUniqueDaysOfTable() []string {
 
 	return days
 }
-func (c *MockLocalClient) FetchRecordsBetweenSpecialDayOfTable(day_str string) ([]map[string]interface{}, error) {
+func (c *MockLocalClient) FetchDraftRecordsBetweenSpecialDayOfTable(day_str string) ([]map[string]interface{}, error) {
 	targetDay, err := time.Parse("2006-01-02", day_str)
 	if err != nil {
 		return nil, err

@@ -4,14 +4,14 @@ import { Events as WailsEvents } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
-import { Button, Input, ScrollView } from "@/components/ui";
+import { Button, Checkbox, Input, ScrollView } from "@/components/ui";
 import { FieldObjV2 } from "@/components/fieldv2/obj";
 import { FieldV2 } from "@/components/fieldv2/field";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
-import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
+import { ButtonCore, CheckboxCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
 import { syncToRemote, syncFromRemote, pingWebDav, fetchDatabaseDirs } from "@/biz/synchronize/service";
 import { fetchSystemInfo } from "@/biz/system/service";
@@ -160,6 +160,7 @@ function SynchronizationViewModel(props: ViewComponentProps) {
         request.sync.downloadFromWebdav.run(body);
       },
     }),
+    $check_force: new CheckboxCore({}),
     $btn_synchronize: new ButtonCore({
       async onClick() {
         const r = await ui.$form_webdav.validate();
@@ -184,7 +185,10 @@ function SynchronizationViewModel(props: ViewComponentProps) {
         props.app.tip({
           text: ["从 webdva 同步完成"],
         });
-        const r3 = await request.sync.uploadToWebdav.run(body);
+        const r3 = await request.sync.uploadToWebdav.run({
+          ...body,
+          force: ui.$check_force.value,
+        });
         ui.$btn_synchronize.setLoading(false);
         if (r3.error) {
           return;
@@ -322,7 +326,7 @@ export function SynchronizationView(props: ViewComponentProps) {
             </FieldObjV2>
           </div>
           <div class="mt-4 space-y-1">
-            <div class="space-x-1">
+            <div class="flex items-center space-x-1">
               <Button store={vm.ui.$btn_validate}>
                 <div class="flex items-center space-x-1">
                   <Show when={state().ping?.ok}>
@@ -331,7 +335,10 @@ export function SynchronizationView(props: ViewComponentProps) {
                   <div>测试并保存</div>
                 </div>
               </Button>
-              <Button store={vm.ui.$btn_synchronize}>同步</Button>
+              <div class="flex items-center">
+                <Button store={vm.ui.$btn_synchronize}>同步</Button>
+                <Checkbox store={vm.ui.$check_force}></Checkbox>
+              </div>
             </div>
             {/* <div class="flex space-x-1">
               <Button store={vm.ui.$btn_prepare_export}>测试同步至 webdav</Button>

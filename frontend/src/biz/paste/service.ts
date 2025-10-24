@@ -22,10 +22,10 @@ export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types
     ListResponse<{
       id: string;
       content_type: PasteContentType;
-      text: string;
-      image_base64: string;
-      file_list_json: string;
-      html: string;
+      text?: string;
+      image_base64?: string;
+      file_list_json?: string;
+      html?: string;
       details: string;
       created_at: string;
       last_modified_time: string;
@@ -70,6 +70,9 @@ export function processPartialPasteEvent(
       return v.html || tt;
     }
     if (categories.includes("time")) {
+      if (!tt) {
+        return tt;
+      }
       const dt = (() => {
         if (tt.match(/^[0-9]{1,}$/)) {
           return dayjs(tt.length === 10 ? Number(tt) * 1000 : Number(tt));
@@ -124,7 +127,7 @@ export function processPartialPasteEvent(
           return d.height;
         }
       }
-      if (categories.includes("text")) {
+      if (categories.includes("text") && text) {
         const line_count = text.length / 32;
         let height = 6 + line_count * 32 + 6;
         if (height > 76) {
@@ -132,7 +135,7 @@ export function processPartialPasteEvent(
         }
         return height;
       }
-      if (categories.includes("code")) {
+      if (categories.includes("code") && text) {
         const lines = text.split("\n");
         let height = lines.length * 16 + (lines.length - 1) * 2;
         if (height > 120) {
@@ -161,13 +164,13 @@ export function processPartialPasteEvent(
     details,
     operations: (() => {
       const r: string[] = [];
-      if (v.text.includes("复制打开抖音")) {
+      if (v.text?.includes("复制打开抖音")) {
         r.push("douyin_download");
       }
-      if (v.text.match(/https:\/\/v\.douyin/)) {
+      if (v.text?.match(/https:\/\/v\.douyin/)) {
         r.push("douyin_download");
       }
-      if (v.text.match(/https:\/\/www\.douyin\.com\/video/)) {
+      if (v.text?.match(/https:\/\/www\.douyin\.com\/video/)) {
         r.push("douyin_download");
       }
       if (categories.includes("JSON")) {
@@ -198,10 +201,10 @@ export function fetchPasteEventProfile(body: { id: string }) {
   return request.post<{
     id: string;
     content_type: PasteContentType;
-    text: string;
-    image_base64: string;
-    file_list_json: string;
-    html: string;
+    text?: string;
+    image_base64?: string;
+    file_list_json?: string;
+    html?: string;
     details: string;
     created_at: string;
     last_modified_time: string;
