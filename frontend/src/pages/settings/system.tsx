@@ -70,18 +70,33 @@ export function SystemInfoView(props: ViewComponentProps) {
   return (
     <ScrollView store={vm.ui.$view} class="p-4">
       <Show when={state().profile}>
-        <div>
-          <div class="text-2xl">本机信息</div>
-          <For each={state().profile?.fields}>
-            {(field) => {
-              return (
-                <div class="field text-w-fg-0">
-                  <div>{field.label}</div>
-                  <div>{field.text}</div>
-                </div>
-              );
-            }}
-          </For>
+        <div class="space-y-4">
+          <div>
+            <div class="text-2xl">本机信息</div>
+            <For each={state().profile?.device}>
+              {(field) => {
+                return (
+                  <div class="field text-w-fg-0">
+                    <div>{field.label}</div>
+                    <div>{field.text}</div>
+                  </div>
+                );
+              }}
+            </For>
+          </div>
+          <div>
+            <div class="text-2xl">应用信息</div>
+            <For each={state().profile?.app}>
+              {(field) => {
+                return (
+                  <div class="field text-w-fg-0">
+                    <div>{field.label}</div>
+                    <div>{field.text}</div>
+                  </div>
+                );
+              }}
+            </For>
+          </div>
         </div>
       </Show>
     </ScrollView>
