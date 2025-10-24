@@ -47,17 +47,35 @@ export function ShortcutModel(props: {}) {
       const key2 = _pressed_codes.join("");
       return { key1, key2 };
     },
-    testShortcut(opt: { key1: string; key2: string; step: "keydown" | "keyup" }, event: KeyboardEvent) {
+    testShortcut(
+      opt: {
+        /** 存在 pressing 时，进行拼接后的字符串，用于「组合快捷键」 */
+        key1: string;
+        /** 没有其他出于 pressing 状态的情况下，按下的按键拼接后的字符串，用于「单个快捷键或连按」 */
+        key2: string;
+        step: "keydown" | "keyup";
+      },
+      event: KeyboardEvent
+    ) {
       const { key1, key2, step } = opt;
-      // console.log("[BIZ]shortcut - test shortcut", key1, key2, step, _shortcut_map);
-      if (step === "keydown" && key2 && _shortcut_map[key2]) {
-        methods.invokeHandlers(event, key2);
-        return;
-      }
+      console.log("[BIZ]shortcut - test shortcut", key1, key2, step, _shortcut_map, _pressed_code_map);
 
       if (step === "keydown" && key1.includes("+")) {
-        // console.log("[]invoke key1");
-        methods.invokeHandlers(event, key1);
+        // methods.invokeHandlers(event, key1);
+        const handler = _shortcut_map[key1];
+        if (handler) {
+          console.log("[BIZ]shortcut - key1 bingo!", key1, step);
+          handler(event);
+          return;
+        }
+      }
+      if (step === "keydown" && key2) {
+        // methods.invokeHandlers(event, key2);
+        const handler = _shortcut_map[key2];
+        if (handler) {
+          console.log("[BIZ]shortcut - key2 bingo!", key2, step);
+          handler(event);
+        }
         return;
       }
     },

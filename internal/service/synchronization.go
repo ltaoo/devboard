@@ -52,6 +52,23 @@ func (s *SyncService) PingWebDav(body WebDavSyncConfigBody) *Result {
 	})
 }
 
+var tables = []synchronizer.TableSynchronizeSetting{{
+	Name:        "paste_event",
+	IdFieldName: "id",
+}, {
+	Name:        "category_node",
+	IdFieldName: "id",
+}, {
+	Name:        "category_hierarchy",
+	IdFieldName: "id",
+}, {
+	Name:        "paste_event_category_mapping",
+	IdFieldName: "id",
+}, {
+	Name:        "remark",
+	IdFieldName: "id",
+}}
+
 func local_to_remote(t synchronizer.TableSynchronizeSetting, root_dir string, db *gorm.DB, client *gowebdav.Client) *synchronizer.SynchronizeResult {
 	table_name := t.Name
 	local_client := synchronizer.NewDatabaseLocalClient(db, table_name)
@@ -79,6 +96,14 @@ func local_to_remote(t synchronizer.TableSynchronizeSetting, root_dir string, db
 			}
 		}
 	}
+	for _, r := range result.RecordTasks {
+		if r.Type == "update_sync_status" {
+			data := map[string]interface{}{"sync_status": 2}
+			if err := db.Table(table_name).Where("id = ?", r.Id).Updates(data).Error; err != nil {
+				log("[ERROR]update record sync status failed, " + err.Error())
+			}
+		}
+	}
 
 	return result
 }
@@ -89,6 +114,7 @@ type WebDavSyncConfigBody struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Test     bool   `json:"test"`
+	Force    bool   `json:"force"`
 }
 
 func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
@@ -97,24 +123,15 @@ func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 	if err != nil {
 		return Error(err)
 	}
-	remote_client := synchronizer.NewWebdavClient(client)
-	tables := []synchronizer.TableSynchronizeSetting{{
-		Name:        "paste_event",
-		IdFieldName: "id",
-	}, {
-		Name:        "category_node",
-		IdFieldName: "id",
-	}, {
-		Name:        "category_hierarchy",
-		IdFieldName: "id",
-	}, {
-		Name:        "paste_event_category_mapping",
-		IdFieldName: "id",
-	}, {
-		Name:        "remark",
-		IdFieldName: "id",
-	}}
+	if body.Force {
+		for _, t := range tables {
+			s.Biz.DB.Table(t.Name).Where("1 = 1").UpdateColumns(map[string]interface{}{
+				"sync_status": 1,
+			})
+		}
+	}
 	results := make(map[string]*synchronizer.SynchronizeResult)
+	remote_client := synchronizer.NewWebdavClient(client)
 	for _, t := range tables {
 		local_client := synchronizer.NewDatabaseLocalClient(s.Biz.DB, t.Name)
 		if body.Test {
@@ -126,7 +143,6 @@ func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 		}
 	}
 	return Ok(results)
-
 }
 
 type ActionsNeedApply struct {
@@ -161,6 +177,7 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 		// 	continue
 		// }
 		log("[LOG]apply record task, the type is " + r.Type)
+		r.Data["sync_status"] = 2
 		if r.Type == "create" {
 			created_at_str, ok := r.Data["created_at"].(string)
 			if !ok {
@@ -202,6 +219,12 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 			}
 			log("[ERROR]update record success, affected rows " + strconv.Itoa(int(result.RowsAffected)))
 		}
+		if r.Type == "update_sync_status" {
+			data := map[string]interface{}{"sync_status": 2}
+			if err := db.Table(table_name).Where("id = ?", r.Id).Updates(data).Error; err != nil {
+				log("[ERROR]update record sync status failed, " + err.Error())
+			}
+		}
 		// if r.Action == 3 {
 		// 	result := s.Biz.DB.Table(table_name).Where("id = ?", r.Id).Delete(nil)
 		// 	if result.Error != nil {
@@ -222,19 +245,6 @@ func (s *SyncService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
 		return Error(err)
 	}
 	remote_client := synchronizer.NewWebdavClient(client)
-	tables := []synchronizer.TableSynchronizeSetting{{
-		Name:        "paste_event",
-		IdFieldName: "id",
-	}, {
-		Name:        "category_node",
-		IdFieldName: "id",
-	}, {
-		Name:        "category_hierarchy",
-		IdFieldName: "id",
-	}, {
-		Name:        "remark",
-		IdFieldName: "id",
-	}}
 	results := make(map[string]*synchronizer.SynchronizeResult)
 	for _, t := range tables {
 		if body.Test {

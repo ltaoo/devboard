@@ -22,6 +22,7 @@ export function syncToRemote(body: {
   password: string;
   root_dir: string;
   test?: boolean;
+  force?: boolean;
 }) {
   return request.post<
     Record<

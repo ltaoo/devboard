@@ -10,11 +10,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"gorm.io/gorm"
 
@@ -99,22 +97,15 @@ func (s *PasteService) DeletePasteEvent(body PasteEventBody) *Result {
 	if body.EventId == "" {
 		return Error(fmt.Errorf("缺少 id 参数"))
 	}
-	var record models.PasteEvent
-	err := s.Biz.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("id = ?", body.EventId).First(&record).Error; err != nil {
-			return err
-		}
-		record.LastOperationTime = strconv.FormatInt(time.Now().UnixMilli(), 10)
-		record.LastOperationType = 3
-		if err := tx.Save(&record).Error; err != nil {
-			return err
-		}
-		return tx.Delete(&record).Error
-	})
-	if err != nil {
+	var existing models.PasteEvent
+	if err := s.Biz.DB.Where("id = ?", body.EventId).First(&existing).Error; err != nil {
 		return Error(err)
 	}
-	return Ok(&record)
+	existing.DeletedAt = gorm.DeletedAt{Time: time.Now(), Valid: true}
+	if err := s.Biz.DB.Save(&existing).Error; err != nil {
+		return Error(err)
+	}
+	return Ok(nil)
 }
 
 type PasteEventPreviewBody struct {
@@ -247,15 +238,13 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 
 func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
-	now := time.Now()
-	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
+	// now := time.Now()
+	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event = models.PasteEvent{
-		Id:                uuid.New().String(),
-		ContentType:       "text",
-		Text:              text,
-		LastOperationTime: now_timestamp,
-		LastOperationType: 1,
-		CreatedAt:         now_timestamp,
+		ContentType: "text",
+		Text:        text,
+		// LastOperationType: 1,
+		// CreatedAt:         now_timestamp,
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -272,16 +261,17 @@ func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) 
 	categories := transformer.TextContentDetector(text)
 	for _, c := range categories {
 		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-			Id:    c,
+			BaseModel: models.BaseModel{
+				Id: c,
+			},
 			Label: c,
 		})
 		created_map := models.PasteEventCategoryMapping{
-			Id:                uuid.New().String(),
-			PasteEventId:      created_paste_event.Id,
-			CategoryId:        c,
-			LastOperationTime: now_timestamp,
-			LastOperationType: 1,
-			CreatedAt:         now_timestamp,
+			PasteEventId: created_paste_event.Id,
+			CategoryId:   c,
+			// LastOperationTime: now_timestamp,
+			// LastOperationType: 1,
+			// CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -300,15 +290,14 @@ func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) 
 
 func (s *PasteService) HandlePasteHTML(text string) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
-	now := time.Now()
-	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
+	// now := time.Now()
+	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event = models.PasteEvent{
-		Id:                uuid.New().String(),
-		ContentType:       "html",
-		Html:              text,
-		LastOperationTime: now_timestamp,
-		LastOperationType: 1,
-		CreatedAt:         now_timestamp,
+		ContentType: "html",
+		Html:        text,
+		// LastOperationTime: now_timestamp,
+		// LastOperationType: 1,
+		// CreatedAt:         now_timestamp,
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -325,16 +314,17 @@ func (s *PasteService) HandlePasteHTML(text string) (*models.PasteEvent, error) 
 	categories := []string{"html"}
 	for _, c := range categories {
 		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-			Id:    c,
+			BaseModel: models.BaseModel{
+				Id: c,
+			},
 			Label: c,
 		})
 		created_map := models.PasteEventCategoryMapping{
-			Id:                uuid.New().String(),
-			PasteEventId:      created_paste_event.Id,
-			CategoryId:        c,
-			LastOperationTime: now_timestamp,
-			LastOperationType: 1,
-			CreatedAt:         now_timestamp,
+			PasteEventId: created_paste_event.Id,
+			CategoryId:   c,
+			// LastOperationTime: now_timestamp,
+			// LastOperationType: 1,
+			// CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -359,8 +349,8 @@ type PNGFileInfo struct {
 }
 
 func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, error) {
-	now := time.Now()
-	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
+	// now := time.Now()
+	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	encoded := base64.StdEncoding.EncodeToString(image_bytes)
 	details := "{}"
 	reader := bytes.NewReader(image_bytes)
@@ -378,13 +368,12 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, e
 		}
 	}
 	created_paste_event := models.PasteEvent{
-		Id:                uuid.New().String(),
-		ContentType:       "image",
-		ImageBase64:       encoded,
-		Details:           details,
-		LastOperationTime: now_timestamp,
-		LastOperationType: 1,
-		CreatedAt:         now_timestamp,
+		ContentType: "image",
+		ImageBase64: encoded,
+		Details:     details,
+		// LastOperationTime: now_timestamp,
+		// LastOperationType: 1,
+		// CreatedAt:         now_timestamp,
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -401,16 +390,17 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, e
 	categories := []string{"image"}
 	for _, c := range categories {
 		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-			Id:    c,
+			BaseModel: models.BaseModel{
+				Id: c,
+			},
 			Label: c,
 		})
 		created_map := models.PasteEventCategoryMapping{
-			Id:                uuid.New().String(),
-			PasteEventId:      created_paste_event.Id,
-			CategoryId:        c,
-			LastOperationTime: now_timestamp,
-			LastOperationType: 1,
-			CreatedAt:         now_timestamp,
+			PasteEventId: created_paste_event.Id,
+			CategoryId:   c,
+			// LastOperationTime: now_timestamp,
+			// LastOperationType: 1,
+			// CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -429,8 +419,8 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, e
 
 func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
-	now := time.Now()
-	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
+	// now := time.Now()
+	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	var results []FileInPasteBoard
 	for _, f := range files {
 		info, err := os.Stat(f)
@@ -468,12 +458,11 @@ func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, erro
 		return nil, err
 	}
 	created_paste_event = models.PasteEvent{
-		Id:                uuid.New().String(),
-		ContentType:       "file",
-		FileListJSON:      string(content),
-		LastOperationTime: now_timestamp,
-		LastOperationType: 1,
-		CreatedAt:         now_timestamp,
+		ContentType:  "file",
+		FileListJSON: string(content),
+		// LastOperationTime: now_timestamp,
+		// LastOperationType: 1,
+		// CreatedAt:         now_timestamp,
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -490,16 +479,17 @@ func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, erro
 	categories := []string{"file"}
 	for _, c := range categories {
 		created_paste_event.Categories = append(created_paste_event.Categories, models.CategoryNode{
-			Id:    c,
+			BaseModel: models.BaseModel{
+				Id: c,
+			},
 			Label: c,
 		})
 		created_map := models.PasteEventCategoryMapping{
-			Id:                uuid.New().String(),
-			PasteEventId:      created_paste_event.Id,
-			CategoryId:        c,
-			LastOperationTime: now_timestamp,
-			LastOperationType: 1,
-			CreatedAt:         now_timestamp,
+			PasteEventId: created_paste_event.Id,
+			CategoryId:   c,
+			// LastOperationTime: now_timestamp,
+			// LastOperationType: 1,
+			// CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -524,16 +514,15 @@ func (s *PasteService) MockPasteText(body MockPasteTextBody) *Result {
 	if body.Text == "" {
 		return Error(fmt.Errorf("Missing the text."))
 	}
-	now := time.Now()
-	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
+	// now := time.Now()
+	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event := models.PasteEvent{
-		Id:                uuid.New().String(),
-		ContentType:       "text",
-		Text:              body.Text,
-		LastOperationTime: now_timestamp,
-		LastOperationType: 1,
-		Categories:        []models.CategoryNode{},
-		CreatedAt:         now_timestamp,
+		ContentType: "text",
+		Text:        body.Text,
+		Categories:  []models.CategoryNode{},
+		// LastOperationTime: now_timestamp,
+		// LastOperationType: 1,
+		// CreatedAt:         now_timestamp,
 	}
 	s.App.Event.Emit("clipboard:update", created_paste_event)
 	return Ok(created_paste_event)
