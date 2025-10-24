@@ -23,7 +23,7 @@ func (s *SystemService) FetchComputeInfo() *Result {
 		return Error(err)
 	}
 
-	fields := [...]SystemInfoField{
+	device := [...]SystemInfoField{
 		// {
 		// 	Key:   "app_version",
 		// 	Label: "应用版本",
@@ -60,8 +60,16 @@ func (s *SystemService) FetchComputeInfo() *Result {
 			Text:  info.KernelVersion,
 		},
 	}
+	app := [...]SystemInfoField{
+		{
+			Key:   "app_version",
+			Label: "应用版本",
+			Text:  s.Biz.Config.ProductVersion,
+		},
+	}
 
 	return Ok(map[string]interface{}{
-		"fields": fields,
+		"device": device,
+		"app":    app,
 	})
 }
