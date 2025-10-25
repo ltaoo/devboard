@@ -1,5 +1,5 @@
 package system
 
-func GetWindowTitle() (string, error) {
-	return get_window_title()
+func GetWindowTitle(v interface{}) (string, error) {
+	return get_window_title(v)
 }

@@ -71,7 +71,7 @@ var (
 	_count  = objc.RegisterName("count")
 )
 
-func get_window_title() (string, error) {
+func get_window_title(v interface{}) (string, error) {
 	__workspace := objc.ID(_NSWorkspace).Send(_sharedWorkspace)
 	__app := __workspace.Send(_frontmostApplication)
 	if __app == 0 {
