@@ -4,6 +4,7 @@ import (
 	"github.com/shirou/gopsutil/host"
 
 	"devboard/internal/biz"
+	"devboard/pkg/system"
 )
 
 type SystemService struct {
@@ -16,19 +17,12 @@ type SystemInfoField struct {
 }
 
 func (s *SystemService) FetchComputeInfo() *Result {
-	// hostname, _ := os.Hostname()
-
 	info, err := host.Info()
 	if err != nil {
 		return Error(err)
 	}
 
 	device := [...]SystemInfoField{
-		// {
-		// 	Key:   "app_version",
-		// 	Label: "应用版本",
-		// 	Text:  s.Biz.Config.ProductVersion,
-		// },
 		{
 			Key:   "host_id",
 			Label: "主机 id",
@@ -37,7 +31,7 @@ func (s *SystemService) FetchComputeInfo() *Result {
 		{
 			Key:   "hostname",
 			Label: "主机名",
-			Text:  info.Hostname,
+			Text:  system.GetComputerName(),
 		},
 		{
 			Key:   "os",
@@ -63,7 +57,7 @@ func (s *SystemService) FetchComputeInfo() *Result {
 	app := [...]SystemInfoField{
 		{
 			Key:   "app_version",
-			Label: "应用版本",
+			Label: "版本号",
 			Text:  s.Biz.Config.ProductVersion,
 		},
 	}

@@ -19,6 +19,7 @@ func New() *BizApp {
 
 type BizApp struct {
 	Name                       string
+	MachineId                  string
 	Config                     *config.Config
 	UserConfig                 *BizConfig
 	DB                         *gorm.DB
@@ -35,6 +36,9 @@ func (a *BizApp) SetApp(app *application.App) {
 }
 func (a *BizApp) SetDatabase(db *gorm.DB) {
 	a.DB = db
+}
+func (a *BizApp) SetMachineId(id string) {
+	a.MachineId = id
 }
 func (a *BizApp) SetConfig(config *config.Config) {
 	a.Config = config

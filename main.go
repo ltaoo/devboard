@@ -11,6 +11,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/denisbrodbeck/machineid"
+	"github.com/ltaoo/clipboard-go"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/icons"
@@ -21,8 +23,8 @@ import (
 	_biz "devboard/internal/biz"
 	"devboard/internal/service"
 	"devboard/models"
-	"devboard/pkg/clipboard"
 	"devboard/pkg/logger"
+	"devboard/pkg/system"
 )
 
 // Wails uses Go's `embed` package to embed the frontend files into the binary.
@@ -275,19 +277,18 @@ func main() {
 	// }()
 	go func() {
 		ch := clipboard.Watch(context.TODO())
-		var created_paste_event *models.PasteEvent
-		// var prev_paste_event models.PasteEvent
-		// if err := biz_app.DB.First(&prev_paste_event).Error; err != nil {
-		// }
 		for data := range ch {
-			fmt.Println(data.Type)
+			var created_paste_event *models.PasteEvent
+			window_title, _ := system.GetWindowTitle()
+			// fmt.Println("[LOG]paste event within ", window_title)
+			// fmt.Println("[LOG]paste event type is ", data.Type)
 			now := time.Now()
 			if now.Sub(biz.ManuallyWriteClipboardTime) < time.Second*3 {
 				continue
 			}
 			if data.Type == "public.file-url" {
 				if files, ok := data.Data.([]string); ok {
-					created, err := _paste_service.HandlePasteFile(files)
+					created, err := _paste_service.HandlePasteFile(files, &service.PasteExtraInfo{CurAppTitle: window_title})
 					if err != nil {
 						return
 					}
@@ -296,7 +297,7 @@ func main() {
 			}
 			if data.Type == "public.utf8-plain-text" {
 				if text, ok := data.Data.(string); ok {
-					created, err := _paste_service.HandlePasteText(text)
+					created, err := _paste_service.HandlePasteText(text, &service.PasteExtraInfo{CurAppTitle: window_title})
 					if err != nil {
 						return
 					}
@@ -304,8 +305,8 @@ func main() {
 				}
 			}
 			if data.Type == "public.html" {
-				if text, ok := data.Data.(string); ok {
-					created, err := _paste_service.HandlePasteHTML(text)
+				if html, ok := data.Data.(string); ok {
+					created, err := _paste_service.HandlePasteHTML(html, &service.PasteExtraInfo{CurAppTitle: window_title})
 					if err != nil {
 						return
 					}
@@ -314,7 +315,7 @@ func main() {
 			}
 			if data.Type == "public.png" {
 				if f, ok := data.Data.([]byte); ok {
-					created, err := _paste_service.HandlePastePNG(f)
+					created, err := _paste_service.HandlePastePNG(f, &service.PasteExtraInfo{CurAppTitle: window_title})
 					if err != nil {
 						return
 					}
@@ -332,6 +333,13 @@ func main() {
 		biz.ShowErrorWindow(search)
 	})
 	go func() {
+		machine_id, err := machineid.ID()
+		if err != nil {
+			t := fmt.Sprintf("Failed to generate machine id, %v", err)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+			win.Hide()
+			return
+		}
 		cfg, err := config.LoadConfig()
 		if err != nil {
 			t := fmt.Sprintf("Failed to load config: %v", err)
@@ -356,10 +364,11 @@ func main() {
 			win.Hide()
 			return
 		}
-		db.Seed(database)
+		db.Seed(database, machine_id)
 		biz.SetName(cfg.ProductName)
 		biz.SetDatabase(database)
 		biz.SetConfig(cfg)
+		biz.SetMachineId(machine_id)
 		biz_config := _biz.NewBizConfig(cfg.UserConfigDir, cfg.UserConfigName)
 		biz_config.InitializeConfig()
 		biz.SetUserConfig(biz_config)
