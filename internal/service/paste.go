@@ -10,16 +10,17 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ltaoo/clipboard-go"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"gorm.io/gorm"
 
 	"devboard/internal/biz"
 	"devboard/internal/transformer"
 	"devboard/models"
-	"devboard/pkg/clipboard"
 	"devboard/pkg/util"
 )
 
@@ -236,15 +237,72 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 	return Error(fmt.Errorf("invalid record data"))
 }
 
-func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) {
+type PasteExtraInfo struct {
+	CurAppTitle string
+}
+
+var unknown_app_id = ""
+
+func get_unknown_app_id(db *gorm.DB) string {
+	if unknown_app_id != "" {
+		return unknown_app_id
+	}
+	var existing []models.Device
+	if err := db.Where("name = Unknown").Limit(1).Find(&existing).Error; err != nil {
+		return ""
+	}
+	if len(existing) == 0 {
+		return ""
+	}
+	unknown_app_id = existing[0].Id
+	return unknown_app_id
+}
+func get_app_id(db *gorm.DB, title string) string {
+	var existing []models.App
+	if err := db.Where("name = ?", title).Limit(1).Find(&existing).Error; err != nil {
+		return get_unknown_app_id(db)
+	}
+	if len(existing) == 0 {
+		created := &models.App{
+			Name:     title,
+			UniqueId: title,
+			LogoURL:  "",
+		}
+		if err := db.Create(&created).Error; err != nil {
+			return get_unknown_app_id(db)
+		}
+		return created.Id
+	}
+	app := existing[0]
+	return app.Id
+}
+
+var device_id = ""
+
+func get_device_id(db *gorm.DB, machine_id string) string {
+	if device_id != "" {
+		return device_id
+	}
+	var existing []models.Device
+	if err := db.Where("mac_address = ?", machine_id).Limit(1).Find(&existing).Error; err != nil {
+		return ""
+	}
+	if len(existing) == 0 {
+		return ""
+	}
+	device_id = existing[0].Id
+	return device_id
+}
+
+func (s *PasteService) HandlePasteText(text string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event = models.PasteEvent{
 		ContentType: "text",
 		Text:        text,
-		// LastOperationType: 1,
-		// CreatedAt:         now_timestamp,
+		AppId:       get_app_id(s.Biz.DB, extra.CurAppTitle),
+		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -288,16 +346,15 @@ func (s *PasteService) HandlePasteText(text string) (*models.PasteEvent, error) 
 	return &created_paste_event, nil
 }
 
-func (s *PasteService) HandlePasteHTML(text string) (*models.PasteEvent, error) {
+func (s *PasteService) HandlePasteHTML(text string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event = models.PasteEvent{
 		ContentType: "html",
 		Html:        text,
-		// LastOperationTime: now_timestamp,
-		// LastOperationType: 1,
-		// CreatedAt:         now_timestamp,
+		AppId:       get_app_id(s.Biz.DB, extra.CurAppTitle),
+		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -348,7 +405,7 @@ type PNGFileInfo struct {
 	SizeForHumans string `json:"size_for_humans"`
 }
 
-func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, error) {
+func (s *PasteService) HandlePastePNG(image_bytes []byte, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	encoded := base64.StdEncoding.EncodeToString(image_bytes)
@@ -371,9 +428,8 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, e
 		ContentType: "image",
 		ImageBase64: encoded,
 		Details:     details,
-		// LastOperationTime: now_timestamp,
-		// LastOperationType: 1,
-		// CreatedAt:         now_timestamp,
+		AppId:       get_app_id(s.Biz.DB, extra.CurAppTitle),
+		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -417,7 +473,7 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte) (*models.PasteEvent, e
 	return &created_paste_event, nil
 }
 
-func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, error) {
+func (s *PasteService) HandlePasteFile(files []string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
@@ -460,9 +516,8 @@ func (s *PasteService) HandlePasteFile(files []string) (*models.PasteEvent, erro
 	created_paste_event = models.PasteEvent{
 		ContentType:  "file",
 		FileListJSON: string(content),
-		// LastOperationTime: now_timestamp,
-		// LastOperationType: 1,
-		// CreatedAt:         now_timestamp,
+		AppId:        get_app_id(s.Biz.DB, extra.CurAppTitle),
+		DeviceId:     get_device_id(s.Biz.DB, s.Biz.MachineId),
 	}
 	tx := s.Biz.DB.Begin()
 	defer func() {
@@ -514,15 +569,17 @@ func (s *PasteService) MockPasteText(body MockPasteTextBody) *Result {
 	if body.Text == "" {
 		return Error(fmt.Errorf("Missing the text."))
 	}
-	// now := time.Now()
-	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
+	now := time.Now()
+	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event := models.PasteEvent{
 		ContentType: "text",
 		Text:        body.Text,
 		Categories:  []models.CategoryNode{},
-		// LastOperationTime: now_timestamp,
-		// LastOperationType: 1,
-		// CreatedAt:         now_timestamp,
+		BaseModel: models.BaseModel{
+			LastOperationTime: now_timestamp,
+			LastOperationType: 1,
+			CreatedAt:         now_timestamp,
+		},
 	}
 	s.App.Event.Emit("clipboard:update", created_paste_event)
 	return Ok(created_paste_event)

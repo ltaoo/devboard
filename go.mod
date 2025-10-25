@@ -4,11 +4,13 @@ go 1.24.0
 
 require (
 	github.com/adrg/xdg v0.5.3
-	github.com/ebitengine/purego v0.8.2
+	github.com/denisbrodbeck/machineid v1.0.1
+	github.com/ebitengine/purego v0.8.4
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang-migrate/migrate/v4 v4.16.2
 	github.com/google/uuid v1.6.0
+	github.com/ltaoo/clipboard-go v0.1.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/viper v1.21.0
 	github.com/studio-b12/gowebdav v0.11.0
@@ -16,7 +18,7 @@ require (
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.27
 	go.uber.org/zap v1.27.0
 	golang.design/x/hotkey v0.4.1
-	golang.org/x/image v0.24.0
+	golang.org/x/sys v0.31.0
 	gorm.io/driver/mysql v1.5.4
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/driver/sqlite v1.5.4
@@ -101,9 +103,9 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
+	golang.org/x/image v0.28.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

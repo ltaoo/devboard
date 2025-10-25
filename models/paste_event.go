@@ -9,6 +9,8 @@ type PasteEvent struct {
 	ImageBase64  string `json:"image_base64,omitempty"`
 	Other        string `json:"other,omitempty"`
 	Details      string `json:"details"`
+	AppId        string `json:"app_id,omitempty"`
+	DeviceId     string `json:"device_id,omitempty"`
 
 	Categories []CategoryNode `json:"categories" gorm:"many2many:paste_event_category_mapping;joinForeignKey:paste_event_id;JoinReferences:category_id"`
 	Remarks    []Remark       `json:"remarks" gorm:"ForeignKey:PasteEventId"`
