@@ -279,7 +279,12 @@ func main() {
 		ch := clipboard.Watch(context.TODO())
 		for data := range ch {
 			var created_paste_event *models.PasteEvent
-			window_title, _ := system.GetWindowTitle()
+			foreground_process, _ := system.GetForegroundProcess()
+			extra := &service.PasteExtraInfo{
+				AppName:     foreground_process.Name,
+				AppFullPath: foreground_process.ExecuteFullPath,
+				WindowTitle: foreground_process.WindowTitle,
+			}
 			// fmt.Println("[LOG]paste event within ", window_title)
 			// fmt.Println("[LOG]paste event type is ", data.Type)
 			now := time.Now()
@@ -288,7 +293,7 @@ func main() {
 			}
 			if data.Type == "public.file-url" {
 				if files, ok := data.Data.([]string); ok {
-					created, err := _paste_service.HandlePasteFile(files, &service.PasteExtraInfo{CurAppTitle: window_title})
+					created, err := _paste_service.HandlePasteFile(files, extra)
 					if err != nil {
 						return
 					}
@@ -297,7 +302,7 @@ func main() {
 			}
 			if data.Type == "public.utf8-plain-text" {
 				if text, ok := data.Data.(string); ok {
-					created, err := _paste_service.HandlePasteText(text, &service.PasteExtraInfo{CurAppTitle: window_title})
+					created, err := _paste_service.HandlePasteText(text, extra)
 					if err != nil {
 						return
 					}
@@ -306,7 +311,9 @@ func main() {
 			}
 			if data.Type == "public.html" {
 				if html, ok := data.Data.(string); ok {
-					created, err := _paste_service.HandlePasteHTML(html, &service.PasteExtraInfo{CurAppTitle: window_title})
+					text, _ := clipboard.ReadText()
+					extra.PlainText = text
+					created, err := _paste_service.HandlePasteHTML(html, extra)
 					if err != nil {
 						return
 					}
@@ -315,7 +322,7 @@ func main() {
 			}
 			if data.Type == "public.png" {
 				if f, ok := data.Data.([]byte); ok {
-					created, err := _paste_service.HandlePastePNG(f, &service.PasteExtraInfo{CurAppTitle: window_title})
+					created, err := _paste_service.HandlePastePNG(f, extra)
 					if err != nil {
 						return
 					}

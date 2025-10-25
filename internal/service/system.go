@@ -21,7 +21,7 @@ func (s *SystemService) FetchComputeInfo() *Result {
 	if err != nil {
 		return Error(err)
 	}
-
+	computer_name, _ := system.GetComputerName()
 	device := [...]SystemInfoField{
 		{
 			Key:   "host_id",
@@ -31,7 +31,7 @@ func (s *SystemService) FetchComputeInfo() *Result {
 		{
 			Key:   "hostname",
 			Label: "主机名",
-			Text:  system.GetComputerName(),
+			Text:  computer_name,
 		},
 		{
 			Key:   "os",

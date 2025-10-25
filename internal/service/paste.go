@@ -21,6 +21,7 @@ import (
 	"devboard/internal/biz"
 	"devboard/internal/transformer"
 	"devboard/models"
+	"devboard/pkg/html"
 	"devboard/pkg/util"
 )
 
@@ -238,7 +239,10 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 }
 
 type PasteExtraInfo struct {
-	CurAppTitle string
+	AppName     string
+	AppFullPath string
+	WindowTitle string
+	PlainText   string
 }
 
 var unknown_app_id = ""
@@ -301,7 +305,7 @@ func (s *PasteService) HandlePasteText(text string, extra *PasteExtraInfo) (*mod
 	created_paste_event = models.PasteEvent{
 		ContentType: "text",
 		Text:        text,
-		AppId:       get_app_id(s.Biz.DB, extra.CurAppTitle),
+		AppId:       get_app_id(s.Biz.DB, extra.AppName),
 		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
 	}
 	tx := s.Biz.DB.Begin()
@@ -348,12 +352,17 @@ func (s *PasteService) HandlePasteText(text string, extra *PasteExtraInfo) (*mod
 
 func (s *PasteService) HandlePasteHTML(text string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
-	// now := time.Now()
-	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
+	r := html.ParseHTMLContent(text)
+	details, _ := json.Marshal(&map[string]interface{}{
+		"source_url":   r.SourceURL,
+		"window_title": extra.WindowTitle,
+	})
 	created_paste_event = models.PasteEvent{
 		ContentType: "html",
+		Text:        extra.PlainText,
 		Html:        text,
-		AppId:       get_app_id(s.Biz.DB, extra.CurAppTitle),
+		Details:     string(details),
+		AppId:       get_app_id(s.Biz.DB, extra.AppName),
 		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
 	}
 	tx := s.Biz.DB.Begin()
@@ -379,9 +388,6 @@ func (s *PasteService) HandlePasteHTML(text string, extra *PasteExtraInfo) (*mod
 		created_map := models.PasteEventCategoryMapping{
 			PasteEventId: created_paste_event.Id,
 			CategoryId:   c,
-			// LastOperationTime: now_timestamp,
-			// LastOperationType: 1,
-			// CreatedAt:         now_timestamp,
 		}
 		if err := tx.Create(&created_map).Error; err != nil {
 			tx.Rollback()
@@ -413,13 +419,13 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte, extra *PasteExtraInfo)
 	reader := bytes.NewReader(image_bytes)
 	info, err := png.DecodeConfig(reader)
 	if err == nil {
-		d := PNGFileInfo{
-			Width:         info.Width,
-			Height:        info.Height,
-			Size:          len(image_bytes),
-			SizeForHumans: util.AutoByteSize(int64(len(image_bytes))),
-		}
-		t, err := json.Marshal(&d)
+		t, err := json.Marshal(&map[string]interface{}{
+			"width":           info.Width,
+			"height":          info.Height,
+			"size":            len(image_bytes),
+			"size_for_humans": util.AutoByteSize(int64(len(image_bytes))),
+			"window_title":    extra.WindowTitle,
+		})
 		if err == nil {
 			details = string(t)
 		}
@@ -428,7 +434,7 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte, extra *PasteExtraInfo)
 		ContentType: "image",
 		ImageBase64: encoded,
 		Details:     details,
-		AppId:       get_app_id(s.Biz.DB, extra.CurAppTitle),
+		AppId:       get_app_id(s.Biz.DB, extra.AppName),
 		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
 	}
 	tx := s.Biz.DB.Begin()
@@ -513,10 +519,14 @@ func (s *PasteService) HandlePasteFile(files []string, extra *PasteExtraInfo) (*
 	if err != nil {
 		return nil, err
 	}
+	details, _ := json.Marshal(&map[string]interface{}{
+		"window_title": extra.WindowTitle,
+	})
 	created_paste_event = models.PasteEvent{
 		ContentType:  "file",
 		FileListJSON: string(content),
-		AppId:        get_app_id(s.Biz.DB, extra.CurAppTitle),
+		Details:      string(details),
+		AppId:        get_app_id(s.Biz.DB, extra.AppName),
 		DeviceId:     get_device_id(s.Biz.DB, s.Biz.MachineId),
 	}
 	tx := s.Biz.DB.Begin()
