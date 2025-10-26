@@ -85,7 +85,7 @@ func (s *PasteService) FetchPasteEventProfile(body PasteEventProfileBody) *Resul
 		return Error(fmt.Errorf("缺少 id 参数"))
 	}
 	var record models.PasteEvent
-	if err := s.Biz.DB.Where("id = ?", body.EventId).Preload("Remarks").Preload("Categories").First(&record).Error; err != nil {
+	if err := s.Biz.DB.Where("id = ?", body.EventId).Preload("App").Preload("Device").Preload("Remarks").Preload("Categories").First(&record).Error; err != nil {
 		return Error(err)
 	}
 	return Ok(&record)

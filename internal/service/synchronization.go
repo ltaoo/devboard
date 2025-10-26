@@ -67,6 +67,12 @@ var tables = []synchronizer.TableSynchronizeSetting{{
 }, {
 	Name:        "remark",
 	IdFieldName: "id",
+}, {
+	Name:        "device",
+	IdFieldName: "id",
+}, {
+	Name:        "app",
+	IdFieldName: "id",
 }}
 
 func local_to_remote(t synchronizer.TableSynchronizeSetting, root_dir string, db *gorm.DB, client *gowebdav.Client) *synchronizer.SynchronizeResult {

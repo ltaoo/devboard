@@ -217,6 +217,14 @@ export function fetchPasteEventProfile(body: { id: string }) {
       content: string;
       created_at: string;
     }[];
+    device: {
+      id: string;
+      name: string;
+    };
+    app: {
+      id: string;
+      name: string;
+    };
   }>(FetchPasteEventProfile, { event_id: body.id });
 }
 export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPasteEventProfile>) {
