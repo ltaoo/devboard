@@ -32,22 +32,9 @@ var (
 	_sharedWorkspace      = objc.RegisterName("sharedWorkspace")
 	_frontmostApplication = objc.RegisterName("frontmostApplication")
 	_localizedName        = objc.RegisterName("localizedName")
-
-	_NSPasteboard             = objc.GetClass("NSPasteboard")
-	_generalPasteboard        = objc.RegisterName("generalPasteboard")
-	_clearContents            = objc.RegisterName("clearContents")
-	_types                    = objc.RegisterName("types")
-	_changeCount              = objc.RegisterName("changeCount")
-	_dataForType              = objc.RegisterName("dataForType:")
-	_setDataForType           = objc.RegisterName("setData:forType:")
-	_propertyListForType      = objc.RegisterName("propertyListForType:")
-	_writeObjects             = objc.RegisterName("writeObjects:")
-	_setPropertyList_forType_ = objc.RegisterName("setPropertyListForType:")
-	// https://developer.apple.com/documentation/appkit/nspasteboard/pasteboardtype?language=objc
-	_NSPasteboardTypeString = must2(purego.Dlsym(appkit, "NSPasteboardTypeString"))
-	_NSPasteboardTypeHTML   = must2(purego.Dlsym(appkit, "NSPasteboardTypeHTML"))
-	_NSPasteboardTypePNG    = must2(purego.Dlsym(appkit, "NSPasteboardTypePNG"))
-	_NSPasteboardTypeFiles  = must2(purego.Dlsym(appkit, "NSFilenamesPboardType"))
+	_executableURL        = objc.RegisterName("executableURL")
+	_bundleURL            = objc.RegisterName("bundleURL")
+	_path                 = objc.RegisterName("path")
 
 	_NSMutableArray         = objc.GetClass("NSMutableArray")
 	_NSArray                = objc.GetClass("NSArray")
@@ -71,11 +58,19 @@ var (
 	_count  = objc.RegisterName("count")
 )
 
-func get_window_title(v interface{}) (string, error) {
+func get_foreground_window() (interface{}, error) {
 	__workspace := objc.ID(_NSWorkspace).Send(_sharedWorkspace)
 	__app := __workspace.Send(_frontmostApplication)
 	if __app == 0 {
-		return "", fmt.Errorf("读取数据失败")
+		return nil, fmt.Errorf("读取数据失败")
+	}
+	return __app, nil
+}
+
+func get_window_title(v interface{}) (string, error) {
+	__app, ok := v.(objc.ID)
+	if !ok {
+		return "", fmt.Errorf("the v is invalid")
 	}
 	__data := __app.Send(_localizedName)
 	if __data == 0 {

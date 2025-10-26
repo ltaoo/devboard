@@ -13,7 +13,10 @@ func Seed(db *gorm.DB, machine_id string) {
 		return
 	}
 	if len(devices) == 0 {
-		computer_name := system.GetComputerName()
+		computer_name, err := system.GetComputerName()
+		if err != nil {
+			return
+		}
 		created_device := models.Device{
 			Name:       computer_name,
 			MacAddress: machine_id,

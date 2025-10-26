@@ -12,6 +12,8 @@ type PasteEvent struct {
 	AppId        string `json:"app_id,omitempty"`
 	DeviceId     string `json:"device_id,omitempty"`
 
+	Device     Device         `json:"device,omitempty" gorm:"ReferenceKey:DeviceId"`
+	App        App            `json:"app,omitempty" gorm:"ReferenceKey:AppId"`
 	Categories []CategoryNode `json:"categories" gorm:"many2many:paste_event_category_mapping;joinForeignKey:paste_event_id;JoinReferences:category_id"`
 	Remarks    []Remark       `json:"remarks" gorm:"ForeignKey:PasteEventId"`
 }

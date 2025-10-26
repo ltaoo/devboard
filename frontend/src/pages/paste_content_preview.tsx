@@ -184,31 +184,39 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                     </Show>
                   </div>
                 </Show>
-                <div class="fields mt-4 space-y-8">
-                  <div class="field text-w-fg-0">
-                    <div>创建时间</div>
-                    <div class="paste_created_at">{state().profile?.created_at_text}</div>
+                <div class="fields mt-4 space-y-2">
+                  <div class="field">
+                    <div class="text-w-fg-1 text-[12px]">创建时间</div>
+                    <div class="text-w-fg-0">{state().profile?.created_at_text}</div>
                   </div>
-                  <div class="field text-w-fg-0">
-                    <div>备注</div>
-                    <div class="mt-1 space-y-1">
-                      <For each={state().profile?.remarks}>
-                        {(remark) => {
-                          return (
-                            <div>
-                              <div>{remark.content}</div>
-                              <div class="text-w-fg-1 text-[12px]">{remark.created_at_text}</div>
-                            </div>
-                          );
-                        }}
-                      </For>
-                    </div>
-                    <div class="mt-2">
-                      <Textarea store={vm.ui.$textarea_remark} />
-                      <Button class="mt-1" store={vm.ui.$btn_create_remark}>
-                        添加
-                      </Button>
-                    </div>
+                  <div class="field text-w-fg-1 text-sm">
+                    <div class="text-w-fg-1 text-[12px]">应用</div>
+                    <div class="text-w-fg-0">{state().profile?.app.name}</div>
+                  </div>
+                  <div class="field text-w-fg-1 text-sm">
+                    <div class="text-w-fg-1 text-[12px]">设备</div>
+                    <div class="text-w-fg-0">{state().profile?.device.name}</div>
+                  </div>
+                </div>
+                <div class="remark mt-8 text-w-fg-0">
+                  <div>备注</div>
+                  <div class="mt-1 space-y-1">
+                    <For each={state().profile?.remarks}>
+                      {(remark) => {
+                        return (
+                          <div>
+                            <div>{remark.content}</div>
+                            <div class="text-w-fg-1 text-[12px]">{remark.created_at_text}</div>
+                          </div>
+                        );
+                      }}
+                    </For>
+                  </div>
+                  <div class="mt-2">
+                    <Textarea store={vm.ui.$textarea_remark} />
+                    <Button class="mt-1" store={vm.ui.$btn_create_remark}>
+                      添加
+                    </Button>
                   </div>
                 </div>
               </div>
