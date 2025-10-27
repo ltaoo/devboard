@@ -335,6 +335,16 @@ func get_unknown_app_id(db *gorm.DB) string {
 	unknown_app_id = existing[0].Id
 	return unknown_app_id
 }
+func app_name_to_id(name string) string {
+	// 转换为小写
+	result := strings.ToLower(name)
+
+	// 使用 strings.Fields 分割所有空白字符，然后用下划线连接
+	words := strings.Fields(result)
+	result = strings.Join(words, "_")
+
+	return result
+}
 func get_app_id(db *gorm.DB, title string) string {
 	var existing []models.App
 	if err := db.Where("name = ?", title).Limit(1).Find(&existing).Error; err != nil {
@@ -345,6 +355,9 @@ func get_app_id(db *gorm.DB, title string) string {
 			Name:     title,
 			UniqueId: title,
 			LogoURL:  "",
+			BaseModel: models.BaseModel{
+				Id: app_name_to_id(title),
+			},
 		}
 		if err := db.Create(&created).Error; err != nil {
 			return get_unknown_app_id(db)
