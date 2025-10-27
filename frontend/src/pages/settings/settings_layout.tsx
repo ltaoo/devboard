@@ -106,7 +106,7 @@ export function SettingsView(props: ViewComponentProps) {
           </For>
         </div>
       </div>
-      <div class="relative flex-1 w-0">
+      <div class="overflow-hidden relative flex-1 w-0">
         <RouteChildren {...props} />
       </div>
     </div>
