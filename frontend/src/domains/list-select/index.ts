@@ -28,6 +28,9 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
       // console.log("[COMPONENT]with-tags-input - unshiftOption", v);
       _options.unshift(v);
       _opt_idx += 1;
+      if (_opt_idx > _options.length - 1) {
+        _opt_idx = _options.length - 1;
+      }
     },
     updateOption(v: OptionWithTopInList) {
       const idx = _options.findIndex((opt) => opt.id === v.id);

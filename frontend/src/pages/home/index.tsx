@@ -87,6 +87,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       bus.emit(EventNames.StateChange, { ..._state });
     },
     appendAddedPasteEvent(d: PasteRecord) {
+      console.log("[PAGE]home/index - appendAddedPasteEvent", d.id);
       // const created_paste_event = d;
       // const vv = processPartialPasteEvent(created_paste_event);
       const vv = d;
@@ -103,9 +104,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // console.log("[]before  need_adjust_scroll_top", ui.$view.getScrollTop());
       // console.log("[]before setScrollTop", ui.$view.getScrollTop(), added_height, h, h2, h2 - h);
       ui.$view.setScrollTop(ui.$view.getScrollTop() + added_height);
-      // console.log("[]after setScrollTop", ui.$view.getScrollTop());
       const $created_items = ui.$waterfall.methods.unshiftItems([vv], { skipUpdateHeight: true });
       const $first = $created_items[0];
+      console.log("[PAGE]home/index before if (!$first", $created_items);
       if (!$first) {
         return;
       }
@@ -367,7 +368,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
 
   let _selected_files = [] as SelectedFile[];
   let _added_records: PasteRecord[] = [];
-  let _show_refresh_tip = false;
   const _state = {
     get waterfall() {
       return ui.$waterfall.state;
