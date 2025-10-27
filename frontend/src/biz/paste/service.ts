@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 
 import {
   DeletePasteEvent,
+  DownloadContentWithPasteEventId,
   FetchPasteEventList,
   FetchPasteEventProfile,
   MockPasteText,
@@ -164,17 +165,18 @@ export function processPartialPasteEvent(
     details,
     operations: (() => {
       const r: string[] = [];
-      if (v.text?.includes("复制打开抖音")) {
-        r.push("douyin_download");
-      }
-      if (v.text?.match(/https:\/\/v\.douyin/)) {
-        r.push("douyin_download");
-      }
-      if (v.text?.match(/https:\/\/www\.douyin\.com\/video/)) {
-        r.push("douyin_download");
+      if (categories.includes("image")) {
+        r.push("download", "image");
       }
       if (categories.includes("JSON")) {
-        r.push("json_download");
+        r.push("download", "json");
+      }
+      if (
+        v.text?.includes("复制打开抖音") ||
+        v.text?.match(/https:\/\/v\.douyin/) ||
+        v.text?.match(/https:\/\/www\.douyin\.com\/video/)
+      ) {
+        r.push("download", "douyin");
       }
       return r;
     })(),
@@ -259,4 +261,8 @@ export function writePasteEvent(body: { id: string }) {
 
 export function fakePasteEvent(body: { text: string }) {
   return request.post(MockPasteText, { text: body.text });
+}
+
+export function downloadPasteContent(body: { paste_event_id: string }) {
+  return request.post(DownloadContentWithPasteEventId, body);
 }

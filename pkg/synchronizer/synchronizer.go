@@ -770,7 +770,13 @@ func BuildRemoteToLocalTasks(setting TableSynchronizeSetting, root_dir string, l
 			no_need_update := local_record_lot_str == remote_record_lot_str
 			log("[LOG]check the record need to update t1:" + local_record_lot_str + " t2:" + remote_record_lot_str)
 			if no_need_update {
-				log("[ERROR]the records is latest, ignore the remote file")
+				log("[LOG]the local record is same as remote record, ignore the remote file")
+				continue
+			}
+			local_record_lot, err1 := strconv.ParseInt(local_record_lot_str, 10, 64)
+			remote_record_lot, err2 := strconv.ParseInt(remote_record_lot_str, 10, 64)
+			if err1 == nil && err2 == nil && local_record_lot > remote_record_lot {
+				log("[LOG]the local records is latest, ignore the remote file")
 				continue
 			}
 			// remote_record_data_file_path := path.Join(remote_record_folder_path, "data")

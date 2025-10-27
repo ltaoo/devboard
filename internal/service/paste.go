@@ -238,6 +238,80 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 	return Error(fmt.Errorf("invalid record data"))
 }
 
+type ContentDownloadBody struct {
+	PasteEventId string `json:"paste_event_id"`
+}
+
+func (f *PasteService) DownloadContentWithPasteEventId(body ContentDownloadBody) *Result {
+	if body.PasteEventId == "" {
+		return Error(fmt.Errorf("缺少 event id 参数"))
+	}
+
+	var existing []models.PasteEvent
+	if err := f.Biz.DB.Where("id = ?", body.PasteEventId).Limit(1).Find(&existing).Error; err != nil {
+		return Error(err)
+	}
+	if len(existing) == 0 {
+		return Error(fmt.Errorf("can't find the record with given paste event id."))
+	}
+	existing_paste_event := existing[0]
+	if existing_paste_event.ContentType == "file" {
+		return Error(fmt.Errorf("can't download the file."))
+	}
+
+	dialog := application.SaveFileDialog()
+	dialog.CanCreateDirectories(true)
+
+	filename := existing_paste_event.Id + ".txt"
+	var content []byte
+	if existing_paste_event.ContentType == "text" {
+		content = []byte(existing_paste_event.Text)
+	}
+	if existing_paste_event.ContentType == "image" {
+		filename = existing_paste_event.Id + ".png"
+		data, err := base64.StdEncoding.DecodeString(existing_paste_event.ImageBase64)
+		if err != nil {
+			return Error(fmt.Errorf("Base64解码失败"))
+		}
+		content = data
+	}
+	if existing_paste_event.ContentType == "html" {
+		filename = existing_paste_event.Id + ".html"
+		content = []byte(existing_paste_event.Html)
+		if existing_paste_event.Html == "" {
+			content = []byte(existing_paste_event.Text)
+		}
+	}
+	dialog.SetFilename(filename)
+	// dialog.SetTitle("Save Document")
+	// dialog.SetDefaultFilename("document.txt")
+	// dialog.SetFilters([]*application.FileFilter{
+	// 	{
+	// 		DisplayName: "Text Files (*.txt)",
+	// 		Pattern:     "*.txt",
+	// 	},
+	// })
+	path, err := dialog.PromptForSingleSelection()
+	if err != nil {
+		return Error(err)
+	}
+	if path == "" {
+		return Ok(map[string]interface{}{
+			"cancel": true,
+		})
+	}
+	file, err := os.Create(path)
+	if err != nil {
+		return Error(err)
+	}
+	defer file.Close()
+	_, err = file.Write(content)
+	if err != nil {
+		return Error(err)
+	}
+	return Ok(map[string]interface{}{})
+}
+
 type PasteExtraInfo struct {
 	AppName     string
 	AppFullPath string
