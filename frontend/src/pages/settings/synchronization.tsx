@@ -1,5 +1,5 @@
 import { For, Show } from "solid-js";
-import { Check, File } from "lucide-solid";
+import { Check, Copy, File, Folder } from "lucide-solid";
 import { Events as WailsEvents } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
@@ -290,16 +290,18 @@ export function SynchronizationView(props: ViewComponentProps) {
             <For each={state().database?.fields}>
               {(field) => {
                 return (
-                  <div
-                    class="field text-w-fg-0 cursor-pointer"
-                    onClick={() => {
-                      vm.methods.handleClickField(field);
-                    }}
-                  >
+                  <div class="field text-w-fg-0 cursor-pointer">
                     <div>{field.label}</div>
                     <div class="flex items-center gap-1">
-                      <File class="w-4 h-4 text-w-fg-0" />
                       <div>{field.text}</div>
+                      <div
+                        class="p-1 rounded hover:bg-w-fg-3"
+                        onClick={() => {
+                          vm.methods.handleClickField(field);
+                        }}
+                      >
+                        <Folder class="w-4 h-4 text-w-fg-0" />
+                      </div>
                     </div>
                   </div>
                 );
