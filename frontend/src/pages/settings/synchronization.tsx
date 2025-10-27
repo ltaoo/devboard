@@ -337,9 +337,9 @@ export function SynchronizationView(props: ViewComponentProps) {
                   <div>测试并保存</div>
                 </div>
               </Button>
-              <div class="flex items-center">
+              <div class="flex items-center gap-1">
                 <Button store={vm.ui.$btn_synchronize}>同步</Button>
-                <Checkbox store={vm.ui.$check_force}></Checkbox>
+                <Checkbox store={vm.ui.$check_force}><span class="text-w-fg-2">强制推送</span></Checkbox>
               </div>
             </div>
             {/* <div class="flex space-x-1">

@@ -20,6 +20,9 @@ func Seed(db *gorm.DB, machine_id string) {
 		created_device := models.Device{
 			Name:       computer_name,
 			MacAddress: machine_id,
+			BaseModel: models.BaseModel{
+				Id: machine_id,
+			},
 		}
 		if err := db.Create(&created_device).Error; err != nil {
 			return
@@ -34,6 +37,9 @@ func Seed(db *gorm.DB, machine_id string) {
 			Name:     "Unknown",
 			UniqueId: "unknown",
 			LogoURL:  "",
+			BaseModel: models.BaseModel{
+				Id: "unknown",
+			},
 		}
 		if err := db.Create(&created_app).Error; err != nil {
 			return
