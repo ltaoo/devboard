@@ -272,6 +272,7 @@ export function WithTagsInput(props: { store: WithTagsInputModel }) {
           </Show>
         </div>
         <InputPrimitive
+        tabIndex={-1}
           classList={{
             "w-full bg-transparent": true,
             "outline-0 focus:outline-none focus:ring-0 focus:border-transparent": true,
