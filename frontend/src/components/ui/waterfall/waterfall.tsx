@@ -40,7 +40,7 @@ export function WaterfallView<T extends Record<string, unknown>>(
         <Match when={list().error}>
           <div>{list().error?.message}</div>
         </Match>
-        <Match when={list().empty}>
+        <Match when={state().items.length === 0}>
           <div class="w-full h-[360px] center flex items-center justify-center">
             <div class="flex flex-col items-center justify-center text-w-fg-1">
               <Bird class="w-24 h-24" />
@@ -53,7 +53,7 @@ export function WaterfallView<T extends Record<string, unknown>>(
             </div>
           </div>
         </Match>
-        <Match when={!list().empty}>
+        <Match when={state().items.length !== 0}>
           <For each={state().columns}>
             {(column, idx) => {
               const $column = vm.$columns[idx()];

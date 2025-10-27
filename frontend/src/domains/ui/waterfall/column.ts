@@ -127,7 +127,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       });
       $item.onTopChange(([, top_difference]) => {
         const idx = _$total_items.findIndex((v) => v === $item);
-        console.log("[BIZ]waterfall/column - response the top change", idx, $first.id, $first.state.top, $item.height);
+        console.log("[BIZ]waterfall/column - response the top change", idx, $item.height);
         if (idx !== -1) {
           const $next = _$total_items[idx + 1];
           if ($next) {
