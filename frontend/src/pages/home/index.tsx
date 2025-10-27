@@ -36,6 +36,7 @@ import { fetchCategoryTree } from "@/biz/category/service";
 import { downloadDouyinVideo } from "@/biz/douyin/service";
 import {
   deletePasteEvent,
+  downloadPasteContent,
   fetchPasteEventList,
   fetchPasteEventListProcess,
   openPasteEventPreviewWindow,
@@ -72,6 +73,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       delete: new RequestCore(deletePasteEvent, { client: props.client }),
       preview: new RequestCore(openPasteEventPreviewWindow, { client: props.client }),
       write: new RequestCore(writePasteEvent, { client: props.client }),
+      download: new RequestCore(downloadPasteContent, { client: props.client }),
     },
     category: {
       tree: new RequestCore(fetchCategoryTree, { client: props.client }),
@@ -257,15 +259,22 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       methods.backToTop();
     },
     handleClickDownloadBtn(v: PasteRecord) {
-      if (v.operations.includes("douyin_download") && v.text) {
+      console.log("[PAGE]handleClickDownloadBtn - ", v.operations);
+      if (v.operations.includes("douyin") && v.text) {
         request.douyin.download.run({ content: v.text });
         return;
       }
-      if (v.operations.includes("json_download") && v.text) {
+      if (v.operations.includes("json") && v.text) {
         const time = parseInt(String(new Date().valueOf() / 1000));
         request.file.save_file.run({
           filename: `${time}.json`,
           content: v.text,
+        });
+        return;
+      }
+      if (v.operations.includes("image")) {
+        request.paste.download.run({
+          paste_event_id: v.id,
         });
         return;
       }
@@ -720,16 +729,21 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                         <HTMLCard html={v.text!} />
                       </Match>
                       <Match when={v.type === "image" && v.image_url}>
-                        <div class="cursor-pointer">
-                          <img src={v.image_url!} />
-                        </div>
+                        <AspectRatio class="relative" ratio={6 / 2}>
+                          <img
+                            class="absolute inset-0 top-1/2 -translate-y-1/2 w-full object-cover"
+                            src={v.image_url!}
+                          />
+                        </AspectRatio>
                       </Match>
                     </Switch>
                   </div>
                   <Flex class="mt-1" items="center" justify="between">
                     <div class="flex items-center space-x-1 tags">
                       <div class="px-2 bg-w-bg-5 rounded-full">
-                        <div class="text-w-fg-0 text-sm">#{idx + 1}</div>
+                        <div class="text-w-fg-0 text-sm" title={v.id}>
+                          #{idx + 1}
+                        </div>
                       </div>
                       <For each={v.categories}>
                         {(c) => {
@@ -754,18 +768,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       >
                         <div class="operations flex justify-between">
                           <div class="flex items-center gap-1">
-                            <Show when={v.operations.includes("douyin_download")}>
-                              <div
-                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  vm.methods.handleClickDownloadBtn(v);
-                                }}
-                              >
-                                <Download class="w-4 h-4 text-w-fg-0" />
-                              </div>
-                            </Show>
-                            <Show when={v.operations.includes("json_download")}>
+                            <Show when={v.operations.includes("download")}>
                               <div
                                 class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
                                 onClick={(event) => {

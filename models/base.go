@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -38,6 +39,7 @@ func (p *BaseModel) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 func (p *BaseModel) BeforeUpdate(tx *gorm.DB) error {
+	fmt.Println("[HOOK]BeforeUpdate", p.DeletedAt.Valid)
 	now_timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	p.LastOperationTime = now_timestamp
 	p.LastOperationType = 2
