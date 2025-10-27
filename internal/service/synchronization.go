@@ -79,7 +79,7 @@ func local_to_remote(t synchronizer.TableSynchronizeSetting, root_dir string, db
 	table_name := t.Name
 	local_client := synchronizer.NewDatabaseLocalClient(db, table_name)
 	remote_client := synchronizer.NewWebdavClient(client)
-	result := synchronizer.BuildLocalSyncToRemoteTasks(t, root_dir, local_client, remote_client)
+	result := synchronizer.BuildLocalToRemoteTasks(t, root_dir, local_client, remote_client)
 	// add_message := func(msg *synchronizer.SynchronizeMessage) {
 	// 	result.Messages = append(result.Messages, msg)
 	// }
@@ -88,6 +88,7 @@ func local_to_remote(t synchronizer.TableSynchronizeSetting, root_dir string, db
 	}
 	for _, file := range result.FileOperations {
 		if file.Type == "new_file" {
+			log("[LOG]create file " + file.Filepath + " in remote")
 			data := []byte(file.Content)
 			if err := client.Write(file.Filepath, data, 0644); err != nil {
 				log("[ERROR]write file failed, because " + err.Error())
@@ -95,6 +96,7 @@ func local_to_remote(t synchronizer.TableSynchronizeSetting, root_dir string, db
 			}
 		}
 		if file.Type == "update_file" {
+			log("[LOG]update file " + file.Filepath + " in remote")
 			data := []byte(file.Content)
 			if err := client.Write(file.Filepath, data, 0644); err != nil {
 				log("[ERROR]update file failed, because " + err.Error())
@@ -103,7 +105,8 @@ func local_to_remote(t synchronizer.TableSynchronizeSetting, root_dir string, db
 		}
 	}
 	for _, r := range result.RecordTasks {
-		if r.Type == "update_sync_status" {
+		if r.Type == "to_published" {
+			log("[LOG]update record sync_status")
 			data := map[string]interface{}{"sync_status": 2}
 			if err := db.Table(table_name).Where("id = ?", r.Id).Updates(data).Error; err != nil {
 				log("[ERROR]update record sync status failed, " + err.Error())
@@ -141,7 +144,7 @@ func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 	for _, t := range tables {
 		local_client := synchronizer.NewDatabaseLocalClient(s.Biz.DB, t.Name)
 		if body.Test {
-			r := synchronizer.BuildLocalSyncToRemoteTasks(t, body.RootDir, local_client, remote_client)
+			r := synchronizer.BuildLocalToRemoteTasks(t, body.RootDir, local_client, remote_client)
 			results[t.Name] = r
 		} else {
 			r := local_to_remote(t, body.RootDir, s.Biz.DB, client)
@@ -168,7 +171,7 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 	// id_field_name := t.IdFieldName
 	local_client := synchronizer.NewDatabaseLocalClient(db, table_name)
 	remote_client := synchronizer.NewWebdavClient(client)
-	result := synchronizer.BuildRemoteSyncToLocalTasks(t, root_dir, local_client, remote_client)
+	result := synchronizer.BuildRemoteToLocalTasks(t, root_dir, local_client, remote_client)
 	add_message := func(msg *synchronizer.SynchronizeMessage) {
 		result.Messages = append(result.Messages, msg)
 	}
@@ -183,8 +186,8 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 		// 	continue
 		// }
 		log("[LOG]apply record task, the type is " + r.Type)
-		r.Data["sync_status"] = 2
 		if r.Type == "create" {
+			r.Data["sync_status"] = 2
 			created_at_str, ok := r.Data["created_at"].(string)
 			if !ok {
 				continue
@@ -203,6 +206,7 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 			}
 		}
 		if r.Type == "update" {
+			r.Data["sync_status"] = 2
 			result := db.Table(table_name).Where("id = ?", r.Id).Updates(r.Data)
 			if result.Error != nil {
 				log("[ERROR]update record failed, because " + result.Error.Error())
@@ -225,7 +229,13 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 			}
 			log("[ERROR]update record success, affected rows " + strconv.Itoa(int(result.RowsAffected)))
 		}
-		if r.Type == "update_sync_status" {
+		if r.Type == "to_draft" {
+			data := map[string]interface{}{"sync_status": 1}
+			if err := db.Table(table_name).Where("id = ?", r.Id).Updates(data).Error; err != nil {
+				log("[ERROR]update record sync status failed, " + err.Error())
+			}
+		}
+		if r.Type == "to_published" {
 			data := map[string]interface{}{"sync_status": 2}
 			if err := db.Table(table_name).Where("id = ?", r.Id).Updates(data).Error; err != nil {
 				log("[ERROR]update record sync status failed, " + err.Error())
@@ -255,7 +265,7 @@ func (s *SyncService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
 	for _, t := range tables {
 		if body.Test {
 			local_client := synchronizer.NewDatabaseLocalClient(s.Biz.DB, t.Name)
-			r := synchronizer.BuildRemoteSyncToLocalTasks(t, body.RootDir, local_client, remote_client)
+			r := synchronizer.BuildRemoteToLocalTasks(t, body.RootDir, local_client, remote_client)
 			results[t.Name] = r
 		} else {
 			r := remote_to_local(t, body.RootDir, s.Biz.DB, client)

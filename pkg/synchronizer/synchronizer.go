@@ -1,8 +1,6 @@
 package synchronizer
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -58,9 +56,10 @@ type SynchronizeTask struct {
 }
 
 type DayFileMeta struct {
-	Name              string `json:"name"`
+	Name              string `json:"name"` // 天 YYYY-MM-DD 格式
 	Idx               int    `json:"idx"`
-	LastOperationTime string `json:"last_operation_time"`
+	LastOperationTime string `json:"last_operation_time"` // 该天中最新记录
+	Count             string `json:"count"`               // 记录总数
 }
 
 type RecordTask struct {
@@ -91,10 +90,35 @@ type SynchronizeResult struct {
 }
 
 func SplitToLines(data []byte) []string {
-	scanner := bufio.NewScanner(bytes.NewReader(data))
 	var lines []string
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+	var line_start int
+
+	for i := 0; i < len(data); i++ {
+		// 检查换行符
+		if data[i] == '\n' {
+			// 找到一行
+			line := data[line_start:i]
+			// 如果是 \r\n，去掉 \r
+			if len(line) > 0 && line[len(line)-1] == '\r' {
+				line = line[:len(line)-1]
+			}
+			lines = append(lines, string(line))
+			line_start = i + 1
+		} else if data[i] == '\r' {
+			// 处理单独的 \r 或 \r\n
+			line := data[line_start:i]
+			lines = append(lines, string(line))
+
+			// 跳过可能的 \n
+			if i+1 < len(data) && data[i+1] == '\n' {
+				i++
+			}
+			line_start = i + 1
+		}
+	}
+	// 处理最后一行（如果没有换行符结尾）
+	if line_start < len(data) {
+		lines = append(lines, string(data[line_start:]))
 	}
 	return lines
 }
@@ -132,7 +156,7 @@ func timestamp_to_time(timestamp string) (time.Time, error) {
 	return r, nil
 }
 
-func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
+func BuildLocalToRemoteTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
 	// defer func(start time.Time) {
 	// 	fmt.Printf("BuildLocalSyncToRemoteTasks %v execute time: %v\n", setting.Name, time.Since(start))
 	// }(time.Now())
@@ -244,26 +268,28 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			// }
 			// 如果本地数据库，最新的记录时间在 remote 之前，说明需要 先将数据从远端同步到本地，而不能 同步到远端，避免覆盖新的内容
 			// 什么情况下，可以百分百确定，不需要/不能 将本地同步到远端？
+			// 好像不行，最后改成了 每条记录增加 sync_status 标记
 			// log("[LOG]need to pull latest records from remote server")
 			// ms1, _ := strconv.ParseInt(local_table_lot_str, 10, 64)
 			// ms2, _ := strconv.ParseInt(remote_table_lot_str, 10, 64)
 			// if ms1 > ms2 {
-			add_file_task(&FileTask{
-				Type:     "update_line",
-				Filepath: remote_table_meta_filepath,
-				Line:     0,
-				Content:  local_table_lot_str,
-			})
+			// add_file_task(&FileTask{
+			// 	Type:     "update_line",
+			// 	Filepath: remote_table_meta_filepath,
+			// 	Line:     0,
+			// 	Content:  local_table_lot_str,
+			// })
 			// }
 			for idx := 1; idx < len(lines); idx++ {
 				line := lines[idx]
-				regex := regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{1,})`)
+				regex := regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{1,}) ([0-9]{1,})`)
 				matched := regex.FindStringSubmatch(line)
-				if len(matched) == 3 {
+				if len(matched) == 4 {
 					file_meta_list = append(file_meta_list, &DayFileMeta{
 						Name:              matched[1],
 						Idx:               idx,
 						LastOperationTime: matched[2],
+						Count:             matched[3],
 					})
 				}
 			}
@@ -275,7 +301,7 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 		log("[LOG]walk unique_day " + "[" + day + "]")
 		day_text := day
 		day_file_path := path.Join(table_out_dir, day_text)
-		day_records, err := local_client.FetchDraftRecordsBetweenSpecialDayOfTable(day_text)
+		day_records, err := local_client.FetchRecordsBetweenSpecialDayOfTable(day_text)
 		if err != nil {
 			log("[ERROR]search latest record of table failed, because " + err.Error())
 			add_message(&SynchronizeMessage{
@@ -285,11 +311,27 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			})
 			continue
 		}
-		if len(day_records) == 0 {
-			log("[LOG]there is no records need to being sync")
+		var day_draft_records []map[string]interface{}
+		for _, r := range day_records {
+			if r["sync_status"].(int64) == 1 {
+				day_draft_records = append(day_draft_records, r)
+			}
+		}
+		if len(day_draft_records) == 0 {
+			log("[LOG]there is no draft records need to being sync")
 			continue
 		}
-		log("[LOG]the records in database count is " + strconv.Itoa(len(day_records)))
+		day_record_count := len(day_records)
+		if err != nil {
+			log("[ERROR]get the count of records failed, " + err.Error())
+			add_message(&SynchronizeMessage{
+				Type:  SynchronizeMessageError,
+				Scope: "database",
+				Text:  err.Error(),
+			})
+			continue
+		}
+		log("[LOG]the draft records in database count is " + strconv.Itoa(len(day_draft_records)))
 		local_day_lot_str, ok := day_records[0]["last_operation_time"].(string)
 		if !ok {
 			continue
@@ -304,21 +346,21 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			add_file_task(&FileTask{
 				Type:     "append_line",
 				Filepath: remote_table_meta_filepath,
-				Content:  day + " " + local_day_lot_str,
+				Content:  day + " " + local_day_lot_str + " " + strconv.Itoa(int(day_record_count)),
 			})
 		} else {
-			log("[LOG]check need update day line in meta file, v1:" + local_day_lot_str + " v2:" + existing_day_meta.LastOperationTime)
-			if local_day_lot_str == existing_day_meta.LastOperationTime {
-				continue
-			}
+			// log("[LOG]check need update day line in meta file, v1:" + local_day_lot_str + " v2:" + existing_day_meta.LastOperationTime)
+			// if local_day_lot_str == existing_day_meta.LastOperationTime {
+			// 	continue
+			// }
 			add_file_task(&FileTask{
 				Type:     "update_line",
 				Filepath: remote_table_meta_filepath,
 				Line:     existing_day_meta.Idx,
-				Content:  day + " " + local_day_lot_str,
+				Content:  day + " " + local_day_lot_str + " " + strconv.Itoa(int(day_record_count)),
 			})
 		}
-		file_task := &FileTask{
+		day_file_task := &FileTask{
 			Type:     "new_file",
 			Filepath: day_file_path,
 		}
@@ -336,11 +378,10 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			}
 			log("[LOG]need create day file: " + day_file_path)
 			need_create_day_file = true
-			add_file_task(file_task)
 		} else {
+			log("[LOG]need update day file: " + day_file_path)
 			// day file is existing
-			file_task.Type = "update_file"
-			add_file_task(file_task)
+			day_file_task.Type = "update_file"
 		}
 		var lines []string
 		if !need_create_day_file {
@@ -355,21 +396,18 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 			} else {
 				lines = SplitToLines(remote_day_file_byte)
 			}
-			log("[LOG]before walk the records in special day " + day)
-			if file_task.Type == "update_file" {
-				file_task.Content = string(remote_day_file_byte)
+			if day_file_task.Type == "update_file" {
+				day_file_task.Content = string(remote_day_file_byte)
 			}
 		}
-		for _, record := range day_records {
+		add_file_task(day_file_task)
+		for _, record := range day_draft_records {
 			id, ok := record[id_field_name].(string)
 			if !ok {
 				log("[ERROR]parse local record id failed")
-				t, err := json.Marshal(&record)
-				if err == nil {
-					log("[ERROR]the record content " + string(t))
-				}
 				continue
 			}
+			log("[LOG]draft record " + id)
 			// if file_task.Type == "new_file" {
 			// 	continue
 			// }
@@ -398,6 +436,13 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 					// 上面的查找失误了，可能是复制的内容包含 id，这里规避掉这种可能
 					continue
 				}
+				if rr["last_operation_time"] == record["last_operation_time"] {
+					log("[LOG]the record last operation time is same, skip it")
+					add_record_task(&RecordTask{
+						Type: "to_published",
+						Id:   id,
+					})
+				}
 				if rr["last_operation_time"] != record["last_operation_time"] {
 					record_byte, err := json.Marshal(record)
 					if err != nil {
@@ -410,7 +455,7 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 						})
 						continue
 					}
-					log("[LOG]need to update a record " + id)
+					log("[LOG]need to update record line in remote " + id)
 					add_file_task(&FileTask{
 						Type:     "update_line",
 						Filepath: day_file_path,
@@ -418,7 +463,7 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 						Content:  string(record_byte),
 					})
 					add_record_task(&RecordTask{
-						Type: "update_sync_status",
+						Type: "to_published",
 						Id:   id,
 					})
 				}
@@ -434,14 +479,15 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 					})
 					continue
 				}
-				log("[LOG]need to create a record " + id)
+				log("[LOG]need to append record line to remote " + id)
 				add_file_task(&FileTask{
 					Type:     "append_line",
 					Filepath: day_file_path,
 					Content:  string(record_byte),
 				})
+				// 本地推送到远端后，在本地将 同步状态 置为已同步，避免重复同步
 				add_record_task(&RecordTask{
-					Type: "update_sync_status",
+					Type: "to_published",
 					Id:   id,
 				})
 			}
@@ -451,7 +497,7 @@ func BuildLocalSyncToRemoteTasks(setting TableSynchronizeSetting, root_dir strin
 	return &result
 }
 
-func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
+func BuildRemoteToLocalTasks(setting TableSynchronizeSetting, root_dir string, local_client LocalClient, remote_client RemoteClient) *SynchronizeResult {
 	defer func(start time.Time) {
 		fmt.Printf("BuildRemoteSyncToLocalTasks %v execute time: %v\n", setting.Name, time.Since(start))
 	}(time.Now())
@@ -552,9 +598,9 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 		// 	continue
 		// }
 		// var file_meta_list []*DayFileMeta
-		regex := regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{1,})`)
+		regex := regexp.MustCompile(`^([0-9]{4}-[0-9]{2}-[0-9]{2}) ([0-9]{1,}) ([0-9]{1,})`)
 		matched := regex.FindStringSubmatch(meta_line)
-		if len(matched) != 3 {
+		if len(matched) != 4 {
 			log("[LOG]the day content don't match the regexp")
 			continue
 		}
@@ -562,6 +608,7 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 			Name:              matched[1],
 			Idx:               idx,
 			LastOperationTime: matched[2],
+			Count:             matched[3],
 		}
 		// file_meta_list = append(file_meta_list, parsed_day_meta)
 		remote_day_folder_path := path.Join(table_dir, parsed_day_meta.Name)
@@ -581,7 +628,6 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 			})
 			continue
 		}
-		// 远端存在文件，但本地没有找到记录，说明整个文件内的记录都是新增的
 		if len(local_record_list) != 0 {
 			// log("[LOG]there's no records in database, but has records in remote file")
 			last_local_record := local_record_list[0]
@@ -593,8 +639,9 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 			}
 			remote_record_lot_str := parsed_day_meta.LastOperationTime
 			// fmt.Println("[LOG]compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
-			log("[LOG]compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
-			if local_record_lot_str == remote_record_lot_str {
+			log("[LOG]" + parsed_day_meta.Name + " compare the record'last_operation_time, local:" + local_record_lot_str + " remote:" + remote_record_lot_str)
+			log("[LOG]" + parsed_day_meta.Name + " compare the records count, local:" + strconv.Itoa(len(local_record_list)) + " remote:" + parsed_day_meta.Count)
+			if local_record_lot_str == remote_record_lot_str && strconv.Itoa(len(local_record_list)) == parsed_day_meta.Count {
 				log("[LOG]skip " + parsed_day_meta.Name)
 				continue
 			}
@@ -626,6 +673,7 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 				log("[ERROR]parse id of local record failed ")
 			}
 		}
+		log("[LOG]before walk the remote records, count " + strconv.Itoa(len(remote_record_lines)))
 		for _, remote_record_text := range remote_record_lines {
 			// id := remote_record_folder.Name()
 			// remote_record_folder_path := path.Join(remote_day_folder_path, id)
@@ -675,6 +723,7 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 				})
 				continue
 			}
+			delete(local_record_map_by_id, remote_record_id)
 			// 有匹配的记录，说明需要处理冲突，以最新的记录为准
 			// remote_record_lot_file_path := path.Join(remote_record_folder_path, "last_operation_time")
 			// fmt.Println("2", remote_record_lot_file_path)
@@ -687,7 +736,6 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 			// 	})
 			// 	continue
 			// }
-
 			remote_record_lot_str, ok := (remote_record["last_operation_time"]).(string)
 			if !ok {
 				log("[ERROR]get latest operation time failed, " + remote_record_text)
@@ -742,6 +790,17 @@ func BuildRemoteSyncToLocalTasks(setting TableSynchronizeSetting, root_dir strin
 				Id:   remote_record_id,
 				Data: remote_record,
 			})
+		}
+		// 从远端拉完数据后，发现本地有比远端更多的记录，应该将这些置为 未更新 状态，以在后续的 本地到远端同步 中正确同步到 远端
+		for key := range local_record_map_by_id {
+			record := local_record_map_by_id[key]
+			if record["sync_status"].(int64) != 1 {
+				log("[LOG]existing at local database, but can't find in remote " + key)
+				add_record_task(&RecordTask{
+					Type: "to_draft",
+					Id:   key,
+				})
+			}
 		}
 	}
 
