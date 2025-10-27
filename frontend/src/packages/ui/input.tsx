@@ -43,6 +43,7 @@ const Input = (props: { store: InputCore<any> } & JSX.HTMLAttributes<HTMLInputEl
       type={type()}
       autocomplete="false"
       autocorrect="off"
+      autofocus={false}
       onInput={(event: Event & { currentTarget: HTMLInputElement }) => {
         // console.log("[COMPONENT]ui/input onInput", event.currentTarget.value);
         vm.handleChange(event);
