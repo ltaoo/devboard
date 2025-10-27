@@ -162,6 +162,7 @@ export function CategorySettingsView(props: ViewComponentProps) {
 
   return (
     <ScrollView store={vm.ui.$view} class="p-4">
+      <div class="text-2xl text-w-fg-0">标签</div>
       <TreeEdit
         store={vm.ui.$tree}
         renderNode={(v) => {

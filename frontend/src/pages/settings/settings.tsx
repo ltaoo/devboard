@@ -115,12 +115,12 @@ export function SettingsView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(SettingsViewModel, [props]);
 
   return (
-    <ScrollView store={vm.ui.$view} class="p-4 space-y-8">
+    <ScrollView store={vm.ui.$view} class="p-4">
       <div class="block">
-        <div class="text-2xl text-w-fg-0">User Settings</div>
+        <div class="text-2xl text-w-fg-0">配置</div>
         <div class="mt-4">
           <div>
-            <div class="text-xl text-w-fg-0">Douyin</div>
+            <div class="text-xl text-w-fg-0">抖音</div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.douyin}>
               <FieldV2 store={vm.ui.$form_settings.fields.douyin.fields.cookie}>
                 <Textarea store={vm.ui.$form_settings.fields.douyin.fields.cookie.input} />
