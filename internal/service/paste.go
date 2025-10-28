@@ -85,7 +85,13 @@ func (s *PasteService) FetchPasteEventProfile(body PasteEventProfileBody) *Resul
 		return Error(fmt.Errorf("缺少 id 参数"))
 	}
 	var record models.PasteEvent
-	if err := s.Biz.DB.Where("id = ?", body.EventId).Preload("App").Preload("Device").Preload("Remarks").Preload("Categories").First(&record).Error; err != nil {
+	if err := s.Biz.DB.Where("id = ?", body.EventId).
+		Preload("App").
+		Preload("Device").
+		// 	Preload("Remarks", func(db *gorm.DB) *gorm.DB {
+		// 	return db.Order("remark.created_at DESC")
+		// }).
+		Preload("Categories").First(&record).Error; err != nil {
 		return Error(err)
 	}
 	return Ok(&record)
@@ -188,7 +194,7 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 		if text == "" {
 			text = record.Text
 		}
-		if err := clipboard.WriteHTML(text); err != nil {
+		if err := clipboard.WriteHTML(text, record.Text); err != nil {
 			return Error(err)
 		}
 		return Ok(nil)

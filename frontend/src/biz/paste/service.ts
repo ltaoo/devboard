@@ -214,11 +214,6 @@ export function fetchPasteEventProfile(body: { id: string }) {
       id: string;
       label: string;
     }[];
-    remarks: {
-      id: string;
-      content: string;
-      created_at: string;
-    }[];
     device: {
       id: string;
       name: string;
@@ -238,12 +233,6 @@ export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPast
   return Result.Ok({
     ...v,
     ...vv,
-    remarks: v.remarks.map((remark) => {
-      return {
-        ...remark,
-        created_at_text: dayjs(remark.created_at).format("YYYY-MM-DD HH:mm:ss"),
-      };
-    }),
   });
 }
 

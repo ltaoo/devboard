@@ -263,7 +263,7 @@ export class RequestCore<F extends FetchFunction, P = UnpackedRequestPayload<Ret
   }
   /** 使用当前参数再请求一次 */
   reload() {
-    this.run(...this.args);
+    return this.run(...this.args);
   }
   cancel() {
     if (!this.client) {

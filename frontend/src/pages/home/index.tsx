@@ -106,6 +106,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // console.log("[]before  need_adjust_scroll_top", ui.$view.getScrollTop());
       // console.log("[]before setScrollTop", ui.$view.getScrollTop(), added_height, h, h2, h2 - h);
       ui.$view.setScrollTop(ui.$view.getScrollTop() + added_height);
+      request.paste.list.unshiftItem(d);
       const $created_items = ui.$waterfall.methods.unshiftItems([vv], { skipUpdateHeight: true });
       const $first = $created_items[0];
       console.log("[PAGE]home/index before if (!$first", $created_items);
@@ -113,8 +114,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         return;
       }
       ui.$list_select.methods.unshiftOption(buildOptionFromWaterfallCell($first));
-      ui.$list_click.methods.set(
-        d.id,
+      ui.$list_click.methods.set(d.id, () =>
         DynamicContentWithClickModel({
           options: copy_buttons,
           onClick() {
@@ -199,13 +199,14 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // ui.$waterfall.methods.resetRange();
       // ui.$view.setScrollTop(0);
       // ui.$waterfall.methods.handleScroll({ scrollTop: 0 });
-      request.paste.list.deleteItem((record) => {
-        return record.id === v.id;
-      });
+      // 这个必须在 paste.list.deleteItem 前面
       ui.$waterfall.methods.deleteCell((record) => {
         return record.id === v.id;
       });
       ui.$list_select.methods.deleteOptionById(v.id);
+      request.paste.list.deleteItem((record) => {
+        return record.id === v.id;
+      });
       if (request.paste.list.response.dataSource.length < 10 && !request.paste.list.response.noMore) {
         request.paste.list.loadMore();
       }
@@ -479,10 +480,22 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       props.history.reload();
     },
     "MetaLeft+Backspace"() {
-      console.log("[PAGE]home/index - MetaLeft+Backspace");
-      const idx = ui.$list_select.state.idx;
-      const $cell = ui.$waterfall.$items[idx];
-      methods.deletePaste($cell.state.payload);
+      const opt = ui.$list_select.methods.getSelectedOption();
+      console.log("[PAGE]home/index - MetaLeft+Backspace", opt.id);
+      if (!opt) {
+        props.app.tip({
+          text: ["异常操作", "无法定位"],
+        });
+        return;
+      }
+      const record = request.paste.list.response.dataSource.find((v) => v.id === opt.id);
+      if (!record) {
+        props.app.tip({
+          text: ["异常操作", "没有找到"],
+        });
+        return;
+      }
+      methods.deletePaste(record);
     },
     "ShiftRight+Digit3"() {
       console.log("[PAGE]home/index - ShiftRight+Digit3");
@@ -504,14 +517,16 @@ function HomeIndexViewModel(props: ViewComponentProps) {
 
   request.paste.list.onStateChange(() => methods.refresh());
   request.paste.list.onDataSourceChange(({ dataSource, reason }) => {
+    if (["delete", "unshift"].includes(reason)) {
+      return;
+    }
     if (["init", "reload", "refresh", "search"].includes(reason)) {
       ui.$waterfall.methods.cleanColumns();
       ui.$waterfall.methods.appendItems(dataSource);
       ui.$list_select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
       for (let i = 0; i < dataSource.length; i += 1) {
         const paste = dataSource[i];
-        ui.$list_click.methods.set(
-          paste.id,
+        ui.$list_click.methods.set(paste.id, () =>
           DynamicContentWithClickModel({
             options: copy_buttons,
             onClick() {
@@ -532,12 +547,12 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         added_items.push(dd);
       }
     }
+    console.log("[PAGE]home/index - paste list dataSource change", added_items);
     ui.$waterfall.methods.appendItems(added_items);
     ui.$list_select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
     for (let i = 0; i < added_items.length; i += 1) {
       const paste = added_items[i];
-      ui.$list_click.methods.set(
-        paste.id,
+      ui.$list_click.methods.set(paste.id, () =>
         DynamicContentWithClickModel({
           options: copy_buttons,
           onClick() {
@@ -730,10 +745,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       </Match>
                       <Match when={v.type === "image" && v.image_url}>
                         <AspectRatio class="relative" ratio={6 / 2}>
-                          <img
-                            class="absolute inset-0 w-full object-cover"
-                            src={v.image_url!}
-                          />
+                          <img class="absolute inset-0 w-full object-cover" src={v.image_url!} />
                         </AspectRatio>
                       </Match>
                     </Switch>

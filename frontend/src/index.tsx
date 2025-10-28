@@ -10,6 +10,7 @@ import { client } from "./store/http_client";
 import { PageKeys } from "./store/routes";
 import { pages } from "./store/views";
 import { KeepAliveRouteView } from "./components/ui";
+import { RouteChildren } from "./components/route-children";
 import { Toast } from "./components/ui/toast";
 
 import { ToastCore } from "./domains/ui/toast";
@@ -17,7 +18,6 @@ import { RequestCore } from "./domains/request";
 import { showError } from "./biz/services";
 
 import "./style.css";
-import { RouteChildren } from "./components/route-children";
 
 function Application() {
   const view = history.$view;

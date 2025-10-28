@@ -10,7 +10,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang-migrate/migrate/v4 v4.16.2
 	github.com/google/uuid v1.6.0
-	github.com/ltaoo/clipboard-go v0.1.0
+	github.com/ltaoo/clipboard-go v0.2.0
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/viper v1.21.0
 	github.com/studio-b12/gowebdav v0.11.0
