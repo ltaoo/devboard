@@ -64,7 +64,7 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
     },
     moveToNextOption(opt: Partial<{ step: number; force: boolean }> = {}) {
       const { step = 1, force = false } = opt;
-      console.log("[COMPONENT]with-tags-input - moveToNextOption", _opt_idx, _options);
+      // console.log("[DOMAIN]list-select - moveToNextOption", _opt_idx, _options);
       if (_options.length === 0) {
         return;
       }

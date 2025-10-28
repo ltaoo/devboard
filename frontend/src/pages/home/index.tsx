@@ -426,7 +426,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$list_select.methods.moveToPrevOption({ step: 3, force: true });
     },
     "KeyJ,ArrowDown"(event) {
-      console.log("[]shortcut - KeyJ", ui.$input_search.isFocus, ui.$input_search.isOpen, event.code);
+      // console.log("[]shortcut - KeyJ", ui.$input_search.isFocus, ui.$input_search.isOpen, event.code);
       // console.log("[]shortcut - moveToNextOption");
       if (ui.$input_search.isFocus) {
         if (event.code === "ArrowDown") {
@@ -512,6 +512,12 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     Escape() {
       ui.$input_search.methods.blur();
+    },
+    EscapeEscape(event) {
+      setTimeout(() => {
+        Events.Emit({ name: "m:hide-main-window", data: null });
+        // 100 是为了 keyup 能正确清除掉按下的 Esc
+      }, 100);
     },
   });
 
