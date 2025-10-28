@@ -73,7 +73,7 @@ export function HelperCenterShortcutView(props: ViewComponentProps) {
           <tbody>
             <tr>
               <td class="p-2 w-[280px]">
-                <ShortcutKey keys={["Ctrl", "Shift", "M"]} separator="+" />
+                <ShortcutKey keys={["Ctrl", "~"]} separator="+" />
               </td>
               <td class="p-2">
                 <div>macOS端</div>

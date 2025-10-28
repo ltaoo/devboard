@@ -11,7 +11,7 @@ export function ShortcutModel(props: {}) {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    register(handlers: Record<string, (event: KeyboardEvent) => void>) {
+    register(handlers: Record<string, (event: KeyboardEvent & { step?: 'keydown' | 'keyup' }) => void>) {
       const keys = Object.keys(handlers);
       for (let i = 0; i < keys.length; i += 1) {
         const handle_key = keys[i];
@@ -65,10 +65,22 @@ export function ShortcutModel(props: {}) {
         const handler = _shortcut_map[key1];
         if (handler) {
           // console.log("[BIZ]shortcut - key1 bingo!", key1, step);
+          // @ts-ignore
+          event.step = step;
           handler(event);
           return;
         }
       }
+      // 会触发两次啊，不行
+      // if (step === "keyup" && key1.includes("+")) {
+      //   const handler = _shortcut_map[key1];
+      //   if (handler) {
+      //     // @ts-ignore
+      //     event.step = step;
+      //     handler(event);
+      //     return;
+      //   }
+      // }
       if (step === "keydown" && key2) {
         // methods.invokeHandlers(event, key2);
         const handler = _shortcut_map[key2];
@@ -100,7 +112,7 @@ export function ShortcutModel(props: {}) {
   const ui = {};
 
   let _handlers: Handler<TheTypesOfEvents[Events.Shortcut]>[] = [];
-  let _shortcut_map: Record<string, (event: { code: string; preventDefault: () => void }) => void> = {};
+  let _shortcut_map: Record<string, (event: { code: string; step?: 'keydown' | 'keyup'; preventDefault: () => void }) => void> = {};
   let _pressed_codes: string[] = [];
   let _pressed_code_map: Record<string, boolean> = {};
   let _continuous_timer: NodeJS.Timeout | number | null = null;
@@ -127,7 +139,7 @@ export function ShortcutModel(props: {}) {
     methods,
     ui,
     state: _state,
-    ready() {},
+    ready() { },
     destroy() {
       bus.destroy();
     },

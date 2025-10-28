@@ -10,5 +10,6 @@ import (
 func NewHotkey() *hotkey.Hotkey {
 	// fmt.Println("[]register hotkey")
 	// hk := hotkey.New([]hotkey.Modifier{}, hotkey.)
-	return &hotkey.Hotkey{}
+	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl}, hotkey.Key(0xC0))
+	return hk
 }

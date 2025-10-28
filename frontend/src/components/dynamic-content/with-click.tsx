@@ -11,7 +11,7 @@ export function ModelInList<T>(props: {}) {
       bus.emit(Events.StateChange, { ..._state });
     },
     set(uid: string, v: () => T) {
-      console.log("set", uid);
+      // console.log("set", uid);
       const existing = _cache.get(uid);
       if (existing) {
         return;
@@ -19,7 +19,7 @@ export function ModelInList<T>(props: {}) {
       _cache.set(uid, v());
     },
     get(uid: string) {
-      console.log("get", uid);
+      // console.log("get", uid);
       return _cache.get(uid) ?? null;
     },
   };

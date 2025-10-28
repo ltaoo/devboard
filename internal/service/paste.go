@@ -187,7 +187,6 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 	if record.FileListJSON != "" {
 		is_file = true
 	}
-
 	if is_html {
 		s.Biz.ManuallyWriteClipboardTime = time.Now()
 		text := record.Html
@@ -195,13 +194,6 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 			text = record.Text
 		}
 		if err := clipboard.WriteHTML(text, record.Text); err != nil {
-			return Error(err)
-		}
-		return Ok(nil)
-	}
-	if is_text {
-		s.Biz.ManuallyWriteClipboardTime = time.Now()
-		if err := clipboard.WriteText(record.Text); err != nil {
 			return Error(err)
 		}
 		return Ok(nil)
@@ -237,6 +229,13 @@ func (s *PasteService) Write(body PasteboardWriteBody) *Result {
 			return Error(fmt.Errorf("There's no valid file can copy."))
 		}
 		if err := clipboard.WriteFiles(file_paths); err != nil {
+			return Error(err)
+		}
+		return Ok(nil)
+	}
+	if is_text {
+		s.Biz.ManuallyWriteClipboardTime = time.Now()
+		if err := clipboard.WriteText(record.Text); err != nil {
 			return Error(err)
 		}
 		return Ok(nil)

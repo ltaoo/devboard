@@ -5,7 +5,6 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"log"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -227,9 +226,12 @@ func main() {
 	}
 	menu := app.NewMenu()
 	m_main := menu.Add("Show Devboard")
-	if runtime.GOOS == "darwin" {
-		m_main.SetAccelerator("CmdOrCtrl+Shift+M")
-	}
+	// if runtime.GOOS == "darwin" {
+	// 	m_main.SetAccelerator("CmdOrCtrl+Shift+M")
+	// }
+	// if runtime.GOOS == "windows" {
+	// 	m_main.SetAccelerator("CmdOrCtrl+Backquote")
+	// }
 	m_main.OnClick(func(ctx *application.Context) {
 		win.Show()
 		win.Focus()
@@ -339,6 +341,9 @@ func main() {
 		search := fmt.Sprintf("?title=%v&desc=%v", body.Title, body.Content)
 		biz.ShowErrorWindow(search)
 	})
+	app.Event.On("m:hide-main-window", func(event *application.CustomEvent) {
+		win.Hide()
+	})
 	go func() {
 		machine_id, err := machineid.ID()
 		if err != nil {
@@ -381,6 +386,35 @@ func main() {
 		biz.SetUserConfig(biz_config)
 		// win.Show()
 	}()
+
+	var register_global_shortcut func(win *application.WebviewWindow, hk *hotkey.Hotkey)
+	register_global_shortcut = func(win *application.WebviewWindow, hk *hotkey.Hotkey) {
+		// hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
+		if err := hk.Register(); err != nil {
+			t := fmt.Sprintf("hotkey: failed to register hotkey: %v", err)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+			return
+		}
+		// log.Printf("hotkey: %v is registered\n", hk)
+		<-hk.Keydown()
+		// log.Printf("hotkey: %v is down\n", hk)
+		<-hk.Keyup()
+		// log.Printf("hotkey: %v is up\n", hk)
+		if err := hk.Unregister(); err != nil {
+			t := fmt.Sprintf("hotkey: failed to unregister hotkey: %v", err)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=Shortcut&desc="+t))
+			return
+		}
+		// log.Printf("hotkey: %v is unregistered\n", hk)
+		if win.IsVisible() {
+			win.Hide()
+		} else {
+			win.Show()
+			win.Focus()
+		}
+		register_global_shortcut(win, hk)
+	}
+
 	go func() {
 		register_global_shortcut(win, hk)
 	}()
@@ -391,27 +425,4 @@ func main() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-}
-
-func register_global_shortcut(win *application.WebviewWindow, hk *hotkey.Hotkey) {
-	// hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
-	err := hk.Register()
-	if err != nil {
-		log.Fatalf("hotkey: failed to register hotkey: %v", err)
-		return
-	}
-	// log.Printf("hotkey: %v is registered\n", hk)
-	<-hk.Keydown()
-	// log.Printf("hotkey: %v is down\n", hk)
-	<-hk.Keyup()
-	// log.Printf("hotkey: %v is up\n", hk)
-	hk.Unregister()
-	// log.Printf("hotkey: %v is unregistered\n", hk)
-	if win.IsVisible() {
-		win.Hide()
-	} else {
-		win.Show()
-		win.Focus()
-	}
-	register_global_shortcut(win, hk)
 }
