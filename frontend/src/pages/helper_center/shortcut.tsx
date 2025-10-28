@@ -7,6 +7,7 @@ import { Check } from "lucide-solid";
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
 import { ScrollView } from "@/components/ui";
+import { ShortcutKey } from "@/components/shortcut";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
@@ -57,112 +58,143 @@ export function HelperCenterShortcutView(props: ViewComponentProps) {
 
   return (
     <ScrollView store={vm.ui.$view} class="p-4 space-y-8">
-      <header class="text-center mb-10">
-        <h1 class="text-4xl font-bold text-indigo-600 mb-2">快捷键说明</h1>
-        <p class="text-lg text-gray-500">提高效率的快捷操作指南</p>
+      <header class="mb-10">
+        <h1 class="text-4xl font-bold mb-2">快捷键说明</h1>
       </header>
-
       <div class="shortcut-section">
-        <h2 class="text-2xl font-semibold text-indigo-500 border-b border-gray-200 pb-3 mb-6">简要说明</h2>
-        <ol class="list-decimal pl-5 space-y-3">
-          <li>
-            按下 <kbd class="key">⌘</kbd>+<kbd class="key">Shift</kbd>+<kbd class="key">M</kbd> 组合键可快速调出窗口
-          </li>
-          <li>
-            使用 <kbd class="key">↑</kbd>/<kbd class="key">↓</kbd> 或 <kbd class="key">j</kbd>/<kbd class="key">k</kbd>{" "}
-            键浏览选项
-          </li>
-          <li>
-            输入 <kbd class="key">g</kbd>
-            <kbd class="key">g</kbd> 可立即返回列表最上方
-          </li>
-          <li>
-            按 <kbd class="key">Esc</kbd> 键可随时隐藏窗口
-          </li>
-        </ol>
+        <h2 class="text-2xl font-semibold border-b border-gray-200 pb-3 mb-6">窗口控制</h2>
+        <table>
+          <thead>
+            <tr>
+              <td class="p-2 w-[280px]">快捷键</td>
+              <td class="p-2">说明</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p-2 w-[280px]">
+                <ShortcutKey keys={["Ctrl", "Shift", "M"]} separator="+" />
+              </td>
+              <td class="p-2">
+                <div>macOS端</div>
+                <div>唤起主窗口</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px]">
+                <ShortcutKey keys={["Ctrl", ","]} separator="+" />
+              </td>
+              <td class="p-2">打开设置窗口</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px]">
+                <ShortcutKey keys={["Ctrl", "Q"]} separator="+" />
+              </td>
+              <td class="p-2">退出应用</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="shortcut-section">
-        <h2 class="text-2xl font-semibold text-indigo-500 border-b border-gray-200 pb-3 mb-6">窗口控制</h2>
-
-        <div class="flex items-center py-4 border-b border-gray-100">
-          <div class="flex mr-5">
-            <kbd class="key">⌘</kbd>
-            <span>+</span>
-            <kbd class="key">Shift</kbd>
-            <span>+</span>
-            <kbd class="key">M</kbd>
-          </div>
-          <div class="flex-1">唤起/显示窗口</div>
-        </div>
-
-        <div class="flex items-center py-4  border-b border-gray-100">
-          <div class="flex mr-5">
-            <kbd class="key">Esc</kbd>
-          </div>
-          <div class="flex-1">隐藏窗口</div>
-        </div>
-
-        <div class="flex items-center py-4  border-b border-gray-100">
-          <div class="flex mr-5">
-            <kbd class="key">⌘</kbd>
-            <span>+</span>
-            <kbd class="key">,</kbd>
-          </div>
-          <div class="flex-1">打开设置窗口</div>
-        </div>
-
-        <div class="flex items-center py-4">
-          <div class="flex mr-5">
-            <kbd class="key">⌘</kbd>
-            <span>+</span>
-            <kbd class="key">Q</kbd>
-          </div>
-          <div class="flex-1">退出应用</div>
-        </div>
+        <h2 class="text-2xl font-semibold border-b border-gray-200 pb-3 mb-6">内容选择与操作</h2>
+        <table>
+          <thead>
+            <tr>
+              <td class="p-2 w-[280px]">快捷键</td>
+              <td class="p-2">说明</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p-2 w-[280px] flex gap-2">
+                <ShortcutKey keys={["↑"]} />
+                <ShortcutKey keys={["K"]} />
+              </td>
+              <td class="p-2">选择上一条记录</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px] flex gap-2">
+                <ShortcutKey keys={["↓"]} />
+                <ShortcutKey keys={["J"]} />
+              </td>
+              <td class="p-2">选择下一条记录</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px] flex gap-2">
+                <ShortcutKey keys={["Ctrl", "U"]} />
+              </td>
+              <td class="p-2">快速往上移动</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px] flex gap-2">
+                <ShortcutKey keys={["Ctrl", "D"]} />
+              </td>
+              <td class="p-2">快速往下移动</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px]">
+                <ShortcutKey keys={["GG"]} />
+              </td>
+              <td class="p-2">快速定位到第一条记录</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px]">
+                <ShortcutKey keys={["Space"]} />
+              </td>
+              <td class="p-2">预览选择的记录</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px] flex gap-2">
+                <ShortcutKey keys={["YY"]} />
+                <ShortcutKey keys={["Enter"]} />
+              </td>
+              <td class="p-2">将记录复制到粘贴板</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px] flex gap-2">
+                <ShortcutKey keys={["Shift", "Backspace"]} />
+              </td>
+              <td class="p-2">删除选择的记录</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div class="shortcut-section">
-        <h2 class="text-2xl font-semibold text-indigo-500 border-b border-gray-200 pb-3 mb-6">导航控制</h2>
-
-        <div class="flex items-center py-4 border-b border-gray-100">
-          <div class="flex mr-5">
-            <kbd class="key">↑</kbd>
-          </div>
-          <div class="flex-1">向上移动选择项</div>
-        </div>
-
-        <div class="flex items-center py-4 border-b border-gray-100">
-          <div class="flex mr-5">
-            <kbd class="key">k</kbd>
-          </div>
-          <div class="flex-1">向上移动选择项</div>
-        </div>
-
-        <div class="flex items-center py-4 border-b border-gray-100">
-          <div class="flex mr-5">
-            <kbd class="key">↓</kbd>
-          </div>
-          <div class="flex-1">向下移动选择项</div>
-        </div>
-
-        <div class="flex items-center py-4 border-b border-gray-100">
-          <div class="flex mr-5">
-            <kbd class="key">j</kbd>
-          </div>
-          <div class="flex-1">向下移动选择项</div>
-        </div>
-
-        <div class="flex items-center py-4">
-          <div class="flex mr-5">
-            <kbd class="key">g</kbd>
-            <kbd class="key">g</kbd>
-          </div>
-          <div class="flex-1">
-            快速回到列表顶部
-            <span class="vim-badge">Vim</span>
-          </div>
-        </div>
+        <h2 class="text-2xl font-semibold border-b border-gray-200 pb-3 mb-6">搜索</h2>
+        <table>
+          <thead>
+            <tr>
+              <td class="p-2 w-[280px]">快捷键</td>
+              <td class="p-2">说明</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p-2 w-[280px] flex gap-2">
+                <ShortcutKey keys={["Ctrl", "F"]} />
+                <ShortcutKey keys={["O"]} />
+              </td>
+              <td class="p-2">聚焦到搜索框</td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px]">
+                <ShortcutKey keys={["Shift", "3"]} />
+              </td>
+              <td class="p-2">
+                <div>搜索框为空时</div>
+                <div>聚焦到搜索框并展示标签</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="p-2 w-[280px]">
+                <ShortcutKey keys={["Esc"]} />
+              </td>
+              <td class="p-2">搜索框失焦</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </ScrollView>
   );
