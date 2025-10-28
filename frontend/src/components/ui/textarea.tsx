@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import { JSX } from "solid-js/jsx-runtime";
 
 import { InputCore } from "@/domains/ui/form/input";
+import { ShortcutModel } from "@/biz/shortcut/shortcut";
 
 export interface TextareaProps extends HTMLTextAreaElement {}
 
@@ -11,6 +12,17 @@ const Textarea = (props: { store: InputCore<string> } & JSX.HTMLAttributes<HTMLT
   const [state, setState] = createSignal(store.state);
   store.onStateChange((nextState) => {
     setState(nextState);
+  });
+  const $shortcut = ShortcutModel({});
+  $shortcut.methods.register({
+    "ShiftLeft+Enter"(event) {
+      // ...
+    },
+    Enter(event) {
+      event.preventDefault();
+      console.log($shortcut.state.codes);
+      store.handleKeyDown(event);
+    },
   });
 
   const value = () => state().value;
@@ -31,6 +43,12 @@ const Textarea = (props: { store: InputCore<string> } & JSX.HTMLAttributes<HTMLT
       onInput={(event: Event & { currentTarget: HTMLTextAreaElement }) => {
         const { value } = event.currentTarget;
         store.setValue(value);
+      }}
+      onKeyDown={(event) => {
+        $shortcut.methods.handleKeydown(event);
+      }}
+      onKeyUp={(event) => {
+        $shortcut.methods.handleKeyup(event);
       }}
       {...restProps}
     />

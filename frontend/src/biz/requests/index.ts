@@ -65,8 +65,11 @@ ListCore.commonProcessor = <T>(
     if (noMore !== undefined) {
       result.noMore = noMore;
     }
-    if (next_marker === null) {
+    if (next_marker === null || next_marker === "") {
       result.noMore = true;
+    }
+    if (!list) {
+      result.empty = true;
     }
     if (list.length === 0 && page === 1) {
       result.empty = true;
@@ -74,7 +77,7 @@ ListCore.commonProcessor = <T>(
     if (list.length === 0) {
       result.noMore = true;
     }
-    // console.log("[STORE]ListCore.commonProcessor", data, result);
+    console.log("[STORE]ListCore.commonProcessor", data, result);
     return result;
   } catch (error) {
     return {

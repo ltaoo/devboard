@@ -58,13 +58,13 @@ export function ShortcutModel(props: {}) {
       event: KeyboardEvent
     ) {
       const { key1, key2, step } = opt;
-      console.log("[BIZ]shortcut - test shortcut", key1, key2, step, _shortcut_map, _pressed_code_map);
+      // console.log("[BIZ]shortcut - test shortcut", key1, key2, step, _shortcut_map, _pressed_code_map);
 
       if (step === "keydown" && key1.includes("+")) {
         // methods.invokeHandlers(event, key1);
         const handler = _shortcut_map[key1];
         if (handler) {
-          console.log("[BIZ]shortcut - key1 bingo!", key1, step);
+          // console.log("[BIZ]shortcut - key1 bingo!", key1, step);
           handler(event);
           return;
         }
@@ -73,7 +73,7 @@ export function ShortcutModel(props: {}) {
         // methods.invokeHandlers(event, key2);
         const handler = _shortcut_map[key2];
         if (handler) {
-          console.log("[BIZ]shortcut - key2 bingo!", key2, step);
+          // console.log("[BIZ]shortcut - key2 bingo!", key2, step);
           handler(event);
         }
         return;
@@ -104,7 +104,11 @@ export function ShortcutModel(props: {}) {
   let _pressed_codes: string[] = [];
   let _pressed_code_map: Record<string, boolean> = {};
   let _continuous_timer: NodeJS.Timeout | number | null = null;
-  let _state = {};
+  let _state = {
+    get codes() {
+      return Object.keys(_pressed_code_map);
+    },
+  };
   enum Events {
     Shortcut,
     Keydown,

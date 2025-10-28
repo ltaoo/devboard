@@ -4,7 +4,7 @@
  */
 import { request } from "@/biz/requests";
 import { UserCore } from "@/biz/user/index";
-import { ListCore } from "@/domains/list/index";
+import { ListCore, onListCreated } from "@/domains/list/index";
 import { ImageCore } from "@/domains/ui/index";
 import { Application } from "@/domains/app/index";
 import { NavigatorCore } from "@/domains/navigator/index";
@@ -25,6 +25,13 @@ import { storage } from "./storage";
 // if (window.location.hostname === "t.fithub.top") {
 //   request.setEnv("dev");
 // }
+onListCreated((ins) => {
+  ins.onError((e) => {
+    app.tip({
+      text: [e.message ?? "未知错误"],
+    });
+  });
+});
 onRequestCreated((ins) => {
   ins.beforeRequest(() => {
     user.refreshToken();

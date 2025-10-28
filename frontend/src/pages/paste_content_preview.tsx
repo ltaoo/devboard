@@ -10,16 +10,16 @@ import { CodeCard } from "@/components/code-card";
 import { HTMLCard } from "@/components/html-card";
 import { ImageContentPreview } from "@/components/preview-panels/image";
 import { Button, ScrollView, Textarea } from "@/components/ui";
-import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 
+import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { PasteEventProfileModel } from "@/biz/paste/paste_profile";
 import { isCodeContent } from "@/biz/paste/utils";
-import { toNumber } from "@/utils/primitive";
 import { PasteContentImage, PasteContentType } from "@/biz/paste/service";
 import { RequestCore } from "@/domains/request";
-import { createRemark } from "@/biz/remark/service";
+import { createRemark, deleteRemark } from "@/biz/remark/service";
+import { ModelInList } from "@/components/dynamic-content/with-click";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
@@ -27,6 +27,7 @@ function PreviewPasteEventModel(props: ViewComponentProps) {
   const request = {
     remark: {
       create: new RequestCore(createRemark, { client: props.client }),
+      delete: new RequestCore(deleteRemark, { client: props.client }),
     },
   };
   const methods = {
@@ -39,21 +40,39 @@ function PreviewPasteEventModel(props: ViewComponentProps) {
   };
   const ui = {
     $view: new ScrollViewCore({}),
-    $textarea_remark: new InputCore({ defaultValue: "" }),
+    $textarea_remark: new InputCore({
+      defaultValue: "",
+      onEnter() {
+        ui.$btn_create_remark.click();
+      },
+    }),
     $btn_create_remark: new ButtonCore({
-      onClick() {
+      async onClick() {
         const content = ui.$textarea_remark.value;
         if (!content) {
+          props.app.tip({
+            text: ["请输入内容"],
+          });
           return;
         }
         const paste_id = props.view.query.id;
         if (!paste_id) {
+          props.app.tip({
+            text: ["异常操作"],
+          });
           return;
         }
-        request.remark.create.run({ content, paste_event_id: paste_id });
+        props.app.tip({
+          text: [content],
+        });
+        ui.$btn_create_remark.setLoading(true);
+        await request.remark.create.run({ content, paste_event_id: paste_id });
+        ui.$btn_create_remark.setLoading(false);
         ui.$textarea_remark.clear();
+        $profile.methods.reloadRemarks();
       },
     }),
+    $list_btn_delete_remark: ModelInList<ButtonCore>({}),
   };
 
   let _state = {
@@ -74,7 +93,25 @@ function PreviewPasteEventModel(props: ViewComponentProps) {
   };
   const bus = base<TheTypesOfEvents>();
 
-  $profile.onStateChange(() => methods.refresh());
+  $profile.onStateChange(() => {
+    const remarks = $profile.state.profile?.remark.dataSource;
+    // console.log("[PAGE]paste_event_profile - $profile.state.profile?.remark.dataSource", remarks);
+    if (remarks?.length) {
+      for (let i = 0; i < remarks.length; i += 1) {
+        const v = remarks[i];
+        ui.$list_btn_delete_remark.methods.set(
+          v.id,
+          () =>
+            new ButtonCore({
+              async onClick() {
+                $profile.methods.deleteRemark(v);
+              },
+            })
+        );
+      }
+    }
+    methods.refresh();
+  });
 
   return {
     methods,
@@ -138,7 +175,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                     </For>
                   </div>
                 </Match>
-                <Match when={state().profile?.types.includes("JSON")}>
+                <Match when={state().profile?.types?.includes("JSON")}>
                   <JSONContentPreview text={state().profile?.text!} />
                 </Match>
                 <Match when={isCodeContent(state().profile?.types)}>
@@ -151,7 +188,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                 </Match>
               </Switch>
             </div>
-            <div class="content_profile w-[280px] h-full p-4 bg-w-bg-3">
+            <div class="content_profile overflow-y-auto w-[280px] h-full p-4 bg-w-bg-3">
               <div>
                 <div class="paste_categories flex gap-1">
                   <For each={state().profile?.categories}>
@@ -169,7 +206,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                     <Show when={state().profile?.details?.type === PasteContentType.Image}>
                       <div class="details__image text-w-fg-0">
                         <div>
-                          <div>宽高</div>
+                          <div class="text-w-fg-1 text-[12px]">宽高</div>
                           <div class="flex items-center">
                             <div>{(state().profile?.details?.data as PasteContentImage).width}</div>
                             <div>x</div>
@@ -177,7 +214,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                           </div>
                         </div>
                         <div class="">
-                          <div>大小</div>
+                          <div class="text-w-fg-1 text-[12px]">大小</div>
                           <div>{(state().profile?.details?.data as PasteContentImage).size_for_humans}</div>
                         </div>
                       </div>
@@ -198,22 +235,36 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                     <div class="text-w-fg-0">{state().profile?.device.name}</div>
                   </div>
                 </div>
-                <div class="remark mt-8 text-w-fg-0">
-                  <div>备注</div>
+                <div class="remark mt-2 text-w-fg-0">
+                  <div class="text-w-fg-1 text-[12px]">备注</div>
                   <div class="mt-1 space-y-1">
-                    <For each={state().profile?.remarks}>
+                    <For each={state().profile?.remark.dataSource}>
                       {(remark) => {
                         return (
                           <div>
                             <div>{remark.content}</div>
-                            <div class="text-w-fg-1 text-[12px]">{remark.created_at_text}</div>
+                            <div class="flex items-center justify-between">
+                              <div class="text-w-fg-1 text-[12px]">{remark.created_at_text}</div>
+                              <div>
+                                <Show when={vm.ui.$list_btn_delete_remark.methods.get(remark.id)}>
+                                  <Button size="sm" store={vm.ui.$list_btn_delete_remark.methods.get(remark.id)!}>
+                                    删除
+                                  </Button>
+                                </Show>
+                              </div>
+                            </div>
                           </div>
                         );
                       }}
                     </For>
                   </div>
                   <div class="mt-2">
-                    <Textarea store={vm.ui.$textarea_remark} />
+                    <Textarea
+                      spellcheck={false}
+                      autocapitalize="off"
+                      autoCapitalize="off"
+                      store={vm.ui.$textarea_remark}
+                    />
                     <Button class="mt-1" store={vm.ui.$btn_create_remark}>
                       添加
                     </Button>

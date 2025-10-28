@@ -119,6 +119,8 @@ type TheTypesOfEvents<T> = {
       | "load_more"
       | "reload"
       | "reset"
+      | "delete"
+      | "unshift"
       | "manually";
   };
   [Events.StateChange]: ListState<T>;
@@ -126,6 +128,11 @@ type TheTypesOfEvents<T> = {
   [Events.Completed]: void;
 };
 interface ListState<T> extends Response<T> {}
+
+let handler: null | ((v: ListCore<any>) => void) = null;
+export function onListCreated(h: (v: ListCore<any>) => void) {
+  handler = h;
+}
 
 /**
  * 分页类
@@ -364,7 +371,7 @@ export class ListCore<
       ...this.response,
       ...res.data,
     };
-    // console.log("[DOMAIN]list/init - before Event.StateChange", this.response.dataSource);
+    console.log("[DOMAIN]list/init - before Event.StateChange", this.response.dataSource);
     this.emit(Events.StateChange, { ...this.response });
     this.emit(Events.DataSourceChange, {
       dataSource: [...this.response.dataSource],
@@ -648,6 +655,17 @@ export class ListCore<
       reason: "clear",
     });
   }
+  unshiftItem(v: T) {
+    const { dataSource } = this.response;
+    const nextDataSource = [v, ...dataSource];
+    this.response.total = nextDataSource.length;
+    this.response.dataSource = nextDataSource;
+    this.emit(Events.StateChange, { ...this.response });
+    this.emit(Events.DataSourceChange, {
+      dataSource: [...this.response.dataSource],
+      reason: "unshift",
+    });
+  }
   deleteItem(fn: (item: T) => boolean) {
     const { dataSource } = this.response;
     const nextDataSource = dataSource.filter((item) => {
@@ -658,7 +676,7 @@ export class ListCore<
     this.emit(Events.StateChange, { ...this.response });
     this.emit(Events.DataSourceChange, {
       dataSource: [...this.response.dataSource],
-      reason: "manually",
+      reason: "delete",
     });
   }
   /**
