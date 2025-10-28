@@ -731,7 +731,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                       <Match when={v.type === "image" && v.image_url}>
                         <AspectRatio class="relative" ratio={6 / 2}>
                           <img
-                            class="absolute inset-0 top-1/2 -translate-y-1/2 w-full object-cover"
+                            class="absolute inset-0 w-full object-cover"
                             src={v.image_url!}
                           />
                         </AspectRatio>
