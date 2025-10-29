@@ -11,8 +11,9 @@ import (
 	"devboard/config"
 )
 
-func New() *BizApp {
+func New(app *application.App) *BizApp {
 	return &BizApp{
+		App:     app,
 		Windows: make(map[string]*application.WebviewWindow),
 	}
 }

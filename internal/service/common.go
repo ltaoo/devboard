@@ -13,6 +13,10 @@ type CommonService struct {
 	Biz *biz.BizApp
 }
 
+func NewCommonService(app *application.App, biz *biz.BizApp) *CommonService {
+	return &CommonService{App: app, Biz: biz}
+}
+
 type OpenWindowBody struct {
 	Title  string `json:"title"`
 	URL    string `json:"url"`

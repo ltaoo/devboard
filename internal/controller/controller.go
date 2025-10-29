@@ -11,11 +11,11 @@ type ListResp[T any] struct {
 type Result[T any] struct {
 	Code int    `json:"code"`
 	Msg  string `json:"msg"`
-	Data T      `json:"data"`
+	Data *T     `json:"data"`
 }
 
-func Error[T any](err error) *Result[*T] {
-	resp := Result[*T]{
+func Error[T any](err error) *Result[T] {
+	resp := Result[T]{
 		Code: 100,
 		Msg:  err.Error(),
 		Data: nil,
@@ -26,11 +26,12 @@ func Error[T any](err error) *Result[*T] {
 	// }
 	return &resp
 }
+
 func Ok[T any](data T) *Result[T] {
 	resp := Result[T]{
 		Code: 0,
 		Msg:  "",
-		Data: data,
+		Data: &data,
 	}
 	// v, err := json.Marshal(resp)
 	// if err != nil {

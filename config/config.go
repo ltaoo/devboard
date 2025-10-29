@@ -75,7 +75,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("UserConfigDir", data_dir)
 	viper.SetDefault("UserConfigName", "settings.json")
 	// 设置默认值
-	viper.SetDefault("SERVER_ADDRESS", ":8080")
+	viper.SetDefault("SERVER_ADDRESS", ":8389")
 	viper.SetDefault("ENVIRONMENT", "development")
 	viper.SetDefault("LOG_LEVEL", "info")
 	viper.SetDefault("DB_TYPE", "sqlite")

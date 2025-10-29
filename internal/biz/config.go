@@ -14,6 +14,15 @@ type BizConfig struct {
 	Value      map[string]interface{}
 }
 
+type UserConfigValue struct {
+	Douyin struct {
+		Cookie string `json:"cookie"`
+	} `json:"douyin"`
+	PasteEvent struct {
+		CallbackEndpoint string `json:"callback_endpoint"`
+	} `json:"paste_event"`
+}
+
 func NewBizConfig(dir string, filename string) *BizConfig {
 	c := BizConfig{
 		ConfigDir:  dir,
