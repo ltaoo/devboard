@@ -39,8 +39,23 @@ type PasteListBody struct {
 	Types   []string `json:"types"`
 	Keyword string   `json:"keyword"`
 }
+type PasteCategoryResp struct {
+	Id    string `json:"id"`
+	Label string `json:"label"`
+}
+type PasteListItemResp struct {
+	Id           string              `json:"id"`
+	ContentType  string              `json:"content_type"`
+	Text         string              `json:"text,omitempty"`
+	HTML         string              `json:"html,omitempty"`
+	ImageBase64  string              `json:"image_base64,omitempty"`
+	FileListJSON string              `json:"file_list_json,omitempty"`
+	Details      string              `json:"details,omitempty"`
+	CreatedAt    string              `json:"created_at"`
+	Categories   []PasteCategoryResp `json:"categories"`
+}
 
-func (s *PasteController) FetchPasteEventList(body PasteListBody) *Result[*ListResp[models.PasteEvent]] {
+func (s *PasteController) FetchPasteEventList(body PasteListBody) (*ListResp[PasteListItemResp], error) {
 	query := s.db.Model(&models.PasteEvent{})
 	if body.Keyword != "" {
 		query = query.Where("paste_event.text LIKE ?", "%"+body.Keyword+"%")
@@ -54,25 +69,47 @@ func (s *PasteController) FetchPasteEventList(body PasteListBody) *Result[*ListR
 		SetOrderBy("paste_event.created_at DESC")
 	var list1 []models.PasteEvent
 	if err := pb.Build().Preload("Categories").Find(&list1).Error; err != nil {
-		return Error[ListResp[models.PasteEvent]](err)
+		return nil, err
 	}
 	list2, has_more, next_marker := pb.ProcessResults(list1)
-	return Ok(ListResp[models.PasteEvent]{
-		List:       list2,
+	var list []PasteListItemResp
+	for _, v := range list2 {
+		vv := PasteListItemResp{
+			Id:           v.Id,
+			ContentType:  v.ContentType,
+			Text:         v.Text,
+			HTML:         v.Html,
+			ImageBase64:  v.ImageBase64,
+			FileListJSON: v.FileListJSON,
+			Details:      v.Details,
+			CreatedAt:    v.CreatedAt,
+		}
+		var categories []PasteCategoryResp
+		for _, c := range v.Categories {
+			categories = append(categories, PasteCategoryResp{
+				Id:    c.Id,
+				Label: c.Label,
+			})
+		}
+		vv.Categories = categories
+		list = append(list, vv)
+	}
+	return &ListResp[PasteListItemResp]{
+		List:       list,
 		Page:       body.Page,
 		PageSize:   pb.GetLimit(),
 		HasMore:    has_more,
 		NextMarker: next_marker,
-	})
+	}, nil
 }
 
 type PasteProfileBody struct {
 	EventId string `json:"event_id"`
 }
 
-func (s *PasteController) FetchPasteEventProfile(body PasteProfileBody) *Result {
+func (s *PasteController) FetchPasteEventProfile(body PasteProfileBody) (*models.PasteEvent, error) {
 	if body.EventId == "" {
-		return Error(fmt.Errorf("缺少 id 参数"))
+		return nil, fmt.Errorf("缺少 id 参数")
 	}
 	var record models.PasteEvent
 	if err := s.db.Where("id = ?", body.EventId).
@@ -82,28 +119,28 @@ func (s *PasteController) FetchPasteEventProfile(body PasteProfileBody) *Result 
 		// 	return db.Order("remark.created_at DESC")
 		// }).
 		Preload("Categories").First(&record).Error; err != nil {
-		return Error(err)
+		return nil, err
 	}
-	return Ok(&record)
+	return &record, nil
 }
 
 type PasteEventBody struct {
 	PasteEventId string `json:"paste_event_id"`
 }
 
-func (s *PasteController) DeletePasteEvent(body PasteEventBody) *Result {
+func (s *PasteController) DeletePasteEvent(body PasteEventBody) (*models.PasteEvent, error) {
 	if body.PasteEventId == "" {
-		return Error(fmt.Errorf("缺少 id 参数"))
+		return nil, fmt.Errorf("缺少 id 参数")
 	}
 	var existing models.PasteEvent
 	if err := s.db.Where("id = ?", body.PasteEventId).First(&existing).Error; err != nil {
-		return Error(err)
+		return nil, err
 	}
 	existing.DeletedAt = gorm.DeletedAt{Time: time.Now(), Valid: true}
 	if err := s.db.Save(&existing).Error; err != nil {
-		return Error(err)
+		return nil, err
 	}
-	return Ok(nil)
+	return &existing, nil
 }
 
 type FileInPasteEvent struct {
@@ -115,13 +152,13 @@ type PasteWriteBody struct {
 	EventId string `json:"event_id"`
 }
 
-func (s *PasteController) WritePasteContent(body PasteWriteBody) *Result {
+func (s *PasteController) WritePasteContent(body PasteWriteBody) (int, error) {
 	if body.EventId == "" {
-		return Error(fmt.Errorf("缺少 id 参数"))
+		return 0, fmt.Errorf("缺少 id 参数")
 	}
 	var record models.PasteEvent
 	if err := s.db.Where("id = ?", body.EventId).First(&record).Error; err != nil {
-		return Error(err)
+		return 0, err
 	}
 	is_text := record.ContentType == "text"
 	is_html := record.ContentType == "html"
@@ -143,24 +180,24 @@ func (s *PasteController) WritePasteContent(body PasteWriteBody) *Result {
 			text = record.Text
 		}
 		if err := clipboard.WriteHTML(text, record.Text); err != nil {
-			return Error(err)
+			return 0, err
 		}
-		return Ok(nil)
+		return 1, nil
 	}
 	if is_image {
 		decoded_data, err := base64.StdEncoding.DecodeString(record.ImageBase64)
 		if err != nil {
-			return Error(err)
+			return 0, err
 		}
 		if err := clipboard.WriteImage(decoded_data); err != nil {
-			return Error(err)
+			return 0, err
 		}
-		return Ok(nil)
+		return 1, nil
 	}
 	if is_file {
 		var files []FileInPasteEvent
 		if err := json.Unmarshal([]byte(record.FileListJSON), &files); err != nil {
-			return Error(err)
+			return 0, err
 		}
 		var errors []string
 		var file_paths []string
@@ -173,24 +210,20 @@ func (s *PasteController) WritePasteContent(body PasteWriteBody) *Result {
 			file_paths = append(file_paths, f.AbsolutePath)
 		}
 		if len(file_paths) == 0 {
-			return Error(fmt.Errorf("There's no valid file can copy."))
+			return 0, fmt.Errorf("There's no valid file can copy.")
 		}
 		if err := clipboard.WriteFiles(file_paths); err != nil {
-			return Error(err)
+			return 0, err
 		}
-		return Ok(nil)
+		return 1, nil
 	}
 	if is_text {
 		if err := clipboard.WriteText(record.Text); err != nil {
-			return Error(err)
+			return 0, err
 		}
-		return Ok(nil)
+		return 1, nil
 	}
-	return Error(fmt.Errorf("invalid record data"))
-}
-
-type ContentDownloadBody struct {
-	PasteEventId string `json:"paste_event_id"`
+	return 0, fmt.Errorf("invalid record data")
 }
 
 type PasteExtraInfo struct {

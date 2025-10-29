@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/denisbrodbeck/machineid"
+	"github.com/gin-gonic/gin"
 	"github.com/ltaoo/clipboard-go"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -20,6 +21,7 @@ import (
 	"devboard/config"
 	"devboard/db"
 	_biz "devboard/internal/biz"
+	"devboard/internal/routes"
 	"devboard/internal/service"
 	"devboard/models"
 	"devboard/pkg/logger"
@@ -53,6 +55,19 @@ func NotFoundMiddleware(next http.Handler) http.Handler {
 		}
 	})
 }
+func GinMiddleware(engine *gin.Engine) application.Middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Let Wails handle the `/wails` route
+			if r.URL.Path == "/wails" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// Let Gin handle everything else
+			engine.ServeHTTP(w, r)
+		})
+	}
+}
 
 type ResponseRecorder struct {
 	http.ResponseWriter
@@ -68,9 +83,6 @@ func (r *ResponseRecorder) WriteHeader(status int) {
 // and starts a goroutine that emits a time-based event every second. It subsequently runs the application and
 // logs any error that might occur.
 func main() {
-	// var database *gorm.DB
-	biz := _biz.New()
-
 	// Create a new Wails application by providing the necessary options.
 	// Variables 'Name' and 'Description' are for application metadata.
 	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
@@ -95,62 +107,69 @@ func main() {
 		},
 		// Logger: log,
 	})
-	biz.SetApp(app)
 
-	greet_service := application.NewService(&service.GreetService{})
-	fs_service := application.NewServiceWithOptions(&service.FileService{
-		App: app,
-	}, application.ServiceOptions{
-		Route: "/file",
-	})
-	_common_service := &service.CommonService{
-		App: app,
-		Biz: biz,
+	biz := _biz.New(app)
+
+	machine_id, err := machineid.ID()
+	if err != nil {
+		t := fmt.Sprintf("Failed to generate machine id, %v", err)
+		biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+		return
 	}
-	common_service := application.NewService(_common_service)
-	_paste_service := service.PasteService{
-		App: app,
-		Biz: biz,
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		t := fmt.Sprintf("Failed to load config: %v", err)
+		biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+		return
 	}
-	paste_service := application.NewService(&_paste_service)
-	config_service := application.NewService(&service.ConfigService{
-		App: app,
-		Biz: biz,
-	})
-	system_service := application.NewService(&service.SystemService{
-		Biz: biz,
-	})
-	category_service := application.NewService(&service.CategoryService{
-		App: app,
-		Biz: biz,
-	})
-	douyin_service := application.NewService(&service.DouyinService{
-		App: app,
-		Biz: biz,
-	})
-	sync_service := application.NewService(&service.SyncService{
-		App: app,
-		Biz: biz,
-	})
-	remark_service := application.NewService(&service.RemarkService{
-		App: app,
-		Biz: biz,
-	})
-	app.RegisterService(greet_service)
-	app.RegisterService(fs_service)
-	app.RegisterService(common_service)
-	app.RegisterService(paste_service)
-	app.RegisterService(system_service)
-	app.RegisterService(sync_service)
-	app.RegisterService(douyin_service)
-	app.RegisterService(config_service)
-	app.RegisterService(category_service)
-	app.RegisterService(remark_service)
+	logger := logger.NewLogger(cfg.LogLevel)
+	defer logger.Sync()
+	database, err := db.NewDatabase(cfg)
+	if err != nil {
+		t := fmt.Sprintf("Failed to connect to database, %v", err)
+		fmt.Println(t)
+		biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+		return
+	}
+	migrator := db.NewMigrator(cfg, logger, &migrations)
+	if err := migrator.MigrateUp(); err != nil {
+		t := fmt.Sprintf("Failed to run migrations, %v", err)
+		biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+		return
+	}
+	db.Seed(database, machine_id)
+	go func() {
+		router := routes.SetupRouter(database, logger, cfg, machine_id)
+		if err := router.Run(cfg.ServerAddress); err != nil {
+			logger.Fatal("Failed to start server", err)
+		}
+	}()
+	biz.SetName(cfg.ProductName)
+	biz.SetDatabase(database)
+	biz.SetConfig(cfg)
+	biz.SetMachineId(machine_id)
+	biz_config := _biz.NewBizConfig(cfg.UserConfigDir, cfg.UserConfigName)
+	biz_config.InitializeConfig()
+	biz.SetUserConfig(biz_config)
+	// win.Show()
+
+	service_common := service.NewCommonService(app, biz)
+	service_paste := service.NewPasteService(app, biz)
+	app.RegisterService(application.NewService(service_common))
+	app.RegisterService(application.NewService(service_paste))
+	app.RegisterService(application.NewService(&service.GreetService{}))
+	app.RegisterService(application.NewService(&service.SystemService{Biz: biz}))
+	app.RegisterService(application.NewService(&service.SyncService{App: app, Biz: biz}))
+	app.RegisterService(application.NewService(&service.DouyinService{App: app, Biz: biz}))
+	app.RegisterService(application.NewService(&service.ConfigService{App: app, Biz: biz}))
+	app.RegisterService(application.NewService(&service.CategoryService{App: app, Biz: biz}))
+	app.RegisterService(application.NewService(&service.RemarkService{App: app, Biz: biz}))
+	app.RegisterService(application.NewServiceWithOptions(&service.FileService{App: app}, application.ServiceOptions{Route: "/file"}))
 
 	hk := _biz.NewHotkey()
 
 	method_open_setting_window := func() {
-		_common_service.OpenWindow(service.OpenWindowBody{
+		service_common.OpenWindow(service.OpenWindowBody{
 			Title: "Settings",
 			URL:   "/settings_system",
 		})
@@ -295,7 +314,7 @@ func main() {
 			}
 			if data.Type == "public.file-url" {
 				if files, ok := data.Data.([]string); ok {
-					created, err := _paste_service.HandlePasteFile(files, extra)
+					created, err := service_paste.HandlePasteFile(files, extra)
 					if err != nil {
 						return
 					}
@@ -304,7 +323,7 @@ func main() {
 			}
 			if data.Type == "public.utf8-plain-text" {
 				if text, ok := data.Data.(string); ok {
-					created, err := _paste_service.HandlePasteText(text, extra)
+					created, err := service_paste.HandlePasteText(text, extra)
 					if err != nil {
 						return
 					}
@@ -315,7 +334,7 @@ func main() {
 				if html, ok := data.Data.(string); ok {
 					text, _ := clipboard.ReadText()
 					extra.PlainText = text
-					created, err := _paste_service.HandlePasteHTML(html, extra)
+					created, err := service_paste.HandlePasteHTML(html, extra)
 					if err != nil {
 						return
 					}
@@ -324,7 +343,7 @@ func main() {
 			}
 			if data.Type == "public.png" {
 				if f, ok := data.Data.([]byte); ok {
-					created, err := _paste_service.HandlePastePNG(f, extra)
+					created, err := service_paste.HandlePastePNG(f, extra)
 					if err != nil {
 						return
 					}
@@ -344,48 +363,6 @@ func main() {
 	app.Event.On("m:hide-main-window", func(event *application.CustomEvent) {
 		win.Hide()
 	})
-	go func() {
-		machine_id, err := machineid.ID()
-		if err != nil {
-			t := fmt.Sprintf("Failed to generate machine id, %v", err)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-			win.Hide()
-			return
-		}
-		cfg, err := config.LoadConfig()
-		if err != nil {
-			t := fmt.Sprintf("Failed to load config: %v", err)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-			win.Hide()
-			return
-		}
-		logger := logger.NewLogger(cfg.LogLevel)
-		defer logger.Sync()
-		database, err := db.NewDatabase(cfg)
-		if err != nil {
-			t := fmt.Sprintf("Failed to connect to database, %v", err)
-			fmt.Println(t)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-			win.Hide()
-			return
-		}
-		migrator := db.NewMigrator(cfg, logger, &migrations)
-		if err := migrator.MigrateUp(); err != nil {
-			t := fmt.Sprintf("Failed to run migrations, %v", err)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-			win.Hide()
-			return
-		}
-		db.Seed(database, machine_id)
-		biz.SetName(cfg.ProductName)
-		biz.SetDatabase(database)
-		biz.SetConfig(cfg)
-		biz.SetMachineId(machine_id)
-		biz_config := _biz.NewBizConfig(cfg.UserConfigDir, cfg.UserConfigName)
-		biz_config.InitializeConfig()
-		biz.SetUserConfig(biz_config)
-		// win.Show()
-	}()
 
 	var register_global_shortcut func(win *application.WebviewWindow, hk *hotkey.Hotkey)
 	register_global_shortcut = func(win *application.WebviewWindow, hk *hotkey.Hotkey) {
@@ -419,10 +396,8 @@ func main() {
 		register_global_shortcut(win, hk)
 	}()
 	// Run the application. This blocks until the application has been exited.
-	err := app.Run()
-
-	// If an error occurred while running the application, log it and exit.
-	if err != nil {
+	if err := app.Run(); err != nil {
+		// If an error occurred while running the application, log it and exit.
 		fmt.Println(err.Error())
 	}
 }

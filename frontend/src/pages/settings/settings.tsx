@@ -64,9 +64,24 @@ function SettingsViewModel(props: ViewComponentProps) {
     $form_settings: new ObjectFieldCore({
       fields: {
         douyin: new ObjectFieldCore({
+          label: "抖音",
           fields: {
             cookie: new SingleFieldCore({
               label: "Cookie",
+              rules: [
+                {
+                  required: true,
+                },
+              ],
+              input: new InputCore({ defaultValue: "" }),
+            }),
+          },
+        }),
+        paste_event: new ObjectFieldCore({
+          label: "粘贴事件",
+          fields: {
+            callback_endpoint: new SingleFieldCore({
+              label: "回调地址",
               rules: [
                 {
                   required: true,
@@ -118,12 +133,20 @@ export function SettingsView(props: ViewComponentProps) {
     <ScrollView store={vm.ui.$view} class="p-4">
       <div class="block">
         <div class="text-2xl text-w-fg-0">配置</div>
-        <div class="mt-4">
+        <div class="mt-4 space-y-2">
           <div>
-            <div class="text-xl text-w-fg-0">抖音</div>
+            <div class="text-xl text-w-fg-0">{vm.ui.$form_settings.fields.douyin.label}</div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.douyin}>
               <FieldV2 store={vm.ui.$form_settings.fields.douyin.fields.cookie}>
                 <Textarea store={vm.ui.$form_settings.fields.douyin.fields.cookie.input} />
+              </FieldV2>
+            </FieldObjV2>
+          </div>
+          <div>
+            <div class="text-xl text-w-fg-0">粘贴事件回调地址</div>
+            <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.paste_event}>
+              <FieldV2 store={vm.ui.$form_settings.fields.paste_event.fields.callback_endpoint}>
+                <Textarea store={vm.ui.$form_settings.fields.paste_event.fields.callback_endpoint.input} />
               </FieldV2>
             </FieldObjV2>
           </div>

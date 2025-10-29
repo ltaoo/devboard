@@ -39,23 +39,37 @@ func NewPasteService(app *application.App, biz *biz.BizApp) *PasteService {
 	}
 }
 
-func (s *PasteService) FetchPasteEventList(body controller.PasteListBody) *controller.Result {
+func (s *PasteService) FetchPasteEventList(body controller.PasteListBody) *Result {
 	if err := s.Biz.Ensure(); err != nil {
-		return controller.Error(err)
+		return Error(err)
 	}
-	r := s.Con.FetchPasteEventList(body)
-	return r
+	if s.Con == nil {
+		return Error(fmt.Errorf("Missing the controller"))
+	}
+	list, err := s.Con.FetchPasteEventList(body)
+	if err != nil {
+		return Error(err)
+	}
+	return Ok(list)
 }
 
-func (s *PasteService) FetchPasteEventProfile(body controller.PasteProfileBody) *controller.Result {
+func (s *PasteService) FetchPasteEventProfile(body controller.PasteProfileBody) *Result {
 	if s.Biz.DB == nil {
-		return controller.Error(fmt.Errorf("请先初始化数据库"))
+		return Error(fmt.Errorf("请先初始化数据库"))
 	}
-	return s.Con.FetchPasteEventProfile(body)
+	profile, err := s.Con.FetchPasteEventProfile(body)
+	if err != nil {
+		return Error(err)
+	}
+	return Ok(profile)
 }
 
-func (s *PasteService) DeletePasteEvent(body controller.PasteEventBody) *controller.Result {
-	return s.Con.DeletePasteEvent(body)
+func (s *PasteService) DeletePasteEvent(body controller.PasteEventBody) *Result {
+	_, err := s.Con.DeletePasteEvent(body)
+	if err != nil {
+		return Error(err)
+	}
+	return Ok(nil)
 }
 
 type PasteEventPreviewBody struct {
@@ -63,16 +77,16 @@ type PasteEventPreviewBody struct {
 	Focus   bool   `json:"focus"`
 }
 
-func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *controller.Result {
+func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 	if body.EventId == "" {
-		return controller.Error(fmt.Errorf("缺少 event_id 参数"))
+		return Error(fmt.Errorf("缺少 event_id 参数"))
 	}
 	unique_url := "/preview"
 	url := unique_url + "?id=" + url.QueryEscape(body.EventId)
 	existing_win := s.Biz.FindWindow(unique_url)
 	if existing_win != nil {
 		existing_win.SetURL(url)
-		return controller.Ok(map[string]interface{}{
+		return Ok(map[string]interface{}{
 			"ok": true,
 		})
 	}
@@ -89,7 +103,7 @@ func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *controller
 		URL:              url,
 	})
 	s.Biz.AppendWindow(unique_url, win)
-	return controller.Ok(map[string]interface{}{})
+	return Ok(map[string]interface{}{})
 }
 
 type FileInPasteBoard struct {
@@ -98,21 +112,26 @@ type FileInPasteBoard struct {
 	MimeType     string `json:"mime_type"`
 }
 
-func (s *PasteService) Write(body controller.PasteWriteBody) *controller.Result {
+func (s *PasteService) Write(body controller.PasteWriteBody) *Result {
 	if s.Biz.DB == nil {
-		return controller.Error(fmt.Errorf("请先初始化数据库"))
+		return Error(fmt.Errorf("请先初始化数据库"))
 	}
 	s.Biz.ManuallyWriteClipboardTime = time.Now()
-	return s.Con.WritePasteContent(body)
+	_, err := s.Con.WritePasteContent(body)
+	if err != nil {
+		return Error(err)
+	}
+	return Ok(nil)
 }
 
-func (f *PasteService) DownloadContentWithPasteEventId(body controller.PasteProfileBody) *controller.Result {
-	existing_paste_event := f.Con.FetchPasteEventProfile(body)
-
-	if existing_paste_event.ContentType == "file" {
-		return controller.Error(fmt.Errorf("can't download the file."))
+func (f *PasteService) DownloadContentWithPasteEventId(body controller.PasteProfileBody) *Result {
+	existing_paste_event, err := f.Con.FetchPasteEventProfile(body)
+	if err != nil {
+		return Error(err)
 	}
-
+	if existing_paste_event.ContentType == "file" {
+		return Error(fmt.Errorf("can't download the file."))
+	}
 	dialog := application.SaveFileDialog()
 	dialog.CanCreateDirectories(true)
 
@@ -125,7 +144,7 @@ func (f *PasteService) DownloadContentWithPasteEventId(body controller.PasteProf
 		filename = existing_paste_event.Id + ".png"
 		data, err := base64.StdEncoding.DecodeString(existing_paste_event.ImageBase64)
 		if err != nil {
-			return controller.Error(fmt.Errorf("Base64解码失败"))
+			return Error(fmt.Errorf("Base64解码失败"))
 		}
 		content = data
 	}
@@ -147,23 +166,23 @@ func (f *PasteService) DownloadContentWithPasteEventId(body controller.PasteProf
 	// })
 	path, err := dialog.PromptForSingleSelection()
 	if err != nil {
-		return controller.Error(err)
+		return Error(err)
 	}
 	if path == "" {
-		return controller.Ok(map[string]interface{}{
+		return Ok(map[string]interface{}{
 			"cancel": true,
 		})
 	}
 	file, err := os.Create(path)
 	if err != nil {
-		return controller.Error(err)
+		return Error(err)
 	}
 	defer file.Close()
 	_, err = file.Write(content)
 	if err != nil {
-		return controller.Error(err)
+		return Error(err)
 	}
-	return controller.Ok(map[string]interface{}{})
+	return Ok(map[string]interface{}{})
 }
 
 type PasteExtraInfo struct {
@@ -516,9 +535,9 @@ type MockPasteTextBody struct {
 	Text string `json:"text"`
 }
 
-func (s *PasteService) MockPasteText(body MockPasteTextBody) *controller.Result {
+func (s *PasteService) MockPasteText(body MockPasteTextBody) *Result {
 	if body.Text == "" {
-		return controller.Error(fmt.Errorf("Missing the text."))
+		return Error(fmt.Errorf("Missing the text."))
 	}
 	now := time.Now()
 	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
@@ -533,5 +552,5 @@ func (s *PasteService) MockPasteText(body MockPasteTextBody) *controller.Result 
 		},
 	}
 	s.App.Event.Emit("clipboard:update", created_paste_event)
-	return controller.Ok(created_paste_event)
+	return Ok(created_paste_event)
 }

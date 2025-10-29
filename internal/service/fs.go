@@ -34,6 +34,10 @@ type FileService struct {
 	route string
 }
 
+// func NewFileService() *FileService {
+
+// }
+
 func (s *FileService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	s.route = options.Route
 	return nil
