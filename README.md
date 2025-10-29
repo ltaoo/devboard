@@ -5,9 +5,9 @@ Supercharge Your workflow. The smart clipboard toolkit for developers.
 
 ## preview
 
-| Main Window | Settings Window |
-|:---:|:---:|
-| <img src="/docs/assets/devboard_1.png" width="250"/> | <img src="/docs/assets/devboard_2.png" width="250"/> |
+| Main Window | Settings Window | HelpCenter |
+|:---:|:---:|:---:|
+| <img src="/docs/assets/preview_01.png" width="250"/> | <img src="/docs/assets/preview_02.png" width="250"/> | <img src="/docs/assets/preview_05.png" width="250"/> |
 
 ## develop
 
