@@ -21,6 +21,7 @@ import {
   ModelInList,
 } from "@/components/dynamic-content/with-click";
 import { CodeCard } from "@/components/code-card";
+import { CommandToolSelect, CommandToolSelectModel } from "@/components/command-list";
 
 import { RequestCore, TheResponseOfRequestCore } from "@/domains/request";
 import { base, Handler } from "@/domains/base";
@@ -113,8 +114,8 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       if (!$first) {
         return;
       }
-      ui.$list_select.methods.unshiftOption(buildOptionFromWaterfallCell($first));
-      ui.$list_click.methods.set(d.id, () =>
+      ui.$list_highlight.methods.unshiftOption(buildOptionFromWaterfallCell($first));
+      ui.$map_copy_btn.methods.set(d.id, () =>
         DynamicContentWithClickModel({
           options: copy_buttons,
           onClick() {
@@ -126,10 +127,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         // console.log("[]before setScrollTop in onHeightChange", ui.$view.getScrollTop(), difference);
         ui.$view.addScrollTop(difference);
         // console.log("[]after setScrollTop in onHeightChange", ui.$view.getScrollTop());
-        ui.$list_select.methods.updateOption(buildOptionFromWaterfallCell($first));
+        ui.$list_highlight.methods.updateOption(buildOptionFromWaterfallCell($first));
       });
       $first.onTopChange(() => {
-        ui.$list_select.methods.updateOption(buildOptionFromWaterfallCell($first));
+        ui.$list_highlight.methods.updateOption(buildOptionFromWaterfallCell($first));
       });
     },
     prepareLoadRecord(data: PasteRecord) {
@@ -155,9 +156,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$waterfall.methods.resetRange();
     },
     clickPasteWithIdx() {
-      const idx = ui.$list_select.state.idx;
+      const idx = ui.$list_highlight.state.idx;
       const $cell = ui.$waterfall.$items[idx];
-      const $click = ui.$list_click.methods.get($cell.state.payload.id);
+      const $click = ui.$map_copy_btn.methods.get($cell.state.payload.id);
       if ($click) {
         $click.methods.click();
       }
@@ -181,7 +182,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       if (r.error) {
         return;
       }
-      ui.$list_select.methods.resetIdx();
+      ui.$list_highlight.methods.resetIdx();
       methods.backToTop();
       // if (event.code === "enter") {
       //   ui.$input_search.methods.blur();
@@ -203,7 +204,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$waterfall.methods.deleteCell((record) => {
         return record.id === v.id;
       });
-      ui.$list_select.methods.deleteOptionById(v.id);
+      ui.$list_highlight.methods.deleteOptionById(v.id);
       request.paste.list.deleteItem((record) => {
         return record.id === v.id;
       });
@@ -334,32 +335,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   const ui = {
     $view,
     $back_to_top: BackToTopModel({ clientHeight: props.app.screen.height }),
-    $btn_show_file_dialog: new ButtonCore({
-      async onClick() {
-        // const r = await request.file.open_dialog.run();
-        // console.log(r.data?.files);
-        // if (r.error) {
-        //   return;
-        // }
-        // if (r.data.cancel) {
-        //   return;
-        // }
-        // for (let i = 0; i < r.data.files.length; i += 1) {
-        //   const ff = r.data.files[i];
-        //   const existing = _selected_files.find((v) => v.name === ff.name);
-        //   if (!existing) {
-        //     // _selected_files = [..._selected_files, ff];
-        //     _selected_files.push(ff);
-        //   }
-        // }
-        // methods.refresh();
-        // const r = await request.paste.list.run({ page: 1 });
-        // if (r.error) {
-        //   return;
-        // }
-        // console.log(r.data);
-      },
-    }),
     $input_search: WithTagsInputModel({
       app: props.app,
       defaultValue: "",
@@ -369,11 +344,12 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       },
     }),
     $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 12, size: 10, buffer: 4 }),
-    $list_select: ListSelectModel({
+    $list_highlight: ListSelectModel({
       $view,
     }),
-    $list_click: ModelInList<DynamicContentWithClickModel>({}),
+    $map_copy_btn: ModelInList<DynamicContentWithClickModel>({}),
     $shortcut: ShortcutModel({}),
+    $commands: CommandToolSelectModel({ app: props.app, defaultValue: "" }),
   };
 
   let _selected_files = [] as SelectedFile[];
@@ -395,7 +371,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       return _selected_files;
     },
     get highlighted_idx() {
-      return ui.$list_select.state.idx;
+      return ui.$list_highlight.state.idx;
     },
   };
   enum EventNames {
@@ -409,6 +385,14 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   ui.$shortcut.methods.register({
     "KeyK,ArrowUp"(event) {
       console.log("[]shortcut - KeyK", ui.$input_search.isFocus, event.code);
+      if (ui.$commands.isFocus) {
+        if (event.code === "ArrowUp") {
+          ui.$commands.methods.moveToPrevOption({ step: 1 });
+          event.preventDefault();
+          return;
+        }
+        return;
+      }
       if (ui.$input_search.isFocus) {
         if (ui.$input_search.isOpen && event.code === "ArrowUp") {
           ui.$input_search.methods.moveToPrevOption({ step: 1 });
@@ -417,17 +401,28 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         }
       }
       event.preventDefault();
-      ui.$list_select.methods.moveToPrevOption({ step: 1 });
+      ui.$list_highlight.methods.moveToPrevOption({ step: 1 });
     },
     "ControlRight+KeyU"() {
+      if (ui.$commands.isFocus) {
+        return;
+      }
       if (ui.$input_search.isFocus) {
         ui.$input_search.methods.blur();
       }
-      ui.$list_select.methods.moveToPrevOption({ step: 3, force: true });
+      ui.$list_highlight.methods.moveToPrevOption({ step: 3, force: true });
     },
     "KeyJ,ArrowDown"(event) {
       // console.log("[]shortcut - KeyJ", ui.$input_search.isFocus, ui.$input_search.isOpen, event.code);
       // console.log("[]shortcut - moveToNextOption");
+      if (ui.$commands.isFocus) {
+        if (event.code === "ArrowDown") {
+          ui.$commands.methods.moveToNextOption({ step: 1 });
+          event.preventDefault();
+          return;
+        }
+        return;
+      }
       if (ui.$input_search.isFocus) {
         if (event.code === "ArrowDown") {
           if (ui.$input_search.isOpen) {
@@ -436,41 +431,59 @@ function HomeIndexViewModel(props: ViewComponentProps) {
             return;
           }
           event.preventDefault();
-          ui.$list_select.methods.moveToNextOption({ step: 1 });
+          ui.$list_highlight.methods.moveToNextOption({ step: 1 });
           return;
         }
         return;
       }
       event.preventDefault();
-      ui.$list_select.methods.moveToNextOption({ step: 1 });
+      ui.$list_highlight.methods.moveToNextOption({ step: 1 });
     },
     "ControlRight+KeyD"() {
+      if (ui.$commands.isFocus) {
+        return;
+      }
       if (ui.$input_search.isFocus) {
         ui.$input_search.methods.blur();
       }
-      ui.$list_select.methods.moveToNextOption({ step: 3, force: true });
+      ui.$list_highlight.methods.moveToNextOption({ step: 3, force: true });
     },
     KeyGKeyG() {
-      ui.$list_select.methods.resetIdx();
+      if (ui.$commands.isFocus) {
+        return;
+      }
+      ui.$list_highlight.methods.resetIdx();
       methods.backToTop();
     },
     KeyYKeyY(event) {
+      if (ui.$commands.isFocus) {
+        return;
+      }
       methods.handleHotkeyCopy(event);
     },
     Space(event) {
       console.log("[PAGE]home/index - key Space", ui.$input_search.isFocus);
+      if (ui.$commands.isFocus) {
+        return;
+      }
       if (ui.$input_search.isFocus) {
         return;
       }
       event.preventDefault();
-      const idx = ui.$list_select.state.idx;
+      const idx = ui.$list_highlight.state.idx;
       const $cell = ui.$waterfall.$items[idx];
       methods.previewPasteContent($cell.state.payload);
     },
     Enter(event) {
+      if (ui.$commands.isFocus) {
+        return;
+      }
       methods.handleHotkeyCopy(event);
     },
     Backspace() {
+      if (ui.$commands.isFocus) {
+        return;
+      }
       if (ui.$input_search.isFocus) {
         ui.$input_search.methods.handleKeydownBackspace();
         return;
@@ -480,7 +493,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       props.history.reload();
     },
     "MetaLeft+Backspace"() {
-      const opt = ui.$list_select.methods.getSelectedOption();
+      if (ui.$commands.isFocus) {
+        return;
+      }
+      const opt = ui.$list_highlight.methods.getSelectedOption();
       console.log("[PAGE]home/index - MetaLeft+Backspace", opt.id);
       if (!opt) {
         props.app.tip({
@@ -497,20 +513,43 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }
       methods.deletePaste(record);
     },
+    "MetaLeft+KeyK"() {
+      if (ui.$commands.isFocus) {
+        return;
+      }
+      const opt = ui.$list_highlight.methods.getSelectedOption();
+      if (!opt) {
+        return;
+      }
+      ui.$commands.methods.show({
+        x: 72,
+        y: (opt.top ?? 0) + opt.height + 58,
+      });
+    },
     "ShiftRight+Digit3"() {
       console.log("[PAGE]home/index - ShiftRight+Digit3");
+      if (ui.$commands.isFocus) {
+        return;
+      }
       ui.$input_search.methods.openSelect({ force: true });
     },
     "MetaLeft+KeyF,ShiftLeft+KeyA,KeyO"(event) {
+      if (ui.$commands.isFocus) {
+        return;
+      }
       if (ui.$input_search.isFocus) {
         return;
       }
       event.preventDefault();
-      ui.$list_select.methods.resetIdx();
+      ui.$list_highlight.methods.resetIdx();
       methods.backToTop();
       ui.$input_search.methods.focus();
     },
     Escape() {
+      if (ui.$commands.isFocus) {
+        ui.$commands.methods.hide();
+        return;
+      }
       ui.$input_search.methods.blur();
     },
     EscapeEscape(event) {
@@ -520,6 +559,16 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }, 100);
     },
   });
+  ui.$commands.methods.setOptions([
+    {
+      id: "json_format",
+      label: "JSON 格式化",
+    },
+    {
+      id: "cookie_parse",
+      label: "Cookie 解析",
+    },
+  ]);
 
   request.paste.list.onStateChange(() => methods.refresh());
   request.paste.list.onDataSourceChange(({ dataSource, reason }) => {
@@ -529,10 +578,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     if (["init", "reload", "refresh", "search"].includes(reason)) {
       ui.$waterfall.methods.cleanColumns();
       ui.$waterfall.methods.appendItems(dataSource);
-      ui.$list_select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
+      ui.$list_highlight.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
       for (let i = 0; i < dataSource.length; i += 1) {
         const paste = dataSource[i];
-        ui.$list_click.methods.set(paste.id, () =>
+        ui.$map_copy_btn.methods.set(paste.id, () =>
           DynamicContentWithClickModel({
             options: copy_buttons,
             onClick() {
@@ -555,10 +604,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     }
     console.log("[PAGE]home/index - paste list dataSource change", added_items);
     ui.$waterfall.methods.appendItems(added_items);
-    ui.$list_select.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
+    ui.$list_highlight.methods.setOptions(ui.$waterfall.$items.map(buildOptionFromWaterfallCell));
     for (let i = 0; i < added_items.length; i += 1) {
       const paste = added_items[i];
-      ui.$list_click.methods.set(paste.id, () =>
+      ui.$map_copy_btn.methods.set(paste.id, () =>
         DynamicContentWithClickModel({
           options: copy_buttons,
           onClick() {
@@ -569,10 +618,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     }
   });
   ui.$waterfall.onCellUpdate(({ $item }) => {
-    ui.$list_select.methods.updateOption(buildOptionFromWaterfallCell($item));
+    ui.$list_highlight.methods.updateOption(buildOptionFromWaterfallCell($item));
   });
   ui.$waterfall.onStateChange(() => methods.refresh());
-  ui.$list_select.onStateChange(() => methods.refresh());
+  ui.$list_highlight.onStateChange(() => methods.refresh());
   ui.$back_to_top.onStateChange(() => methods.refresh());
   const unlisten = props.app.onKeydown((event) => {
     // console.log("[PAGE]onKeydown", event.code);
@@ -624,228 +673,231 @@ export const HomeIndexView = (props: ViewComponentProps) => {
   const [state, vm] = useViewModel(HomeIndexViewModel, [props]);
 
   return (
-    <div class="relative w-full h-full" style="--custom-contextmenu: refresh; --custom-contextmenu-data: some-data">
-      <Show when={!!state().show_refresh_tip}>
-        <div class="z-[99] absolute top-4 left-1/2 -translate-x-1/2">
-          <div class="py-2 px-4 bg-w-bg-3 rounded-full cursor-pointer" onClick={vm.methods.loadAddedRecords}>
-            <div class="text-sm">{state().show_refresh_tip}条新内容</div>
+    <>
+      <div class="relative w-full h-full" style="--custom-contextmenu: refresh; --custom-contextmenu-data: some-data">
+        <Show when={!!state().show_refresh_tip}>
+          <div class="z-[99] absolute top-4 left-1/2 -translate-x-1/2">
+            <div class="py-2 px-4 bg-w-bg-3 rounded-full cursor-pointer" onClick={vm.methods.loadAddedRecords}>
+              <div class="text-sm">{state().show_refresh_tip}条新内容</div>
+            </div>
           </div>
-        </div>
-      </Show>
-      <ScrollView
-        store={vm.ui.$view}
-        class="z-0 relative bg-w-bg-0 scroll--hidden"
-        classList={{
-          // "w-[375px] mx-auto": props.app.env.pc,
-          "w-full": !props.app.env.pc,
-        }}
-      >
-        <div class="p-4 pb-0">
-          <WithTagsInput store={vm.ui.$input_search} />
-        </div>
-        <WaterfallView
-          class="relative p-4"
-          store={vm.ui.$waterfall}
-          list={vm.request.paste.list}
-          // showFallback={state().paste_event.empty}
-          fallback={
-            <Show when={state().paste_event.empty}>
-              <div class="flex flex-col items-center justify-center pt-12">
-                <Bird class="text-w-fg-2 w-36 h-36" />
-                <div class="mt-2 text-center text-w-fg-1">没有数据</div>
-              </div>
-            </Show>
-          }
-          render={(payload, idx) => {
-            const v = payload;
-            return (
-              <div
-                classList={{
-                  "paste-event-card group relative p-2 rounded-md outline outline-2 outline-w-fg-3 select-text": true,
-                  "bg-w-fg-5": state().highlighted_idx === idx,
-                }}
-                onClick={() => {
-                  vm.ui.$list_select.methods.handleEnterMenuOption(idx);
-                }}
-              >
-                <Show when={state().highlighted_idx === idx}>
-                  <div class="absolute left-[-4px] top-1/2 -translate-y-1/2 w-[4px] h-[36px] rounded-md bg-green-500"></div>
-                </Show>
-                <div class="paste-event-card__content">
-                  {/* <div class="absolute left-0 top-0">{state().highlighted_idx}</div> */}
-                  {/* <div class="absolute left-2 top-2">{v.id}</div> */}
-                  <div
-                    classList={{
-                      "relative min-h-[40px] max-h-[120px] overflow-hidden rounded-md": true,
-                    }}
-                  >
-                    {/* <div
+        </Show>
+        <ScrollView
+          store={vm.ui.$view}
+          class="z-0 relative bg-w-bg-0 scroll--hidden"
+          classList={{
+            // "w-[375px] mx-auto": props.app.env.pc,
+            "w-full": !props.app.env.pc,
+          }}
+        >
+          <div class="p-4 pb-0">
+            <WithTagsInput store={vm.ui.$input_search} />
+          </div>
+          <WaterfallView
+            class="relative p-4"
+            store={vm.ui.$waterfall}
+            list={vm.request.paste.list}
+            // showFallback={state().paste_event.empty}
+            fallback={
+              <Show when={state().paste_event.empty}>
+                <div class="flex flex-col items-center justify-center pt-12">
+                  <Bird class="text-w-fg-2 w-36 h-36" />
+                  <div class="mt-2 text-center text-w-fg-1">没有数据</div>
+                </div>
+              </Show>
+            }
+            render={(payload, idx) => {
+              const v = payload;
+              return (
+                <div
+                  classList={{
+                    "paste-event-card group relative p-2 rounded-md outline outline-2 outline-w-fg-3 select-text": true,
+                    "bg-w-fg-5": state().highlighted_idx === idx,
+                  }}
+                  onClick={() => {
+                    vm.ui.$list_highlight.methods.handleEnterMenuOption(idx);
+                  }}
+                >
+                  <Show when={state().highlighted_idx === idx}>
+                    <div class="absolute left-[-4px] top-1/2 -translate-y-1/2 w-[4px] h-[36px] rounded-md bg-green-500"></div>
+                  </Show>
+                  <div class="paste-event-card__content">
+                    {/* <div class="absolute left-0 top-0">{state().highlighted_idx}</div> */}
+                    {/* <div class="absolute left-2 top-2">{v.id}</div> */}
+                    <div
+                      classList={{
+                        "relative min-h-[40px] max-h-[120px] overflow-hidden rounded-md": true,
+                      }}
+                    >
+                      {/* <div
                     classList={{
                       "absolute left-0 top-0 h-full w-[4px] bg-green-300 hidden": true,
                       "group-hover:block": true,
                     }}
                   ></div> */}
-                    {/* <div class="absolute right-0">{idx}</div> */}
-                    <Switch fallback={<div class="p-2 text-w-fg-0 break-all">{v.text}</div>}>
-                      <Match when={v.type === "file" && v.files}>
-                        <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
-                          <For each={v.files}>
-                            {(f) => {
-                              return (
-                                <div>
-                                  <div
-                                    class="inline-flex items-center gap-1 cursor-pointer hover:underline"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      vm.methods.handleClickFile(f);
-                                    }}
-                                  >
-                                    <Switch>
-                                      <Match when={f.mime_type === "folder"}>
-                                        <Folder class="w-4 h-4 text-w-fg-1" />
-                                      </Match>
-                                      <Match when={f.mime_type !== "folder"}>
-                                        <File class="w-4 h-4 text-w-fg-1" />
-                                      </Match>
-                                    </Switch>
-                                    <div class="text-w-fg-0">{f.name}</div>
+                      {/* <div class="absolute right-0">{idx}</div> */}
+                      <Switch fallback={<div class="p-2 text-w-fg-0 break-all">{v.text}</div>}>
+                        <Match when={v.type === "file" && v.files}>
+                          <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
+                            <For each={v.files}>
+                              {(f) => {
+                                return (
+                                  <div>
+                                    <div
+                                      class="inline-flex items-center gap-1 cursor-pointer hover:underline"
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        vm.methods.handleClickFile(f);
+                                      }}
+                                    >
+                                      <Switch>
+                                        <Match when={f.mime_type === "folder"}>
+                                          <Folder class="w-4 h-4 text-w-fg-1" />
+                                        </Match>
+                                        <Match when={f.mime_type !== "folder"}>
+                                          <File class="w-4 h-4 text-w-fg-1" />
+                                        </Match>
+                                      </Switch>
+                                      <div class="text-w-fg-0">{f.name}</div>
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            }}
-                          </For>
-                        </div>
-                      </Match>
-                      <Match when={v.types.includes("url") && v.text}>
-                        <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
-                          <div
-                            class="flex items-center gap-1 cursor-pointer"
-                            onClick={() => {
-                              vm.methods.handleClickURL(v.text!);
-                            }}
-                          >
-                            <Link class="w-4 h-4" />
-                            <div class="flex-1 w-0 underline">{v.text}</div>
+                                );
+                              }}
+                            </For>
                           </div>
-                        </div>
-                      </Match>
-                      <Match when={v.types.includes("color")}>
-                        <div class="flex items-center gap-1 p-2">
-                          <div class="w-[16px] h-[16px]" style={{ "background-color": v.text }}></div>
-                          <div>{v.text}</div>
-                        </div>
-                      </Match>
-                      <Match when={v.types.includes("time")}>
-                        <div class="flex items-center gap-1 p-2">
-                          <div>{v.origin_text}</div>
-                          <div class="text-w-fg-1">{v.text}</div>
-                        </div>
-                      </Match>
-                      <Match when={isCodeContent(v.types) && v.text}>
-                        <div class="w-full overflow-auto">
-                          <CodeCard id={v.id} language={v.language} code={v.text!} />
-                        </div>
-                      </Match>
-                      <Match when={v.type === "html" && v.text}>
-                        <HTMLCard html={v.text!} />
-                      </Match>
-                      <Match when={v.type === "image" && v.image_url}>
-                        <AspectRatio class="relative" ratio={6 / 2}>
-                          <img class="absolute inset-0 w-full object-cover" src={v.image_url!} />
-                        </AspectRatio>
-                      </Match>
-                    </Switch>
-                  </div>
-                  <Flex class="mt-1" items="center" justify="between">
-                    <div class="flex items-center space-x-1 tags">
-                      <div class="px-2 bg-w-bg-5 rounded-full">
-                        <div class="text-w-fg-0 text-sm" title={v.id}>
-                          #{idx + 1}
-                        </div>
-                      </div>
-                      <For each={v.categories}>
-                        {(c) => {
-                          return (
-                            <div class="px-2 bg-w-bg-5 rounded-full">
-                              <div class="text-w-fg-0 text-sm">#{c.label}</div>
-                            </div>
-                          );
-                        }}
-                      </For>
-                    </div>
-                    <div class="flex items-center h-[32px]">
-                      <Show
-                        when={state().highlighted_idx === idx}
-                        fallback={
-                          <div class="time flex justify-between">
-                            <div title={v.created_at_text}>
-                              <RelativeTime class="text-sm text-w-fg-1" time={v.created_at}></RelativeTime>
-                            </div>
-                          </div>
-                        }
-                      >
-                        <div class="operations flex justify-between">
-                          <div class="flex items-center gap-1">
-                            <Show when={v.operations.includes("download")}>
-                              <div
-                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  vm.methods.handleClickDownloadBtn(v);
-                                }}
-                              >
-                                <Download class="w-4 h-4 text-w-fg-0" />
-                              </div>
-                            </Show>
+                        </Match>
+                        <Match when={v.types.includes("url") && v.text}>
+                          <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
                             <div
-                              class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                vm.methods.handleClickTrashBtn(v);
+                              class="flex items-center gap-1 cursor-pointer"
+                              onClick={() => {
+                                vm.methods.handleClickURL(v.text!);
                               }}
                             >
-                              <Trash class="w-4 h-4 text-w-fg-0" />
+                              <Link class="w-4 h-4" />
+                              <div class="flex-1 w-0 underline">{v.text}</div>
                             </div>
-                            <Show when={vm.ui.$list_click.methods.get(v.id)}>
-                              <div
-                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  vm.methods.handleClickCopyBtn(v);
-                                }}
-                              >
-                                <DynamicContentWithClick store={vm.ui.$list_click.methods.get(v.id)!} />
-                              </div>
-                            </Show>
-                            <Show when={["JSON"].includes(v.type)}>
-                              <div
-                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  vm.methods.handleClickFileBtn(v);
-                                }}
-                              >
-                                <File class="w-4 h-4 text-w-fg-0" />
-                              </div>
-                            </Show>
+                          </div>
+                        </Match>
+                        <Match when={v.types.includes("color")}>
+                          <div class="flex items-center gap-1 p-2">
+                            <div class="w-[16px] h-[16px]" style={{ "background-color": v.text }}></div>
+                            <div>{v.text}</div>
+                          </div>
+                        </Match>
+                        <Match when={v.types.includes("time")}>
+                          <div class="flex items-center gap-1 p-2">
+                            <div>{v.origin_text}</div>
+                            <div class="text-w-fg-1">{v.text}</div>
+                          </div>
+                        </Match>
+                        <Match when={isCodeContent(v.types) && v.text}>
+                          <div class="w-full overflow-auto">
+                            <CodeCard id={v.id} language={v.language} code={v.text!} />
+                          </div>
+                        </Match>
+                        <Match when={v.type === "html" && v.text}>
+                          <HTMLCard html={v.text!} />
+                        </Match>
+                        <Match when={v.type === "image" && v.image_url}>
+                          <AspectRatio class="relative" ratio={6 / 2}>
+                            <img class="absolute w-full h-full object-cover" src={v.image_url!} />
+                          </AspectRatio>
+                        </Match>
+                      </Switch>
+                    </div>
+                    <Flex class="mt-1" items="center" justify="between">
+                      <div class="flex items-center space-x-1 tags">
+                        <div class="px-2 bg-w-bg-5 rounded-full">
+                          <div class="text-w-fg-0 text-sm" title={v.id}>
+                            #{idx + 1}
                           </div>
                         </div>
-                      </Show>
-                    </div>
-                  </Flex>
+                        <For each={v.categories}>
+                          {(c) => {
+                            return (
+                              <div class="px-2 bg-w-bg-5 rounded-full">
+                                <div class="text-w-fg-0 text-sm">#{c.label}</div>
+                              </div>
+                            );
+                          }}
+                        </For>
+                      </div>
+                      <div class="flex items-center h-[32px]">
+                        <Show
+                          when={state().highlighted_idx === idx}
+                          fallback={
+                            <div class="time flex justify-between">
+                              <div title={v.created_at_text}>
+                                <RelativeTime class="text-sm text-w-fg-1" time={v.created_at}></RelativeTime>
+                              </div>
+                            </div>
+                          }
+                        >
+                          <div class="operations flex justify-between">
+                            <div class="flex items-center gap-1">
+                              <Show when={v.operations.includes("download")}>
+                                <div
+                                  class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    vm.methods.handleClickDownloadBtn(v);
+                                  }}
+                                >
+                                  <Download class="w-4 h-4 text-w-fg-0" />
+                                </div>
+                              </Show>
+                              <div
+                                class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  vm.methods.handleClickTrashBtn(v);
+                                }}
+                              >
+                                <Trash class="w-4 h-4 text-w-fg-0" />
+                              </div>
+                              <Show when={vm.ui.$map_copy_btn.methods.get(v.id)}>
+                                <div
+                                  class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    vm.methods.handleClickCopyBtn(v);
+                                  }}
+                                >
+                                  <DynamicContentWithClick store={vm.ui.$map_copy_btn.methods.get(v.id)!} />
+                                </div>
+                              </Show>
+                              <Show when={["JSON"].includes(v.type)}>
+                                <div
+                                  class="p-1 rounded-md cursor-pointer hover:bg-w-bg-5"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    vm.methods.handleClickFileBtn(v);
+                                  }}
+                                >
+                                  <File class="w-4 h-4 text-w-fg-0" />
+                                </div>
+                              </Show>
+                            </div>
+                          </div>
+                        </Show>
+                      </div>
+                    </Flex>
+                  </div>
                 </div>
-              </div>
-            );
-          }}
-        />
-      </ScrollView>
-      <Show when={!!state().show_back_to_top}>
-        <div class="z-[99] absolute bottom-8 right-8">
-          <div class="p-2 bg-w-bg-3 rounded-full cursor-pointer" onClick={vm.methods.handleClickUpBtn}>
-            <ChevronUp class="w-8 h-8 text-w-fg-0" />
+              );
+            }}
+          />
+        </ScrollView>
+        <Show when={!!state().show_back_to_top}>
+          <div class="z-[99] absolute bottom-8 right-8">
+            <div class="p-2 bg-w-bg-3 rounded-full cursor-pointer" onClick={vm.methods.handleClickUpBtn}>
+              <ChevronUp class="w-8 h-8 text-w-fg-0" />
+            </div>
           </div>
-        </div>
-      </Show>
-    </div>
+        </Show>
+      </div>
+      <CommandToolSelect store={vm.ui.$commands} />
+    </>
   );
 };

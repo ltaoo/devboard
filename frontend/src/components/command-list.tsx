@@ -1,5 +1,5 @@
 /**
- * @file 支持输入标签的输入框
+ * @file 支持的工具插件列表
  */
 import { For, Show } from "solid-js";
 import { Bird } from "lucide-solid";
@@ -15,7 +15,7 @@ import { BizError } from "@/domains/error";
 import { InputCore, InputProps, PopoverCore, ScrollViewCore, SelectCore } from "@/domains/ui";
 import { ListSelectModel, OptionWithTopInList } from "@/domains/list-select";
 
-export function WithTagsInputModel(
+export function CommandToolSelectModel(
   props: { app: ViewComponentProps["app"] } & {
     defaultValue: InputCore<any>["defaultValue"];
     onEnter?: (event: { code: string; value: string }) => void;
@@ -25,19 +25,19 @@ export function WithTagsInputModel(
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    buildOptionWithHeightAndTop(v: Pick<OptionWithTopInList, "id">[]) {
+    buildOptionWithHeightAndTop(v: Pick<OptionWithTopInList, "id" | "label">[]) {
       const options = v.map((opt, idx) => {
         const h = 6 + 24 + 6;
         return {
           id: opt.id,
-          label: `#${opt.id}`,
+          label: opt.label || `#${opt.id}`,
           height: h,
           top: idx * h,
         };
       });
       return options;
     },
-    setOptions(v: Pick<OptionWithTopInList, "id">[]) {
+    setOptions(v: Pick<OptionWithTopInList, "id" | "label">[]) {
       _options = methods.buildOptionWithHeightAndTop(v);
       _displayed_options = _options;
       _displayed_options = methods.filterDisplayedOptionsWithSelectedOptions();
@@ -81,6 +81,14 @@ export function WithTagsInputModel(
         return !selected_option_map_by_id[opt.id];
       });
     },
+    show(position: { x: number; y: number }) {
+      // ui.$popover.toggle(position);
+      // ui.$input.focus();
+    },
+    hide() {
+      ui.$input.blur();
+      ui.$popover.hide();
+    },
     focus() {
       ui.$input.focus();
     },
@@ -111,6 +119,7 @@ export function WithTagsInputModel(
       }
     },
     moveToPrevOption(opt: { step: number }) {
+      console.log("[COMPONENT]command-list - moveToPrevOption", opt);
       ui.$list_highlight.methods.moveToPrevOption(opt);
     },
     moveToNextOption(opt: { step: number }) {
@@ -160,7 +169,7 @@ export function WithTagsInputModel(
       defaultValue: props.defaultValue,
       ignoreEnterEvent: true,
       onChange(v) {
-        // console.log("[COMPONENT]with-input - onChange - ", ui.$input.value, v);
+        console.log("[COMPONENT]command-list - onChange - ", ui.$input.value, v);
         if (!ui.$popover.visible) {
           return;
         }
@@ -206,9 +215,6 @@ export function WithTagsInputModel(
       };
     },
     get isFocus() {
-      return ui.$input.isFocus;
-    },
-    get isOpen() {
       return ui.$popover.state.visible;
     },
   };
@@ -232,9 +238,6 @@ export function WithTagsInputModel(
     get isFocus() {
       return _state.isFocus;
     },
-    get isOpen() {
-      return _state.isOpen;
-    },
     ready() {},
     destroy() {
       bus.destroy();
@@ -247,85 +250,71 @@ export function WithTagsInputModel(
     },
   };
 }
-export type WithTagsInputModel = ReturnType<typeof WithTagsInputModel>;
+export type CommandToolSelectModel = ReturnType<typeof CommandToolSelectModel>;
 
-export function WithTagsInput(props: { store: WithTagsInputModel }) {
+export function CommandToolSelect(props: { store: CommandToolSelectModel }) {
   const [state, vm] = useViewModelStore(props.store);
 
   return (
     <>
-      <div class="flex items-center border-2 border-w-fg-3 bg-w-bg-3 rounded-md p-2 space-x-2">
-        <div class="flex space-x-1">
-          <For each={state().tag.list}>
-            {(tag) => {
-              return (
-                <div class="bg-w-fg-3 rounded-md px-2">
-                  <div class="text-w-fg-0 text-sm whitespace-nowrap">{tag.label}</div>
-                </div>
-              );
+      <Popover store={vm.ui.$popover} class="p-2 bg-w-fg-5">
+        <div class="w-[320px]">
+          <div class="flex items-center border-2 border-w-fg-3 bg-w-bg-3 rounded-md p-2 space-x-2">
+            <InputPrimitive
+              tabIndex={-1}
+              classList={{
+                "w-full bg-transparent": true,
+                "outline-0 focus:outline-none focus:ring-0 focus:border-transparent": true,
+              }}
+              auto-capitalize="false"
+              style={{
+                "vertical-align": "bottom",
+              }}
+              store={vm.ui.$input}
+            />
+          </div>
+          <ScrollView
+            store={vm.ui.$view}
+            classList={{
+              "z-50 max-h-56 overflow-y-auto p-1 text-w-fg-0": true,
+              "scroll--hidden": true,
             }}
-          </For>
-          <Show when={state().tag.exceedSize}>
-            <div class="bg-w-bg-5 rounded-md px-2">
-              <div class="text-w-fg-0 text-sm whitespace-nowrap">+{state().tag.exceedSize}</div>
-            </div>
-          </Show>
-        </div>
-        <InputPrimitive
-          tabIndex={-1}
-          classList={{
-            "w-full bg-transparent": true,
-            "outline-0 focus:outline-none focus:ring-0 focus:border-transparent": true,
-          }}
-          auto-capitalize="false"
-          style={{
-            "vertical-align": "bottom",
-          }}
-          store={vm.ui.$input}
-        />
-      </div>
-      <Popover store={vm.ui.$popover} class="p-2">
-        <ScrollView
-          store={vm.ui.$view}
-          classList={{
-            "z-50 min-w-[4rem] w-36 max-h-56 overflow-y-auto p-1 text-w-fg-0": true,
-            "scroll--hidden": true,
-          }}
-        >
-          <For
-            each={state().options}
-            fallback={
-              <div class="h-24">
-                <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                  <div class="flex flex-col items-center">
-                    <Bird class="w-12 h-12 text-w-fg-1" />
-                    <div class="mt-1 text-center text-w-fg-1 text-sm whitespace-nowrap">没有数据</div>
+          >
+            <For
+              each={state().options}
+              fallback={
+                <div class="h-24">
+                  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <div class="flex flex-col items-center">
+                      <Bird class="w-12 h-12 text-w-fg-1" />
+                      <div class="mt-1 text-center text-w-fg-1 text-sm whitespace-nowrap">没有数据</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            }
-          >
-            {(opt, idx) => {
-              return (
-                <div
-                  classList={{
-                    "relative flex cursor-default select-none items-center rounded-xl py-1.5 px-2 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50":
-                      true,
-                    "bg-w-bg-3": opt.selected,
-                  }}
-                  onPointerEnter={() => {
-                    vm.methods.handleEnterMenuOption(idx());
-                  }}
-                  onClick={() => {
-                    vm.methods.handleClickMenuOption(idx());
-                  }}
-                >
-                  {opt.label}
-                </div>
-              );
-            }}
-          </For>
-        </ScrollView>
+              }
+            >
+              {(opt, idx) => {
+                return (
+                  <div
+                    classList={{
+                      "relative flex cursor-default select-none items-center rounded-xl py-1.5 px-2 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50":
+                        true,
+                      "bg-w-bg-3": opt.selected,
+                    }}
+                    onPointerEnter={() => {
+                      vm.methods.handleEnterMenuOption(idx());
+                    }}
+                    onClick={() => {
+                      vm.methods.handleClickMenuOption(idx());
+                    }}
+                  >
+                    {opt.label}
+                  </div>
+                );
+              }}
+            </For>
+          </ScrollView>
+        </div>
       </Popover>
     </>
   );

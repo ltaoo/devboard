@@ -117,7 +117,7 @@ export function processPartialPasteEvent(
   const height = (() => {
     const cached_height = PasteCardHeightCache.get(v.id);
     if (cached_height) {
-      console.log("using cached height", cached_height);
+      // console.log("using cached height", cached_height);
       return cached_height;
     }
     const base_content_height = 40;
