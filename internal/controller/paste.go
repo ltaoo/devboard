@@ -1,4 +1,4 @@
-package service
+package controller
 
 import (
 	"bytes"
@@ -7,163 +7,190 @@ import (
 	"fmt"
 	"image/png"
 	"mime"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/ltaoo/clipboard-go"
 	"gorm.io/gorm"
 
-	"devboard/internal/biz"
-	"devboard/internal/controller"
 	"devboard/internal/transformer"
 	"devboard/models"
 	"devboard/pkg/html"
 	"devboard/pkg/util"
 )
 
-type PasteService struct {
-	App *application.App
-	Biz *biz.BizApp
-	Con *controller.PasteController
+type PasteController struct {
+	db         *gorm.DB
+	machine_id string
 }
 
-func NewPasteService(app *application.App, biz *biz.BizApp) *PasteService {
-	return &PasteService{
-		App: app,
-		Biz: biz,
-		Con: controller.NewPasteController(biz.DB, biz.MachineId),
+func NewPasteController(db *gorm.DB, machine_id string) *PasteController {
+	return &PasteController{
+		db:         db,
+		machine_id: machine_id,
 	}
 }
 
-func (s *PasteService) FetchPasteEventList(body controller.PasteListBody) *controller.Result {
-	if err := s.Biz.Ensure(); err != nil {
-		return controller.Error(err)
-	}
-	r := s.Con.FetchPasteEventList(body)
-	return r
+type PasteListBody struct {
+	models.Pagination
+
+	Types   []string `json:"types"`
+	Keyword string   `json:"keyword"`
 }
 
-func (s *PasteService) FetchPasteEventProfile(body controller.PasteProfileBody) *controller.Result {
-	if s.Biz.DB == nil {
-		return controller.Error(fmt.Errorf("请先初始化数据库"))
+func (s *PasteController) FetchPasteEventList(body PasteListBody) *Result[*ListResp[models.PasteEvent]] {
+	query := s.db.Model(&models.PasteEvent{})
+	if body.Keyword != "" {
+		query = query.Where("paste_event.text LIKE ?", "%"+body.Keyword+"%")
 	}
-	return s.Con.FetchPasteEventProfile(body)
-}
-
-func (s *PasteService) DeletePasteEvent(body controller.PasteEventBody) *controller.Result {
-	return s.Con.DeletePasteEvent(body)
-}
-
-type PasteEventPreviewBody struct {
-	EventId string `json:"event_id"`
-	Focus   bool   `json:"focus"`
-}
-
-func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *controller.Result {
-	if body.EventId == "" {
-		return controller.Error(fmt.Errorf("缺少 event_id 参数"))
+	if len(body.Types) != 0 {
+		query = query.Joins("JOIN paste_event_category_mapping ON paste_event_category_mapping.paste_event_id = paste_event.id").Where("paste_event_category_mapping.category_id IN ?", body.Types).Distinct("paste_event.*")
 	}
-	unique_url := "/preview"
-	url := unique_url + "?id=" + url.QueryEscape(body.EventId)
-	existing_win := s.Biz.FindWindow(unique_url)
-	if existing_win != nil {
-		existing_win.SetURL(url)
-		return controller.Ok(map[string]interface{}{
-			"ok": true,
-		})
+	pb := models.NewPaginationBuilder[models.PasteEvent](query).
+		SetLimit(body.PageSize).
+		SetPage(body.Page).
+		SetOrderBy("paste_event.created_at DESC")
+	var list1 []models.PasteEvent
+	if err := pb.Build().Preload("Categories").Find(&list1).Error; err != nil {
+		return Error[ListResp[models.PasteEvent]](err)
 	}
-	win := s.App.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "预览",
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			// TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		Width:            980,
-		Height:           680,
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              url,
+	list2, has_more, next_marker := pb.ProcessResults(list1)
+	return Ok(ListResp[models.PasteEvent]{
+		List:       list2,
+		Page:       body.Page,
+		PageSize:   pb.GetLimit(),
+		HasMore:    has_more,
+		NextMarker: next_marker,
 	})
-	s.Biz.AppendWindow(unique_url, win)
-	return controller.Ok(map[string]interface{}{})
 }
 
-type FileInPasteBoard struct {
+type PasteProfileBody struct {
+	EventId string `json:"event_id"`
+}
+
+func (s *PasteController) FetchPasteEventProfile(body PasteProfileBody) *Result {
+	if body.EventId == "" {
+		return Error(fmt.Errorf("缺少 id 参数"))
+	}
+	var record models.PasteEvent
+	if err := s.db.Where("id = ?", body.EventId).
+		Preload("App").
+		Preload("Device").
+		// 	Preload("Remarks", func(db *gorm.DB) *gorm.DB {
+		// 	return db.Order("remark.created_at DESC")
+		// }).
+		Preload("Categories").First(&record).Error; err != nil {
+		return Error(err)
+	}
+	return Ok(&record)
+}
+
+type PasteEventBody struct {
+	PasteEventId string `json:"paste_event_id"`
+}
+
+func (s *PasteController) DeletePasteEvent(body PasteEventBody) *Result {
+	if body.PasteEventId == "" {
+		return Error(fmt.Errorf("缺少 id 参数"))
+	}
+	var existing models.PasteEvent
+	if err := s.db.Where("id = ?", body.PasteEventId).First(&existing).Error; err != nil {
+		return Error(err)
+	}
+	existing.DeletedAt = gorm.DeletedAt{Time: time.Now(), Valid: true}
+	if err := s.db.Save(&existing).Error; err != nil {
+		return Error(err)
+	}
+	return Ok(nil)
+}
+
+type FileInPasteEvent struct {
 	Name         string `json:"name"`
 	AbsolutePath string `json:"absolute_path"`
 	MimeType     string `json:"mime_type"`
 }
-
-func (s *PasteService) Write(body controller.PasteWriteBody) *controller.Result {
-	if s.Biz.DB == nil {
-		return controller.Error(fmt.Errorf("请先初始化数据库"))
-	}
-	s.Biz.ManuallyWriteClipboardTime = time.Now()
-	return s.Con.WritePasteContent(body)
+type PasteWriteBody struct {
+	EventId string `json:"event_id"`
 }
 
-func (f *PasteService) DownloadContentWithPasteEventId(body controller.PasteProfileBody) *controller.Result {
-	existing_paste_event := f.Con.FetchPasteEventProfile(body)
-
-	if existing_paste_event.ContentType == "file" {
-		return controller.Error(fmt.Errorf("can't download the file."))
+func (s *PasteController) WritePasteContent(body PasteWriteBody) *Result {
+	if body.EventId == "" {
+		return Error(fmt.Errorf("缺少 id 参数"))
 	}
-
-	dialog := application.SaveFileDialog()
-	dialog.CanCreateDirectories(true)
-
-	filename := existing_paste_event.Id + ".txt"
-	var content []byte
-	if existing_paste_event.ContentType == "text" {
-		content = []byte(existing_paste_event.Text)
+	var record models.PasteEvent
+	if err := s.db.Where("id = ?", body.EventId).First(&record).Error; err != nil {
+		return Error(err)
 	}
-	if existing_paste_event.ContentType == "image" {
-		filename = existing_paste_event.Id + ".png"
-		data, err := base64.StdEncoding.DecodeString(existing_paste_event.ImageBase64)
+	is_text := record.ContentType == "text"
+	is_html := record.ContentType == "html"
+	is_image := record.ContentType == "image"
+	is_file := record.ContentType == "file"
+
+	if record.Html != "" {
+		is_html = true
+	}
+	if record.ImageBase64 != "" {
+		is_image = true
+	}
+	if record.FileListJSON != "" {
+		is_file = true
+	}
+	if is_html {
+		text := record.Html
+		if text == "" {
+			text = record.Text
+		}
+		if err := clipboard.WriteHTML(text, record.Text); err != nil {
+			return Error(err)
+		}
+		return Ok(nil)
+	}
+	if is_image {
+		decoded_data, err := base64.StdEncoding.DecodeString(record.ImageBase64)
 		if err != nil {
-			return controller.Error(fmt.Errorf("Base64解码失败"))
+			return Error(err)
 		}
-		content = data
-	}
-	if existing_paste_event.ContentType == "html" {
-		filename = existing_paste_event.Id + ".html"
-		content = []byte(existing_paste_event.Html)
-		if existing_paste_event.Html == "" {
-			content = []byte(existing_paste_event.Text)
+		if err := clipboard.WriteImage(decoded_data); err != nil {
+			return Error(err)
 		}
+		return Ok(nil)
 	}
-	dialog.SetFilename(filename)
-	// dialog.SetTitle("Save Document")
-	// dialog.SetDefaultFilename("document.txt")
-	// dialog.SetFilters([]*application.FileFilter{
-	// 	{
-	// 		DisplayName: "Text Files (*.txt)",
-	// 		Pattern:     "*.txt",
-	// 	},
-	// })
-	path, err := dialog.PromptForSingleSelection()
-	if err != nil {
-		return controller.Error(err)
+	if is_file {
+		var files []FileInPasteEvent
+		if err := json.Unmarshal([]byte(record.FileListJSON), &files); err != nil {
+			return Error(err)
+		}
+		var errors []string
+		var file_paths []string
+		for _, f := range files {
+			_, err := os.Stat(f.AbsolutePath)
+			if err != nil {
+				errors = append(errors, err.Error())
+				continue
+			}
+			file_paths = append(file_paths, f.AbsolutePath)
+		}
+		if len(file_paths) == 0 {
+			return Error(fmt.Errorf("There's no valid file can copy."))
+		}
+		if err := clipboard.WriteFiles(file_paths); err != nil {
+			return Error(err)
+		}
+		return Ok(nil)
 	}
-	if path == "" {
-		return controller.Ok(map[string]interface{}{
-			"cancel": true,
-		})
+	if is_text {
+		if err := clipboard.WriteText(record.Text); err != nil {
+			return Error(err)
+		}
+		return Ok(nil)
 	}
-	file, err := os.Create(path)
-	if err != nil {
-		return controller.Error(err)
-	}
-	defer file.Close()
-	_, err = file.Write(content)
-	if err != nil {
-		return controller.Error(err)
-	}
-	return controller.Ok(map[string]interface{}{})
+	return Error(fmt.Errorf("invalid record data"))
+}
+
+type ContentDownloadBody struct {
+	PasteEventId string `json:"paste_event_id"`
 }
 
 type PasteExtraInfo struct {
@@ -239,17 +266,17 @@ func get_device_id(db *gorm.DB, machine_id string) string {
 	return device_id
 }
 
-func (s *PasteService) HandlePasteText(text string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
+func (s *PasteController) HandlePasteText(text string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event = models.PasteEvent{
 		ContentType: "text",
 		Text:        text,
-		AppId:       get_app_id(s.Biz.DB, extra.AppName),
-		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
+		AppId:       get_app_id(s.db, extra.AppName),
+		DeviceId:    get_device_id(s.db, s.machine_id),
 	}
-	tx := s.Biz.DB.Begin()
+	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -291,7 +318,7 @@ func (s *PasteService) HandlePasteText(text string, extra *PasteExtraInfo) (*mod
 	return &created_paste_event, nil
 }
 
-func (s *PasteService) HandlePasteHTML(text string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
+func (s *PasteController) HandlePasteHTML(text string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	r := html.ParseHTMLContent(text)
 	details, _ := json.Marshal(&map[string]interface{}{
@@ -303,10 +330,10 @@ func (s *PasteService) HandlePasteHTML(text string, extra *PasteExtraInfo) (*mod
 		Text:        extra.PlainText,
 		Html:        text,
 		Details:     string(details),
-		AppId:       get_app_id(s.Biz.DB, extra.AppName),
-		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
+		AppId:       get_app_id(s.db, extra.AppName),
+		DeviceId:    get_device_id(s.db, s.machine_id),
 	}
-	tx := s.Biz.DB.Begin()
+	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -352,7 +379,7 @@ type PNGFileInfo struct {
 	SizeForHumans string `json:"size_for_humans"`
 }
 
-func (s *PasteService) HandlePastePNG(image_bytes []byte, extra *PasteExtraInfo) (*models.PasteEvent, error) {
+func (s *PasteController) HandlePastePNG(image_bytes []byte, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	encoded := base64.StdEncoding.EncodeToString(image_bytes)
@@ -375,10 +402,10 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte, extra *PasteExtraInfo)
 		ContentType: "image",
 		ImageBase64: encoded,
 		Details:     details,
-		AppId:       get_app_id(s.Biz.DB, extra.AppName),
-		DeviceId:    get_device_id(s.Biz.DB, s.Biz.MachineId),
+		AppId:       get_app_id(s.db, extra.AppName),
+		DeviceId:    get_device_id(s.db, s.machine_id),
 	}
-	tx := s.Biz.DB.Begin()
+	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -420,11 +447,11 @@ func (s *PasteService) HandlePastePNG(image_bytes []byte, extra *PasteExtraInfo)
 	return &created_paste_event, nil
 }
 
-func (s *PasteService) HandlePasteFile(files []string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
+func (s *PasteController) HandlePasteFile(files []string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	var created_paste_event models.PasteEvent
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
-	var results []FileInPasteBoard
+	var results []FileInPasteEvent
 	for _, f := range files {
 		info, err := os.Stat(f)
 		if err != nil {
@@ -432,7 +459,7 @@ func (s *PasteService) HandlePasteFile(files []string, extra *PasteExtraInfo) (*
 		}
 		name := info.Name()
 		if info.IsDir() {
-			results = append(results, FileInPasteBoard{
+			results = append(results, FileInPasteEvent{
 				Name:         name,
 				AbsolutePath: f,
 				MimeType:     "folder",
@@ -447,7 +474,7 @@ func (s *PasteService) HandlePasteFile(files []string, extra *PasteExtraInfo) (*
 			// 去除可能的参数（如 charset=utf-8）
 			mime_type = strings.Split(mime_type, ";")[0]
 		}
-		results = append(results, FileInPasteBoard{
+		results = append(results, FileInPasteEvent{
 			Name:         name,
 			AbsolutePath: f,
 			MimeType:     mime_type,
@@ -467,10 +494,10 @@ func (s *PasteService) HandlePasteFile(files []string, extra *PasteExtraInfo) (*
 		ContentType:  "file",
 		FileListJSON: string(content),
 		Details:      string(details),
-		AppId:        get_app_id(s.Biz.DB, extra.AppName),
-		DeviceId:     get_device_id(s.Biz.DB, s.Biz.MachineId),
+		AppId:        get_app_id(s.db, extra.AppName),
+		DeviceId:     get_device_id(s.db, s.machine_id),
 	}
-	tx := s.Biz.DB.Begin()
+	tx := s.db.Begin()
 	defer func() {
 		if r := recover(); r != nil {
 			tx.Rollback()
@@ -510,28 +537,4 @@ func (s *PasteService) HandlePasteFile(files []string, extra *PasteExtraInfo) (*
 		return nil, err
 	}
 	return &created_paste_event, nil
-}
-
-type MockPasteTextBody struct {
-	Text string `json:"text"`
-}
-
-func (s *PasteService) MockPasteText(body MockPasteTextBody) *controller.Result {
-	if body.Text == "" {
-		return controller.Error(fmt.Errorf("Missing the text."))
-	}
-	now := time.Now()
-	now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
-	created_paste_event := models.PasteEvent{
-		ContentType: "text",
-		Text:        body.Text,
-		Categories:  []models.CategoryNode{},
-		BaseModel: models.BaseModel{
-			LastOperationTime: now_timestamp,
-			LastOperationType: 1,
-			CreatedAt:         now_timestamp,
-		},
-	}
-	s.App.Event.Emit("clipboard:update", created_paste_event)
-	return controller.Ok(created_paste_event)
 }

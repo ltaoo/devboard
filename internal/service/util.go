@@ -12,10 +12,6 @@ func Error(err error) *Result {
 		Msg:  err.Error(),
 		Data: nil,
 	}
-	// v, err := json.Marshal(resp)
-	// if err != nil {
-	// 	return fmt.Sprintf(`{"code":500,"msg":"%s","data":null}`, err.Error())
-	// }
 	return &resp
 }
 func Ok(data interface{}) *Result {
@@ -24,10 +20,5 @@ func Ok(data interface{}) *Result {
 		Msg:  "",
 		Data: data,
 	}
-	// v, err := json.Marshal(resp)
-	// if err != nil {
-	// 	return fmt.Sprintf(`{"code":500,"msg":"%s","data":null}`, err.Error())
-	// }
-	// return string(v)
 	return &resp
 }
