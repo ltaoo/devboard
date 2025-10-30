@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"devboard/internal/biz"
@@ -28,4 +30,17 @@ func (s *CommonService) OpenWindow(body biz.OpenWindowBody) *Result {
 func (s *CommonService) ShowError(body biz.ErrorBody) *Result {
 	s.Biz.ShowError(body)
 	return Ok(map[string]interface{}{})
+}
+
+type ShortcutRegisterBody struct {
+	Shortcut string `json:"shortcut"`
+	Command  string `json:"command"`
+}
+
+func (s *CommonService) RegisterShortcut(body ShortcutRegisterBody) *Result {
+	if body.Shortcut == "" {
+		return Error(fmt.Errorf("Missing the shortcut"))
+	}
+	s.Biz.RegisterShortcutWithCommand(body.Shortcut, body.Command)
+	return Ok(nil)
 }
