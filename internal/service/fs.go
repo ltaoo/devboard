@@ -18,6 +18,14 @@ import (
 	"devboard/pkg/lodash"
 )
 
+type FileService struct {
+	App   *application.App
+	route string
+}
+
+// func NewFileService() *FileService {
+
+// }
 type FileResp struct {
 	Name      string `json:"name"`
 	FullPath  string `json:"full_path"`
@@ -28,15 +36,6 @@ type FileResp struct {
 	Duration  int    `json:"duration"`
 	CreatedAt int64  `json:"created_at"`
 }
-
-type FileService struct {
-	App   *application.App
-	route string
-}
-
-// func NewFileService() *FileService {
-
-// }
 
 func (s *FileService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
 	s.route = options.Route

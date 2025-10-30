@@ -14,9 +14,16 @@ import (
 	"devboard/pkg/synchronizer"
 )
 
-type SyncService struct {
+type SynchronizeService struct {
 	App *application.App
 	Biz *biz.BizApp
+}
+
+func NewSynchronizeService(app *application.App, biz *biz.BizApp) *SynchronizeService {
+	return &SynchronizeService{
+		App: app,
+		Biz: biz,
+	}
 }
 
 type DatabaseField struct {
@@ -25,7 +32,7 @@ type DatabaseField struct {
 	Text  string `json:"text"`
 }
 
-func (s *SyncService) FetchDatabaseDirs() *Result {
+func (s *SynchronizeService) FetchDatabaseDirs() *Result {
 	fields := [...]DatabaseField{{
 		Key:   "database_filepath",
 		Label: "数据库",
@@ -41,7 +48,7 @@ func (s *SyncService) FetchDatabaseDirs() *Result {
 	})
 }
 
-func (s *SyncService) PingWebDav(body WebDavSyncConfigBody) *Result {
+func (s *SynchronizeService) PingWebDav(body WebDavSyncConfigBody) *Result {
 	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
 	err := client.Connect()
 	if err != nil {
@@ -126,7 +133,7 @@ type WebDavSyncConfigBody struct {
 	Force    bool   `json:"force"`
 }
 
-func (s *SyncService) LocalToRemote(body WebDavSyncConfigBody) *Result {
+func (s *SynchronizeService) LocalToRemote(body WebDavSyncConfigBody) *Result {
 	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
 	err := client.Connect()
 	if err != nil {
@@ -254,7 +261,7 @@ func remote_to_local(t synchronizer.TableSynchronizeSetting, root_dir string, db
 	return result
 }
 
-func (s *SyncService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
+func (s *SynchronizeService) RemoteToLocal(body WebDavSyncConfigBody) *Result {
 	client := gowebdav.NewClient(body.URL, body.Username, body.Password)
 	err := client.Connect()
 	if err != nil {

@@ -459,12 +459,28 @@ export function RouteMenusModel<T extends { title: string; url?: unknown; onClic
   route: T["url"];
   menus: T[];
   $history: HistoryCore<any, any>;
+  // $view?: RouteViewCore;
+  onChange?: (url: T["url"]) => void;
 }) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    setCurMenu(name: T["url"]) {
+    setCurMenu(name?: T["url"]) {
+      console.log("[]setCurMenu", name, _route_name);
+      if (!name) {
+        return;
+      }
+      if (_route_name === name) {
+        return;
+      }
+      _route_name = name;
+      props.$history.push(_route_name);
+      // bus.emit(Events.URLChange, name);
+      methods.refresh();
+    },
+    handleCurMenuChange(name: T["url"]) {
+      console.log("[]handleCurMenuChange", name);
       // const name = props.history.$router.name as PageKeys;
       _route_name = name;
       const keys = [
@@ -475,12 +491,14 @@ export function RouteMenusModel<T extends { title: string; url?: unknown; onClic
       if (keys.includes(name)) {
         // _route_name = "root.home_layout.workout_plan_layout.recommend";
       }
+      bus.emit(Events.URLChange, name);
       methods.refresh();
     },
   };
   const ui = {};
 
-  let _route_name = props.route;
+  let _route_name = "" as T["url"];
+
   let _state = {
     get menus() {
       return props.menus;
@@ -490,17 +508,25 @@ export function RouteMenusModel<T extends { title: string; url?: unknown; onClic
     },
   };
   enum Events {
+    URLChange,
     StateChange,
     Error,
   }
   type TheTypesOfEvents = {
+    [Events.URLChange]: T["url"];
     [Events.StateChange]: typeof _state;
     [Events.Error]: BizError;
   };
   const bus = base<TheTypesOfEvents>();
 
+  if (props.onChange) {
+    bus.on(Events.URLChange, props.onChange);
+  }
+
+  methods.setCurMenu(props.route);
+
   const unlisten = props.$history.onRouteChange(({ name }) => {
-    methods.setCurMenu(name);
+    methods.handleCurMenuChange(name);
   });
 
   return {

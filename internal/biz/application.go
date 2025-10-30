@@ -6,16 +6,19 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"golang.design/x/hotkey"
 	"gorm.io/gorm"
 
 	"devboard/config"
+	"devboard/internal/controller"
+	"devboard/models"
+	// "devboard/internal/service"
 )
 
-func New(app *application.App) *BizApp {
-	return &BizApp{
-		App:     app,
-		Windows: make(map[string]*application.WebviewWindow),
-	}
+type ControllerMap struct {
+	Paste    *controller.PasteController
+	Category *controller.CategoryController
+	Remark   *controller.PasteEventRemarkController
 }
 
 type BizApp struct {
@@ -24,34 +27,84 @@ type BizApp struct {
 	Config                     *config.Config
 	UserConfig                 *BizConfig
 	DB                         *gorm.DB
-	App                        *application.App
+	app                        *application.App
 	Windows                    map[string]*application.WebviewWindow
+	Hotkey                     *hotkey.Hotkey
 	ManuallyWriteClipboardTime time.Time
+	ControllerMap              *ControllerMap
+	Ready                      bool
 }
 
-func (a *BizApp) SetName(name string) {
+func New(app *application.App) *BizApp {
+	// hk := NewHotkey()
+
+	return &BizApp{
+		app:     app,
+		Windows: make(map[string]*application.WebviewWindow),
+		// Hotkey:  hk,
+	}
+}
+
+func (a *BizApp) SetName(name string) *BizApp {
 	a.Name = name
+	return a
 }
-func (a *BizApp) SetApp(app *application.App) {
-	a.App = app
+func (a *BizApp) SetApp(app *application.App) *BizApp {
+	a.app = app
+	return a
 }
-func (a *BizApp) SetDatabase(db *gorm.DB) {
+func (a *BizApp) SetDatabase(db *gorm.DB) *BizApp {
 	a.DB = db
+	return a
 }
-func (a *BizApp) SetMachineId(id string) {
+func (a *BizApp) SetMachineId(id string) *BizApp {
 	a.MachineId = id
+	return a
 }
-func (a *BizApp) SetConfig(config *config.Config) {
+func (a *BizApp) SetConfig(config *config.Config) *BizApp {
 	a.Config = config
+	return a
 }
-func (a *BizApp) SetUserConfig(config *BizConfig) {
+func (a *BizApp) InitializeUserConfig(cfg *config.Config) *BizApp {
+	biz_config := NewBizConfig(cfg.UserConfigDir, cfg.UserConfigName)
+	biz_config.InitializeConfig()
+	a.UserConfig = biz_config
+	return a
+}
+func (a *BizApp) SetUserConfig(config *BizConfig) *BizApp {
 	a.UserConfig = config
+	return a
 }
+func (a *BizApp) InitializeControllerMap() *BizApp {
+	a.ControllerMap = &ControllerMap{
+		Paste:    controller.NewPasteController(a.DB, a.MachineId),
+		Remark:   controller.NewRemarkController(a.DB),
+		Category: controller.NewCategoryController(a.DB),
+	}
+	return a
+}
+func (a *BizApp) SetReady() {
+	a.Ready = true
+}
+
 func (a *BizApp) Ensure() error {
 	if a.DB == nil {
 		return fmt.Errorf("Please wait the database initialized")
 	}
 	return nil
+}
+
+func (a *BizApp) HandlePasteText(text string, extra *controller.PasteExtraInfo) (*models.PasteEvent, error) {
+	return a.ControllerMap.Paste.HandlePasteText(text, extra)
+}
+func (a *BizApp) HandlePasteHTML(text string, extra *controller.PasteExtraInfo) (*models.PasteEvent, error) {
+	return a.ControllerMap.Paste.HandlePasteHTML(text, extra)
+}
+func (a *BizApp) HandlePastePNG(img []byte, extra *controller.PasteExtraInfo) (*models.PasteEvent, error) {
+	return a.ControllerMap.Paste.HandlePastePNG(img, extra)
+}
+func (a *BizApp) HandlePasteFile(files []string, extra *controller.PasteExtraInfo) (*models.PasteEvent, error) {
+	return a.ControllerMap.Paste.HandlePasteFile(files, extra)
 }
 
 func (a *BizApp) FindWindow(url string) *application.WebviewWindow {
@@ -81,7 +134,7 @@ func (a *BizApp) ShowErrorWindow(search string) {
 		existing_win.Focus()
 		return
 	}
-	win := a.App.Window.NewWithOptions(application.WebviewWindowOptions{
+	win := a.app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:               "Error - Devboard",
 		MaximiseButtonState: application.ButtonDisabled,
 		MinimiseButtonState: application.ButtonDisabled,
@@ -101,4 +154,112 @@ func (a *BizApp) ShowErrorWindow(search string) {
 		delete(a.Windows, url)
 	})
 	win.Show()
+}
+
+type OpenWindowBody struct {
+	Title  string `json:"title"`
+	URL    string `json:"url"`
+	HTML   string `json:"html"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+}
+
+func (s *BizApp) OpenWindow(body OpenWindowBody) (int, error) {
+	if body.HTML == "" && body.URL == "" {
+		return 0, fmt.Errorf("缺少 html 或 url 参数")
+	}
+	existing_win := s.FindWindow(body.URL)
+	if existing_win != nil {
+		return 1, nil
+	}
+	if body.Title == "" {
+		body.Title = "新窗口"
+	}
+	if body.Width == 0 {
+		body.Width = 420
+	}
+	if body.Height == 0 {
+		body.Width = 720
+	}
+	win := s.app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title: body.Title,
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:                application.MacBackdropTranslucent,
+		},
+		Width:            body.Width,
+		Height:           body.Height,
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              body.URL,
+		HTML:             body.HTML,
+	})
+	s.AppendWindow(body.URL, win)
+	return 1, nil
+}
+
+func (s *BizApp) OpenSettingsWindow() (int, error) {
+	return s.OpenWindow(OpenWindowBody{
+		Title: "Settings",
+		URL:   "/settings_system",
+	})
+}
+
+type ErrorBody struct {
+	Title   string `json:"title"`
+	Content string `json:"content"`
+}
+
+func (s *BizApp) ShowError(body ErrorBody) error {
+	s.app.Event.Emit("m:show-error", body)
+	return nil
+}
+
+func (s *BizApp) Quit() {
+	s.app.Quit()
+}
+
+func (a *BizApp) RegisterServices() {
+	// service_common := service.NewCommonService(a.App, a)
+	// service_paste := service.NewPasteService(a.App, a)
+	// a.App.RegisterService(application.NewService(service_common))
+	// a.App.RegisterService(application.NewService(service_paste))
+	// a.App.RegisterService(application.NewService(&service.SystemService{Biz: a}))
+	// a.App.RegisterService(application.NewService(&service.SyncService{App: a.App, Biz: a}))
+	// a.App.RegisterService(application.NewService(&service.DouyinService{App: a.App, Biz: a}))
+	// a.App.RegisterService(application.NewService(&service.ConfigService{App: a.App, Biz: a}))
+	// a.App.RegisterService(application.NewService(&service.CategoryService{App: a.App, Biz: a}))
+	// a.App.RegisterService(application.NewService(&service.RemarkService{App: a.App, Biz: a}))
+	// a.App.RegisterService(application.NewServiceWithOptions(&service.FileService{App: a.App}, application.ServiceOptions{Route: "/file"}))
+
+}
+
+func (a *BizApp) DisableShortcut() {
+
+}
+
+func (a *BizApp) RegisterShortcut(hk *hotkey.Hotkey, handler func(), error_handler func(err error)) {
+	var register_global_shortcut func(hk *hotkey.Hotkey)
+	register_global_shortcut = func(hk *hotkey.Hotkey) {
+		// hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
+		if err := hk.Register(); err != nil {
+			error_handler(err)
+			// t := fmt.Sprintf("hotkey: failed to register hotkey: %v", err)
+			// a.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+			return
+		}
+		// log.Printf("hotkey: %v is registered\n", hk)
+		<-hk.Keydown()
+		// log.Printf("hotkey: %v is down\n", hk)
+		<-hk.Keyup()
+		// log.Printf("hotkey: %v is up\n", hk)
+		if err := hk.Unregister(); err != nil {
+			// t := fmt.Sprintf("hotkey: failed to unregister hotkey: %v", err)
+			// a.ShowErrorWindow("?" + url.QueryEscape("title=Shortcut&desc="+t))
+			error_handler(err)
+			return
+		}
+		handler()
+		register_global_shortcut(hk)
+	}
+	register_global_shortcut(hk)
 }

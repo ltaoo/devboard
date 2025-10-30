@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/shirou/gopsutil/host"
+	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"devboard/internal/biz"
 	"devboard/pkg/system"
@@ -10,6 +11,19 @@ import (
 type SystemService struct {
 	Biz *biz.BizApp
 }
+
+func NewSystemService(app *application.App, biz *biz.BizApp) *SystemService {
+	return &SystemService{
+		Biz: biz,
+	}
+}
+
+func (s *SystemService) FetchApplicationState() *Result {
+	return Ok(map[string]interface{}{
+		"ready": s.Biz.Ready,
+	})
+}
+
 type SystemInfoField struct {
 	Key   string `json:"key"`
 	Label string `json:"label"`

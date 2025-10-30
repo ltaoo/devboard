@@ -16,6 +16,8 @@ import { RequestCore } from "@/domains/request";
 import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
 import { fetchUserSettings, updateUserSettings } from "@/biz/settings/service";
+import { ShortcutModel } from "@/biz/shortcut/shortcut";
+import { ShortcutKey } from "@/components/shortcut";
 
 function SettingsViewModel(props: ViewComponentProps) {
   const request = {
@@ -93,8 +95,14 @@ function SettingsViewModel(props: ViewComponentProps) {
         }),
       },
     }),
+    $shortcut: ShortcutModel({}),
   };
-  let _state = {};
+
+  let _state = {
+    get codes() {
+      return ui.$shortcut.state.codes;
+    },
+  };
   enum Events {
     StateChange,
     Error,
@@ -106,6 +114,16 @@ function SettingsViewModel(props: ViewComponentProps) {
   const bus = base<TheTypesOfEvents>();
 
   request.settings.data.onStateChange(() => methods.refresh());
+  ui.$shortcut.onStateChange(() => methods.refresh());
+
+  const unlistens = [
+    props.app.onKeydown((event) => {
+      ui.$shortcut.methods.handleKeydown(event);
+    }),
+    props.app.onKeyup((event) => {
+      ui.$shortcut.methods.handleKeyup(event);
+    }),
+  ];
 
   return {
     methods,
@@ -115,6 +133,9 @@ function SettingsViewModel(props: ViewComponentProps) {
       methods.ready();
     },
     destroy() {
+      for (let i = 0; i < unlistens.length; i += 1) {
+        unlistens[i]();
+      }
       bus.destroy();
     },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
@@ -133,9 +154,11 @@ export function SettingsView(props: ViewComponentProps) {
     <ScrollView store={vm.ui.$view} class="p-4">
       <div class="block">
         <div class="text-2xl text-w-fg-0">配置</div>
-        <div class="mt-4 space-y-2">
+        <div class="mt-4 space-y-8">
+          <div class="flex">
+            <ShortcutKey keys={state().codes} />
+          </div>
           <div>
-            <div class="text-xl text-w-fg-0">{vm.ui.$form_settings.fields.douyin.label}</div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.douyin}>
               <FieldV2 store={vm.ui.$form_settings.fields.douyin.fields.cookie}>
                 <Textarea store={vm.ui.$form_settings.fields.douyin.fields.cookie.input} />
@@ -143,7 +166,6 @@ export function SettingsView(props: ViewComponentProps) {
             </FieldObjV2>
           </div>
           <div>
-            <div class="text-xl text-w-fg-0">粘贴事件回调地址</div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.paste_event}>
               <FieldV2 store={vm.ui.$form_settings.fields.paste_event.fields.callback_endpoint}>
                 <Textarea store={vm.ui.$form_settings.fields.paste_event.fields.callback_endpoint.input} />

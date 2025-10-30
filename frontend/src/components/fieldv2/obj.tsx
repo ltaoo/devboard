@@ -13,7 +13,7 @@ export function FieldObjV2(props: { store: ObjectFieldCore<any> } & JSX.HTMLAttr
       <div class="field">
         <div class="field__main">
           <div class="field__label flex items-center justify-between">
-            <div class="field__title ml-2">{state().label}</div>
+            <div class="field__title ml-2 text-w-fg-1">{state().label}</div>
           </div>
           <div class="field__content mt-1">
             <div
