@@ -1,4 +1,4 @@
-import { RemoteToLocal, LocalToRemote, PingWebDav, FetchDatabaseDirs } from "~/syncservice";
+import { RemoteToLocal, LocalToRemote, PingWebDav, FetchDatabaseDirs } from "~/synchronizeservice";
 
 import { request } from "@/biz/requests";
 

@@ -71,7 +71,7 @@ function Application() {
         <div class="flex items-center justify-center w-full h-full">
           <div class="flex flex-col items-center text-w-fg-1">
             <LoaderCircle class="w-8 h-8 animate-spin" />
-            <div class="mt-4 text-center">正在加载</div>
+            <div class="mt-4 text-center">正在初始化</div>
           </div>
         </div>
       </Show>

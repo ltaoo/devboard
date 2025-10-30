@@ -11,7 +11,7 @@ export function ShortcutModel(props: {}) {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    register(handlers: Record<string, (event: KeyboardEvent & { step?: 'keydown' | 'keyup' }) => void>) {
+    register(handlers: Record<string, (event: KeyboardEvent & { step?: "keydown" | "keyup" }) => void>) {
       const keys = Object.keys(handlers);
       for (let i = 0; i < keys.length; i += 1) {
         const handle_key = keys[i];
@@ -98,6 +98,7 @@ export function ShortcutModel(props: {}) {
         _pressed_codes = [event.code];
       }
       _pressed_code_map[event.code] = true;
+      methods.refresh();
       methods.testShortcut({ ...methods.buildShortcut(), step: "keydown" }, event);
       methods.clearPressedKeys();
     },
@@ -107,12 +108,16 @@ export function ShortcutModel(props: {}) {
         _pressed_code_map = {};
       }
       delete _pressed_code_map[event.code];
+      methods.refresh();
     },
   };
   const ui = {};
 
   let _handlers: Handler<TheTypesOfEvents[Events.Shortcut]>[] = [];
-  let _shortcut_map: Record<string, (event: { code: string; step?: 'keydown' | 'keyup'; preventDefault: () => void }) => void> = {};
+  let _shortcut_map: Record<
+    string,
+    (event: { code: string; step?: "keydown" | "keyup"; preventDefault: () => void }) => void
+  > = {};
   let _pressed_codes: string[] = [];
   let _pressed_code_map: Record<string, boolean> = {};
   let _continuous_timer: NodeJS.Timeout | number | null = null;
@@ -139,7 +144,7 @@ export function ShortcutModel(props: {}) {
     methods,
     ui,
     state: _state,
-    ready() { },
+    ready() {},
     destroy() {
       bus.destroy();
     },

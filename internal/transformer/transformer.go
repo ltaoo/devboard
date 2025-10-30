@@ -150,7 +150,5 @@ func TextContentDetector(text string) []string {
 	if lang := DetectCodeLanguage(text); lang != "" {
 		return []string{lang, "code"}
 	}
-	return []string{
-		"text",
-	}
+	return []string{}
 }

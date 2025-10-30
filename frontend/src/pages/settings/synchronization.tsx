@@ -1,3 +1,6 @@
+/**
+ * @file 数据同步
+ */
 import { For, Show } from "solid-js";
 import { Check, Copy, File, Folder } from "lucide-solid";
 import { Events as WailsEvents } from "@wailsio/runtime";

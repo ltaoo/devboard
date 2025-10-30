@@ -16,11 +16,11 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 	"github.com/wailsapp/wails/v3/pkg/icons"
-	"golang.design/x/hotkey"
 
 	"devboard/config"
 	"devboard/db"
 	_biz "devboard/internal/biz"
+	"devboard/internal/controller"
 	"devboard/internal/routes"
 	"devboard/internal/service"
 	"devboard/models"
@@ -107,293 +107,257 @@ func main() {
 		},
 		// Logger: log,
 	})
-
 	biz := _biz.New(app)
 
-	machine_id, err := machineid.ID()
-	if err != nil {
-		t := fmt.Sprintf("Failed to generate machine id, %v", err)
-		biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-		return
-	}
-	cfg, err := config.LoadConfig()
-	if err != nil {
-		t := fmt.Sprintf("Failed to load config: %v", err)
-		biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-		return
-	}
-	logger := logger.NewLogger(cfg.LogLevel)
-	defer logger.Sync()
-	database, err := db.NewDatabase(cfg)
-	if err != nil {
-		t := fmt.Sprintf("Failed to connect to database, %v", err)
-		fmt.Println(t)
-		biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-		return
-	}
-	migrator := db.NewMigrator(cfg, logger, &migrations)
-	if err := migrator.MigrateUp(); err != nil {
-		t := fmt.Sprintf("Failed to run migrations, %v", err)
-		biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-		return
-	}
-	db.Seed(database, machine_id)
-	go func() {
-		router := routes.SetupRouter(database, logger, cfg, machine_id)
-		if err := router.Run(cfg.ServerAddress); err != nil {
-			logger.Fatal("Failed to start server", err)
-		}
-	}()
-	biz.SetName(cfg.ProductName)
-	biz.SetDatabase(database)
-	biz.SetConfig(cfg)
-	biz.SetMachineId(machine_id)
-	biz_config := _biz.NewBizConfig(cfg.UserConfigDir, cfg.UserConfigName)
-	biz_config.InitializeConfig()
-	biz.SetUserConfig(biz_config)
-	// win.Show()
-
-	service_common := service.NewCommonService(app, biz)
-	service_paste := service.NewPasteService(app, biz)
-	app.RegisterService(application.NewService(service_common))
-	app.RegisterService(application.NewService(service_paste))
-	app.RegisterService(application.NewService(&service.GreetService{}))
-	app.RegisterService(application.NewService(&service.SystemService{Biz: biz}))
-	app.RegisterService(application.NewService(&service.SyncService{App: app, Biz: biz}))
+	fmt.Println("[LOG][Before Ready]database is ready")
+	app.RegisterService(application.NewService(service.NewPasteService(app, biz)))
+	app.RegisterService(application.NewService(service.NewCategoryService(app, biz)))
+	app.RegisterService(application.NewService(service.NewRemarkService(app, biz)))
+	app.RegisterService(application.NewService(service.NewSynchronizeService(app, biz)))
+	app.RegisterService(application.NewService(service.NewSystemService(app, biz)))
+	app.RegisterService(application.NewService(service.NewCommonService(app, biz)))
 	app.RegisterService(application.NewService(&service.DouyinService{App: app, Biz: biz}))
 	app.RegisterService(application.NewService(&service.ConfigService{App: app, Biz: biz}))
-	app.RegisterService(application.NewService(&service.CategoryService{App: app, Biz: biz}))
-	app.RegisterService(application.NewService(&service.RemarkService{App: app, Biz: biz}))
 	app.RegisterService(application.NewServiceWithOptions(&service.FileService{App: app}, application.ServiceOptions{Route: "/file"}))
+	fmt.Println("[LOG][Before Ready]service register is completed")
 
-	hk := _biz.NewHotkey()
-
-	method_open_setting_window := func() {
-		service_common.OpenWindow(service.OpenWindowBody{
-			Title: "Settings",
-			URL:   "/settings_system",
-		})
-	}
-	method_quit := func() {
-		hk.Unregister()
-		app.Quit()
-	}
-	// Create a new window with the necessary options.
-	// 'Title' is the title of the window.
-	// 'Mac' options tailor the window when running on macOS.
-	// 'BackgroundColour' is the background colour of the window.
-	// 'URL' is the URL that will be loaded into the webview.
-	win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:               "Devboard",
-		MaximiseButtonState: application.ButtonDisabled,
-		MinimiseButtonState: application.ButtonDisabled,
-		// AlwaysOnTop:         true,
-		// Hidden:        true,
-		DisableResize: true,
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			// TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		Windows: application.WindowsWindow{
-			HiddenOnTaskbar: true,
-		},
-		KeyBindings: map[string]func(window application.Window){
-			"CmdOrCtrl+,": func(window application.Window) {
-				method_open_setting_window()
-			},
-			"CmdOrCtrl+Q": func(window application.Window) {
-				method_quit()
-			},
-			// "Escape": func(window application.Window) {
-			// 	window.Close()
-			// },
-		},
-		Width:            450,
-		Height:           680,
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/",
-	})
-
-	app.KeyBinding.Add("CmdOrCtrl+,", func(win application.Window) {
-		method_open_setting_window()
-	})
-	app.KeyBinding.Add("CmdOrCtrl+Q", func(win application.Window) {
-		method_quit()
-	})
-	// app.KeyBinding.Add("Escape", func(win application.Window) {
-	// 	fmt.Println("escape")
-	// 	win.Close()
-	// })
-	system_tray := app.SystemTray.New()
-	system_tray.OnClick(func() {
-		system_tray.OpenMenu()
-	})
-	// system_tray.OnMouseLeave(func() {
-	// 	register_shortcut(win, hk)
-	// })
-	// Register a hook to hide the window when the window is closing
-	win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		win.Hide()
-		e.Cancel()
-	})
-	// win.RegisterHook(events.Common.WindowLostFocus, func(e *application.WindowEvent) {
-	// 	win.Close()
-	// })
-	if runtime.GOOS == "darwin" {
-		system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
-	}
-	menu := app.NewMenu()
-	m_main := menu.Add("Show Devboard")
-	// if runtime.GOOS == "darwin" {
-	// 	m_main.SetAccelerator("CmdOrCtrl+Shift+M")
-	// }
-	// if runtime.GOOS == "windows" {
-	// 	m_main.SetAccelerator("CmdOrCtrl+Backquote")
-	// }
-	m_main.OnClick(func(ctx *application.Context) {
-		win.Show()
-		win.Focus()
-	})
-	m_setting := menu.Add("Settings")
-	m_setting.SetAccelerator("CmdOrCtrl+,")
-	m_setting.OnClick(func(ctx *application.Context) {
-		method_open_setting_window()
-	})
-	m_quit := menu.Add("Quit")
-	m_quit.SetAccelerator("CmdOrCtrl+Q")
-	m_quit.OnClick(func(ctx *application.Context) {
-		method_quit()
-	})
-	system_tray.SetMenu(menu)
-
-	// ctx_menu := application.NewContextMenu("main")
-	// ctx_menu.Add("Refresh").OnClick(func(ctx *application.Context) {
-	// 	app.Event.Emit("m:refresh")
-	// })
-	refresh_menu_text := "Refresh"
-	if runtime.GOOS == "darwin" {
-		refresh_menu_text = "Reload"
-	}
-	ctx_menu := app.ContextMenu.New()
-	m_refresh := ctx_menu.Add(refresh_menu_text)
-	m_refresh.SetAccelerator("Cmd+R")
-	m_refresh.OnClick(func(data *application.Context) {
-		app.Event.Emit("m:refresh")
-	})
-	app.ContextMenu.Add("refresh", ctx_menu)
-
-	// win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
-	// 	fmt.Println(e.Context().DroppedFiles())
-	// })
-
-	// Create a goroutine that emits an event containing the current time every second.
-	// The frontend can listen to this event and update the UI accordingly.
-	// go func() {
-	// 	for {
-	// 		now := time.Now().Format(time.RFC1123)
-	// 		app.Event.Emit("time", now)
-	// 		time.Sleep(time.Second)
-	// 	}
-	// }()
 	go func() {
-		ch := clipboard.Watch(context.TODO())
-		for data := range ch {
-			var created_paste_event *models.PasteEvent
-			foreground_process, _ := system.GetForegroundProcess()
-			extra := &service.PasteExtraInfo{
-				AppName:     foreground_process.Name,
-				AppFullPath: foreground_process.ExecuteFullPath,
-				WindowTitle: foreground_process.WindowTitle,
-			}
-			// fmt.Println("[LOG]paste event within ", window_title)
-			// fmt.Println("[LOG]paste event type is ", data.Type)
-			now := time.Now()
-			if now.Sub(biz.ManuallyWriteClipboardTime) < time.Second*3 {
-				continue
-			}
-			if data.Type == "public.file-url" {
-				if files, ok := data.Data.([]string); ok {
-					created, err := service_paste.HandlePasteFile(files, extra)
-					if err != nil {
-						return
-					}
-					created_paste_event = created
-				}
-			}
-			if data.Type == "public.utf8-plain-text" {
-				if text, ok := data.Data.(string); ok {
-					created, err := service_paste.HandlePasteText(text, extra)
-					if err != nil {
-						return
-					}
-					created_paste_event = created
-				}
-			}
-			if data.Type == "public.html" {
-				if html, ok := data.Data.(string); ok {
-					text, _ := clipboard.ReadText()
-					extra.PlainText = text
-					created, err := service_paste.HandlePasteHTML(html, extra)
-					if err != nil {
-						return
-					}
-					created_paste_event = created
-				}
-			}
-			if data.Type == "public.png" {
-				if f, ok := data.Data.([]byte); ok {
-					created, err := service_paste.HandlePastePNG(f, extra)
-					if err != nil {
-						return
-					}
-					created_paste_event = created
-				}
-			}
-			if created_paste_event != nil {
-				app.Event.Emit("clipboard:update", created_paste_event)
-			}
-		}
-	}()
-	app.Event.On("m:show-error", func(event *application.CustomEvent) {
-		body := event.Data.(service.ErrorBody)
-		search := fmt.Sprintf("?title=%v&desc=%v", body.Title, body.Content)
-		biz.ShowErrorWindow(search)
-	})
-	app.Event.On("m:hide-main-window", func(event *application.CustomEvent) {
-		win.Hide()
-	})
-
-	var register_global_shortcut func(win *application.WebviewWindow, hk *hotkey.Hotkey)
-	register_global_shortcut = func(win *application.WebviewWindow, hk *hotkey.Hotkey) {
-		// hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
-		if err := hk.Register(); err != nil {
-			t := fmt.Sprintf("hotkey: failed to register hotkey: %v", err)
+		machine_id, err := machineid.ID()
+		if err != nil {
+			t := fmt.Sprintf("Failed to generate machine id, %v", err)
 			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
 			return
 		}
-		// log.Printf("hotkey: %v is registered\n", hk)
-		<-hk.Keydown()
-		// log.Printf("hotkey: %v is down\n", hk)
-		<-hk.Keyup()
-		// log.Printf("hotkey: %v is up\n", hk)
-		if err := hk.Unregister(); err != nil {
-			t := fmt.Sprintf("hotkey: failed to unregister hotkey: %v", err)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=Shortcut&desc="+t))
+		cfg, err := config.LoadConfig()
+		if err != nil {
+			t := fmt.Sprintf("Failed to load config: %v", err)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
 			return
 		}
-		// log.Printf("hotkey: %v is unregistered\n", hk)
-		if win.IsVisible() {
+		logger := logger.NewLogger(cfg.LogLevel)
+		defer logger.Sync()
+		database, err := db.NewDatabase(cfg)
+		if err != nil {
+			t := fmt.Sprintf("Failed to connect to database, %v", err)
+			fmt.Println(t)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+			return
+		}
+		migrator := db.NewMigrator(cfg, logger, &migrations)
+		if err := migrator.MigrateUp(); err != nil {
+			t := fmt.Sprintf("Failed to run migrations, %v", err)
+			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
+			return
+		}
+		db.Seed(database, machine_id)
+
+		biz.
+			SetName(cfg.ProductName).
+			SetDatabase(database).
+			SetConfig(cfg).
+			SetMachineId(machine_id).
+			InitializeControllerMap().
+			InitializeUserConfig(cfg)
+
+		// Create a new window with the necessary options.
+		// 'Title' is the title of the window.
+		// 'Mac' options tailor the window when running on macOS.
+		// 'BackgroundColour' is the background colour of the window.
+		// 'URL' is the URL that will be loaded into the webview.
+		win := app.Window.NewWithOptions(application.WebviewWindowOptions{
+			Title:               "Devboard",
+			MaximiseButtonState: application.ButtonDisabled,
+			MinimiseButtonState: application.ButtonDisabled,
+			// AlwaysOnTop:         true,
+			// Hidden:        true,
+			DisableResize: true,
+			Mac: application.MacWindow{
+				InvisibleTitleBarHeight: 50,
+				Backdrop:                application.MacBackdropTranslucent,
+				// TitleBar:                application.MacTitleBarHiddenInset,
+			},
+			Windows: application.WindowsWindow{
+				HiddenOnTaskbar: true,
+			},
+			KeyBindings: map[string]func(window application.Window){
+				"CmdOrCtrl+,": func(window application.Window) {
+					biz.OpenSettingsWindow()
+				},
+				"CmdOrCtrl+Q": func(window application.Window) {
+					biz.Quit()
+				},
+				// "Escape": func(window application.Window) {
+				// 	window.Close()
+				// },
+			},
+			Width:            450,
+			Height:           680,
+			BackgroundColour: application.NewRGB(27, 38, 54),
+			URL:              "/",
+		})
+
+		app.KeyBinding.Add("CmdOrCtrl+,", func(win application.Window) {
+			biz.OpenSettingsWindow()
+		})
+		app.KeyBinding.Add("CmdOrCtrl+Q", func(win application.Window) {
+			biz.Quit()
+		})
+		// app.KeyBinding.Add("Escape", func(win application.Window) {
+		// 	fmt.Println("escape")
+		// 	win.Close()
+		// })
+		system_tray := app.SystemTray.New()
+		system_tray.OnClick(func() {
+			system_tray.OpenMenu()
+		})
+		// system_tray.OnMouseLeave(func() {
+		// 	register_shortcut(win, hk)
+		// })
+		// Register a hook to hide the window when the window is closing
+		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 			win.Hide()
-		} else {
+			e.Cancel()
+		})
+		// win.RegisterHook(events.Common.WindowLostFocus, func(e *application.WindowEvent) {
+		// 	win.Close()
+		// })
+		if runtime.GOOS == "darwin" {
+			system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
+		}
+		menu := app.NewMenu()
+		m_main := menu.Add("Show Devboard")
+		// if runtime.GOOS == "darwin" {
+		// 	m_main.SetAccelerator("CmdOrCtrl+Shift+M")
+		// }
+		// if runtime.GOOS == "windows" {
+		// 	m_main.SetAccelerator("CmdOrCtrl+Backquote")
+		// }
+		m_main.OnClick(func(ctx *application.Context) {
 			win.Show()
 			win.Focus()
-		}
-		register_global_shortcut(win, hk)
-	}
+		})
+		m_setting := menu.Add("Settings")
+		m_setting.SetAccelerator("CmdOrCtrl+,")
+		m_setting.OnClick(func(ctx *application.Context) {
+			biz.OpenSettingsWindow()
+		})
+		m_quit := menu.Add("Quit")
+		m_quit.SetAccelerator("CmdOrCtrl+Q")
+		m_quit.OnClick(func(ctx *application.Context) {
+			biz.Quit()
+		})
+		system_tray.SetMenu(menu)
 
-	go func() {
-		register_global_shortcut(win, hk)
+		// ctx_menu := application.NewContextMenu("main")
+		// ctx_menu.Add("Refresh").OnClick(func(ctx *application.Context) {
+		// 	app.Event.Emit("m:refresh")
+		// })
+		refresh_menu_text := "Refresh"
+		if runtime.GOOS == "darwin" {
+			refresh_menu_text = "Reload"
+		}
+		ctx_menu := app.ContextMenu.New()
+		m_refresh := ctx_menu.Add(refresh_menu_text)
+		m_refresh.SetAccelerator("Cmd+R")
+		m_refresh.OnClick(func(data *application.Context) {
+			app.Event.Emit("m:refresh")
+		})
+		app.ContextMenu.Add("refresh", ctx_menu)
+
+		fmt.Println("[LOG][Before Ready]the system tray and menus is ready")
+		// win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
+		// 	fmt.Println(e.Context().DroppedFiles())
+		// })
+
+		// Create a goroutine that emits an event containing the current time every second.
+		// The frontend can listen to this event and update the UI accordingly.
+		// go func() {
+		// 	for {
+		// 		now := time.Now().Format(time.RFC1123)
+		// 		app.Event.Emit("time", now)
+		// 		time.Sleep(time.Second)
+		// 	}
+		// }()
+		go func() {
+			router := routes.SetupRouter(database, logger, cfg, machine_id)
+			if err := router.Run(cfg.ServerAddress); err != nil {
+				logger.Fatal("Failed to start server", err)
+			}
+		}()
+		go func() {
+			ch := clipboard.Watch(context.TODO())
+			for data := range ch {
+				var created_paste_event *models.PasteEvent
+				foreground_process, _ := system.GetForegroundProcess()
+				extra := &controller.PasteExtraInfo{
+					AppName:     foreground_process.Name,
+					AppFullPath: foreground_process.ExecuteFullPath,
+					WindowTitle: foreground_process.WindowTitle,
+					MachineId:   machine_id,
+				}
+				// fmt.Println("[LOG]paste event within ", window_title)
+				// fmt.Println("[LOG]paste event type is ", data.Type)
+				now := time.Now()
+				if now.Sub(biz.ManuallyWriteClipboardTime) < time.Second*3 {
+					continue
+				}
+				if data.Type == "public.file-url" {
+					if files, ok := data.Data.([]string); ok {
+						created, err := biz.HandlePasteFile(files, extra)
+						if err != nil {
+							return
+						}
+						created_paste_event = created
+					}
+				}
+				if data.Type == "public.utf8-plain-text" {
+					if text, ok := data.Data.(string); ok {
+						created, err := biz.HandlePasteText(text, extra)
+						if err != nil {
+							return
+						}
+						created_paste_event = created
+					}
+				}
+				if data.Type == "public.html" {
+					if html, ok := data.Data.(string); ok {
+						text, _ := clipboard.ReadText()
+						extra.PlainText = text
+						created, err := biz.HandlePasteHTML(html, extra)
+						if err != nil {
+							return
+						}
+						created_paste_event = created
+					}
+				}
+				if data.Type == "public.png" {
+					if f, ok := data.Data.([]byte); ok {
+						created, err := biz.HandlePastePNG(f, extra)
+						if err != nil {
+							return
+						}
+						created_paste_event = created
+					}
+				}
+				if created_paste_event != nil {
+					app.Event.Emit("clipboard:update", created_paste_event)
+				}
+			}
+		}()
+
+		app.Event.On("m:show-error", func(event *application.CustomEvent) {
+			body := event.Data.(_biz.ErrorBody)
+			search := fmt.Sprintf("?title=%v&desc=%v", body.Title, body.Content)
+			biz.ShowErrorWindow(search)
+		})
+		app.Event.On("m:hide-main-window", func(event *application.CustomEvent) {
+			win.Hide()
+		})
+		fmt.Println("----------------")
+		fmt.Println("--- The Application is Ready ---")
+		fmt.Println("----------------")
+		app.Event.Emit("lifecycle:ready")
+		biz.SetReady()
 	}()
 	// Run the application. This blocks until the application has been exited.
 	if err := app.Run(); err != nil {

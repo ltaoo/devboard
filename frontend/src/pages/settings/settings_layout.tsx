@@ -16,7 +16,7 @@ function SettingsViewModel(props: ViewComponentProps) {
   };
   const ui = {
     $menu: RouteMenusModel({
-      route: "root.settings.system" as PageKeys,
+      route: props.storage.get("settings_layout_path") as PageKeys,
       menus: [
         {
           title: "配置",
@@ -39,6 +39,9 @@ function SettingsViewModel(props: ViewComponentProps) {
         url: PageKeys;
       }[],
       $history: props.history,
+      onChange(url) {
+        props.storage.set("settings_layout_path", url);
+      },
     }),
   };
   let _state = {
@@ -58,6 +61,8 @@ function SettingsViewModel(props: ViewComponentProps) {
     [Events.Error]: BizError;
   };
   const bus = base<TheTypesOfEvents>();
+
+  // ui.$menu.methods.setCurMenu(props.view.curView?.name as PageKeys);
 
   ui.$menu.onStateChange(() => methods.refresh());
 
@@ -96,7 +101,7 @@ export function SettingsView(props: ViewComponentProps) {
                     "bg-w-fg-4": menu.url === state().route,
                   }}
                   onClick={() => {
-                    props.history.push(menu.url);
+                    vm.ui.$menu.methods.setCurMenu(menu.url);
                   }}
                 >
                   {menu.title}

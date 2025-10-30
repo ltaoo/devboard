@@ -16,6 +16,7 @@ import { connect as connectHistory } from "@/domains/history/connect.web";
 import { onCreateScrollView } from "@/domains/ui/scroll-view";
 import { onRequestCreated, RequestCore } from "@/domains/request/index";
 import { Result } from "@/domains/result/index";
+import { fetchApplicationState } from "@/biz/services";
 import { query_stringify } from "@/utils";
 
 import { PageKeys, routes, routesWithPathname } from "./routes";
@@ -73,6 +74,9 @@ const view = new RouteViewCore({
   parent: null,
 });
 view.isRoot = true;
+const requests = {
+  state: new RequestCore(fetchApplicationState, { client }),
+};
 export const history = new HistoryCore<PageKeys, RouteConfig<PageKeys>>({
   view,
   router,
@@ -90,43 +94,15 @@ export const app = new Application({
     const { pathname, query } = history.$router;
     const route = routesWithPathname[pathname];
     console.log("[ROOT]onMount", pathname, query, route, app.$user.isLogin);
-    request.appendHeaders({
-      Authorization: app.$user.token,
-    });
-    if (query.token) {
-      user.setToken(`Bearer ${query.token}`);
-      request.appendHeaders({
-        Authorization: user.token,
-      });
+    // await checkApplicationReady();
+    const r = await requests.state.run();
+    if (r.error) {
+      return Result.Err(r.error);
     }
     if (!route) {
       history.push("root.notfound");
       return Result.Ok(null);
     }
-    if (!route.options?.require?.includes("login")) {
-      if (!history.isLayout(route.name)) {
-        history.push(route.name, query, { ignore: true });
-        return Result.Ok(null);
-      }
-      history.push("root.home.index");
-      return Result.Ok(null);
-    }
-    // console.log("[STORE]beforeReady - before if (!app.$user.isLogin", app.$user.isLogin, route.pathname);
-    if (!app.$user.isLogin) {
-      app.tip({
-        text: ["请先登录"],
-      });
-      if (route.name !== "root.home.index" && route.name !== "root") {
-        _pending_redirect = {
-          name: route.name,
-          pathname,
-          query,
-        };
-      }
-      history.push("root.login");
-      return Result.Ok(null);
-    }
-    console.log("before client.appendHeaders", app.$user.token);
     if (!history.isLayout(route.name)) {
       history.push(route.name, query, { ignore: true });
       return Result.Ok(null);

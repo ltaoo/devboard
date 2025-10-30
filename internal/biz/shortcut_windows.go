@@ -7,7 +7,7 @@ import (
 )
 
 // const ModCommandKey = hotkey.ModWin
-func NewHotkey() *hotkey.Hotkey {
+func new_hotkey() *hotkey.Hotkey {
 	// fmt.Println("[]register hotkey")
 	// hk := hotkey.New([]hotkey.Modifier{}, hotkey.)
 	hk := hotkey.New([]hotkey.Modifier{hotkey.ModCtrl}, hotkey.Key(0xC0))

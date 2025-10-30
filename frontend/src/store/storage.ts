@@ -1,7 +1,8 @@
 import dayjs from "dayjs";
 
-import { SetValueUnit } from "@/biz/input_set_value";
 import { StorageCore } from "@/domains/storage";
+
+import { PageKeys } from "./routes";
 
 const DEFAULT_CACHE_VALUES = {
   user: {
@@ -12,6 +13,7 @@ const DEFAULT_CACHE_VALUES = {
     expires_at: 0,
   },
   theme: "",
+  settings_layout_path: "root.settings.system" as PageKeys,
   dialog_flags: {} as Record<string, { show_at: number }>,
 };
 const key = "a_global";
