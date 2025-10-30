@@ -25,7 +25,7 @@ type BizApp struct {
 	Name                       string
 	MachineId                  string
 	Config                     *config.Config
-	UserConfig                 *BizConfig
+	UserConfig                 *UserSettings
 	DB                         *gorm.DB
 	app                        *application.App
 	Windows                    map[string]*application.WebviewWindow
@@ -71,7 +71,7 @@ func (a *BizApp) InitializeUserConfig(cfg *config.Config) *BizApp {
 	a.UserConfig = biz_config
 	return a
 }
-func (a *BizApp) SetUserConfig(config *BizConfig) *BizApp {
+func (a *BizApp) SetUserConfig(config *UserSettings) *BizApp {
 	a.UserConfig = config
 	return a
 }
@@ -237,7 +237,11 @@ func (a *BizApp) DisableShortcut() {
 
 }
 
-func (a *BizApp) RegisterShortcut(hk *hotkey.Hotkey, handler func(), error_handler func(err error)) {
+func (a *BizApp) RegisterShortcut(vvv string, handler func(biz *BizApp), error_handler func(err error)) error {
+	hk := NewHotkey(vvv)
+	if hk == nil {
+		return fmt.Errorf("register shortcut fail")
+	}
 	var register_global_shortcut func(hk *hotkey.Hotkey)
 	register_global_shortcut = func(hk *hotkey.Hotkey) {
 		// hk := hotkey.New([]hotkey.Modifier{hotkey.ModCmd, hotkey.ModShift}, hotkey.KeyM)
@@ -258,8 +262,36 @@ func (a *BizApp) RegisterShortcut(hk *hotkey.Hotkey, handler func(), error_handl
 			error_handler(err)
 			return
 		}
-		handler()
+		handler(a)
 		register_global_shortcut(hk)
 	}
 	register_global_shortcut(hk)
+	return nil
+}
+
+type CommandHandler struct {
+	Handler     func(biz *BizApp)
+	Description string
+}
+
+var CommandHandlerMap = map[string]CommandHandler{
+	"ToggleMainWindowVisible": {
+		Description: "Open or hide the main window",
+		Handler: func(biz *BizApp) {
+			fmt.Println("111")
+		},
+	},
+}
+
+func (a *BizApp) RegisterShortcutWithCommand(shortcut string, command string) error {
+	handler, ok := CommandHandlerMap[command]
+	if !ok {
+		return fmt.Errorf("Not valid command")
+	}
+	a.RegisterShortcut(shortcut, func(biz *BizApp) {
+		handler.Handler(a)
+	}, func(err error) {
+		//
+	})
+	return nil
 }

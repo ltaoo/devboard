@@ -213,17 +213,10 @@ func main() {
 		// system_tray.OnMouseLeave(func() {
 		// 	register_shortcut(win, hk)
 		// })
-		// Register a hook to hide the window when the window is closing
-		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-			win.Hide()
-			e.Cancel()
-		})
-		// win.RegisterHook(events.Common.WindowLostFocus, func(e *application.WindowEvent) {
-		// 	win.Close()
-		// })
 		if runtime.GOOS == "darwin" {
 			system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
 		}
+		// Register a hook to hide the window when the window is closing
 		menu := app.NewMenu()
 		m_main := menu.Add("Show Devboard")
 		// if runtime.GOOS == "darwin" {
@@ -344,7 +337,26 @@ func main() {
 				}
 			}
 		}()
+		go func() {
+			// biz.RegisterShortcutWithCommand("MetaLeft+BackQuote", "ToggleMainWindowVisible")
+			biz.RegisterShortcut("MetaLeft+BackQuote", func(biz *_biz.BizApp) {
+				if win.IsVisible() {
+					win.Hide()
+				} else {
+					win.Show()
+				}
+			}, func(err error) {
+				// ...
+			})
+		}()
 
+		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+			win.Hide()
+			e.Cancel()
+		})
+		// win.RegisterHook(events.Common.WindowLostFocus, func(e *application.WindowEvent) {
+		// 	win.Close()
+		// })
 		app.Event.On("m:show-error", func(event *application.CustomEvent) {
 			body := event.Data.(_biz.ErrorBody)
 			search := fmt.Sprintf("?title=%v&desc=%v", body.Title, body.Content)

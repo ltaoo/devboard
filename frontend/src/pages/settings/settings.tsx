@@ -118,6 +118,8 @@ function SettingsViewModel(props: ViewComponentProps) {
 
   const unlistens = [
     props.app.onKeydown((event) => {
+      event.preventDefault();
+      console.log(event.code);
       ui.$shortcut.methods.handleKeydown(event);
     }),
     props.app.onKeyup((event) => {
@@ -156,7 +158,16 @@ export function SettingsView(props: ViewComponentProps) {
         <div class="text-2xl text-w-fg-0">配置</div>
         <div class="mt-4 space-y-8">
           <div class="flex">
-            <ShortcutKey keys={state().codes} />
+            <For each={state().codes}>
+              {(code) => {
+                return (
+                  <div>
+                    <div>{code}</div>
+                  </div>
+                );
+              }}
+            </For>
+            {/* <ShortcutKey keys={state().codes} /> */}
           </div>
           <div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.douyin}>
