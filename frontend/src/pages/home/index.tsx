@@ -448,7 +448,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       }
       ui.$list_highlight.methods.moveToNextOption({ step: 3, force: true });
     },
-    KeyGKeyG() {
+    "KeyGKeyG,Home"() {
       if (ui.$commands.isFocus) {
         return;
       }
@@ -492,7 +492,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     "MetaLeft+KeyR"() {
       props.history.reload();
     },
-    "MetaLeft+Backspace"() {
+    "MetaLeft+Backspace,Delete"() {
       if (ui.$commands.isFocus) {
         return;
       }

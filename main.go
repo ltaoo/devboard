@@ -174,6 +174,7 @@ func main() {
 			Mac: application.MacWindow{
 				InvisibleTitleBarHeight: 50,
 				Backdrop:                application.MacBackdropTranslucent,
+				// WindowLevel:             application.MacWindowLevelModalPanel,
 				// TitleBar:                application.MacTitleBarHiddenInset,
 			},
 			Windows: application.WindowsWindow{
@@ -294,17 +295,11 @@ func main() {
 				if now.Sub(biz.ManuallyWriteClipboardTime) < time.Second*3 {
 					continue
 				}
-				if data.Type == "public.file-url" {
-					if files, ok := data.Data.([]string); ok {
-						created, err := biz.HandlePasteFile(files, extra)
-						if err != nil {
-							return
-						}
-						created_paste_event = created
-					}
-				}
 				if data.Type == "public.utf8-plain-text" {
 					if text, ok := data.Data.(string); ok {
+						if text == "" {
+							return
+						}
 						created, err := biz.HandlePasteText(text, extra)
 						if err != nil {
 							return
@@ -332,6 +327,15 @@ func main() {
 						created_paste_event = created
 					}
 				}
+				if data.Type == "public.file-url" {
+					if files, ok := data.Data.([]string); ok {
+						created, err := biz.HandlePasteFile(files, extra)
+						if err != nil {
+							return
+						}
+						created_paste_event = created
+					}
+				}
 				if created_paste_event != nil {
 					app.Event.Emit("clipboard:update", created_paste_event)
 				}
@@ -340,10 +344,12 @@ func main() {
 		go func() {
 			// biz.RegisterShortcutWithCommand("MetaLeft+BackQuote", "ToggleMainWindowVisible")
 			biz.RegisterShortcut("MetaLeft+BackQuote", func(biz *_biz.BizApp) {
+				fmt.Println("MetaLeft+BackQuote")
 				if win.IsVisible() {
 					win.Hide()
 				} else {
 					win.Show()
+					win.Focus()
 				}
 			}, func(err error) {
 				// ...

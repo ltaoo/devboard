@@ -237,7 +237,7 @@ export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPast
 }
 
 export function deletePasteEvent(body: { id: string }) {
-  return request.post(DeletePasteEvent, { event_id: body.id });
+  return request.post(DeletePasteEvent, { paste_event_id: body.id });
 }
 
 export function openPasteEventPreviewWindow(body: { id: string }) {

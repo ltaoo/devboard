@@ -1,7 +1,7 @@
 /**
  * @file 用户配置
  */
-import { For, Show } from "solid-js";
+import { For, Match, Show, Switch } from "solid-js";
 import { Check, File } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
@@ -17,7 +17,72 @@ import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
 import { fetchUserSettings, updateUserSettings } from "@/biz/settings/service";
 import { ShortcutModel } from "@/biz/shortcut/shortcut";
-import { ShortcutKey } from "@/components/shortcut";
+
+function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
+  const methods = {
+    refresh() {
+      bus.emit(Events.StateChange, { ..._state });
+    },
+    handleClick() {
+      _pending = false;
+      methods.refresh();
+    },
+  };
+  const ui = {
+    $shortcut: ShortcutModel({}),
+  };
+
+  let _pending = true;
+  const _state = {
+    get pending() {
+      return _pending;
+    },
+    get codes() {
+      return ui.$shortcut.state.codes;
+    },
+  };
+
+  enum Events {
+    StateChange,
+  }
+  type TheTypesOfEvents = {
+    [Events.StateChange]: typeof _state;
+  };
+  const bus = base<TheTypesOfEvents>();
+
+  ui.$shortcut.onStateChange(() => methods.refresh());
+
+  const cancelers = [
+    props.app.onKeydown((event) => {
+      if (_pending) {
+        return;
+      }
+      event.preventDefault();
+      console.log(event.code);
+      ui.$shortcut.methods.handleKeydown(event);
+    }),
+    props.app.onKeyup((event) => {
+      if (_pending) {
+        return;
+      }
+      ui.$shortcut.methods.handleKeyup(event);
+    }),
+  ];
+
+  return {
+    methods,
+    state: _state,
+    destroy() {
+      for (let i = 0; i < cancelers.length; i += 1) {
+        cancelers[i]();
+      }
+      bus.destroy();
+    },
+    onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
+      return bus.on(Events.StateChange, handler);
+    },
+  };
+}
 
 function SettingsViewModel(props: ViewComponentProps) {
   const request = {
@@ -95,12 +160,12 @@ function SettingsViewModel(props: ViewComponentProps) {
         }),
       },
     }),
-    $shortcut: ShortcutModel({}),
+    $recorder: ShortcutRecordModel(props),
   };
 
   let _state = {
-    get codes() {
-      return ui.$shortcut.state.codes;
+    get recorder() {
+      return ui.$recorder.state;
     },
   };
   enum Events {
@@ -114,18 +179,7 @@ function SettingsViewModel(props: ViewComponentProps) {
   const bus = base<TheTypesOfEvents>();
 
   request.settings.data.onStateChange(() => methods.refresh());
-  ui.$shortcut.onStateChange(() => methods.refresh());
-
-  const unlistens = [
-    props.app.onKeydown((event) => {
-      event.preventDefault();
-      console.log(event.code);
-      ui.$shortcut.methods.handleKeydown(event);
-    }),
-    props.app.onKeyup((event) => {
-      ui.$shortcut.methods.handleKeyup(event);
-    }),
-  ];
+  ui.$recorder.onStateChange(() => methods.refresh());
 
   return {
     methods,
@@ -135,9 +189,7 @@ function SettingsViewModel(props: ViewComponentProps) {
       methods.ready();
     },
     destroy() {
-      for (let i = 0; i < unlistens.length; i += 1) {
-        unlistens[i]();
-      }
+      ui.$recorder.destroy();
       bus.destroy();
     },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
@@ -157,17 +209,31 @@ export function SettingsView(props: ViewComponentProps) {
       <div class="block">
         <div class="text-2xl text-w-fg-0">配置</div>
         <div class="mt-4 space-y-8">
-          <div class="flex">
-            <For each={state().codes}>
-              {(code) => {
-                return (
-                  <div>
-                    <div>{code}</div>
-                  </div>
-                );
-              }}
-            </For>
-            {/* <ShortcutKey keys={state().codes} /> */}
+          <div class="h-[32px]">
+            <Switch>
+              <Match when={state().recorder.pending}>
+                <div
+                  onClick={() => {
+                    vm.ui.$recorder.methods.handleClick();
+                  }}
+                >
+                  点击录制
+                </div>
+              </Match>
+              <Match when={!state().recorder.pending}>
+                <div class="flex gap-1">
+                  <For each={state().recorder.codes}>
+                    {(code) => {
+                      return (
+                        <div>
+                          <div>{code}</div>
+                        </div>
+                      );
+                    }}
+                  </For>
+                </div>
+              </Match>
+            </Switch>
           </div>
           <div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.douyin}>
