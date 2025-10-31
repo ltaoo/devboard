@@ -23,7 +23,7 @@ type DownloadDouyinVideoBody struct {
 }
 
 func (s *DouyinService) DownloadDouyinVideo(body DownloadDouyinVideoBody) *Result {
-	cookie := s.Biz.UserConfig.Get("douyin.cookie", "").(string)
+	cookie := s.Biz.Perferences.Get("douyin.cookie", "").(string)
 	if cookie == "" {
 		return Error(fmt.Errorf("Missing the cookie"))
 	}

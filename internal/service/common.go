@@ -41,6 +41,18 @@ func (s *CommonService) RegisterShortcut(body ShortcutRegisterBody) *Result {
 	if body.Shortcut == "" {
 		return Error(fmt.Errorf("Missing the shortcut"))
 	}
-	s.Biz.RegisterShortcutWithCommand(body.Shortcut, body.Command)
+	if err := s.Biz.RegisterShortcutWithCommand(body.Shortcut, body.Command); err != nil {
+		return Error(err)
+	}
+	return Ok(nil)
+}
+
+func (s *CommonService) UnregisterShortcut(body ShortcutRegisterBody) *Result {
+	if body.Shortcut == "" {
+		return Error(fmt.Errorf("Missing the shortcut"))
+	}
+	if err := s.Biz.UnregisterShortcut(body.Shortcut); err != nil {
+		return Error(err)
+	}
 	return Ok(nil)
 }

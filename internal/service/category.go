@@ -35,6 +35,26 @@ func (s *CategoryService) FetchCategoryTree() *Result {
 	return Ok(r)
 }
 
+type CategoryTreeResp struct {
+	Id        string             `json:"id"`
+	Label     string             `json:"label"`
+	CreatedAt string             `json:"created_at"`
+	Parents   []CategoryTreeResp `json:"parents"`
+}
+
+func category_nodes_process(r []controller.CategoryTree) []CategoryTreeResp {
+	var nodes []CategoryTreeResp
+	for _, n := range r {
+		nodes = append(nodes, CategoryTreeResp{
+			Id:        n.Id,
+			Label:     n.Label,
+			CreatedAt: n.CreatedAt,
+			Parents:   category_nodes_process(n.Parents),
+		})
+	}
+	return nodes
+}
+
 func (s *CategoryService) GetCategoryTreeOptimized() *Result {
 	if err := s.Biz.Ensure(); err != nil {
 		return Error(err)
@@ -43,7 +63,8 @@ func (s *CategoryService) GetCategoryTreeOptimized() *Result {
 	if err != nil {
 		return Error(err)
 	}
-	return Ok(r)
+	nodes := category_nodes_process(r)
+	return Ok(nodes)
 }
 
 func (s *CategoryService) GetCategoryTreeOptimized2() *Result {

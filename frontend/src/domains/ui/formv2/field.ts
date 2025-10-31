@@ -234,6 +234,11 @@ export class SingleFieldCore<T extends FormInputInterface<any>> {
     this._input.setValue(v);
     // this._bus.emit(SingleFieldEvents.StateChange, { ...this.state });
   }
+  getValueWithPath(segments: string[]) {
+    // const first = segments[0];
+    const v = this._input.value;
+    return v;
+  }
   setStatus(status: FieldStatus) {
     this._status = status;
     this._bus.emit(SingleFieldEvents.StateChange, { ...this.state });
@@ -439,6 +444,15 @@ export class ArrayFieldCore<
     // for (; i < this.value.length; i += 1) {}
     console.log("[DOMAIN]ArrayFieldCore - after setValue", this.fields);
     this._bus.emit(ArrayFieldEvents.StateChange, { ...this.state });
+  }
+  getValueWithPath(segments: string[]) {
+    const first = segments[0];
+    const match = first.match(/\[([0-9]{1,})\]/);
+    if (!match) {
+      return null;
+    }
+    const d = this.fields[Number(match[1])].field.getValueWithPath(segments.slice(0)) as any;
+    return d;
   }
   clear() {
     this.setValue([]);
@@ -719,6 +733,15 @@ export class ObjectFieldCore<
       return acc;
     }, {} as ObjectValue<T>);
     return result;
+  }
+  getValueWithPath(segments: string[]) {
+    console.log("[DOMAIN]formv2/field - getValueWithPath", segments);
+    const field = this.fields[segments[0]];
+    if (!field) {
+      return null;
+    }
+    const d = field.getValueWithPath(segments.slice(1)) as any;
+    return d;
   }
   mapFieldWithName(name: string) {
     const field = this.fields[name];
