@@ -15,68 +15,126 @@ import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
 import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
-import { fetchUserSettings, updateUserSettings } from "@/biz/settings/service";
+import {
+  fetchUserSettings,
+  registerShortcut,
+  unregisterShortcut,
+  updateUserSettings,
+  updateUserSettingsWithPath,
+} from "@/biz/settings/service";
 import { ShortcutModel } from "@/biz/shortcut/shortcut";
+import { debounce } from "@/utils/lodash/debounce";
 
 function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    handleClick() {
+    startListenKeyEvents() {
+      const cancelers = [
+        props.app.onKeydown((event) => {
+          if (_pending) {
+            return;
+          }
+          event.preventDefault();
+          console.log(event.code);
+          ui.$shortcut.methods.handleKeydown(event);
+        }),
+        props.app.onKeyup((event) => {
+          if (_pending) {
+            return;
+          }
+          ui.$shortcut.methods.handleKeyup(event);
+        }),
+      ];
+      _unlisten = function () {
+        for (let i = 0; i < cancelers.length; i += 1) {
+          const canc = cancelers[i];
+          canc();
+        }
+      };
+    },
+    setExistingCodes(codes: string) {
+      console.log("[DOMAIN]ShortcutRecordModel - setExistingCodes", codes);
       _pending = false;
+      _recording = false;
+      _completed = true;
+      ui.$shortcut.methods.setRecordingCodes(codes);
+    },
+    handleClickStartRecord() {
+      _pending = false;
+      _recording = true;
+      methods.startListenKeyEvents();
+      methods.refresh();
+    },
+    handleClickReset() {
+      bus.emit(Events.Unregister, { codes: ui.$shortcut.state.codes2.join("+") });
+      _pending = true;
+      _recording = false;
+      _completed = false;
+      ui.$shortcut.methods.reset();
+      methods.startListenKeyEvents();
       methods.refresh();
     },
   };
   const ui = {
-    $shortcut: ShortcutModel({}),
+    $shortcut: ShortcutModel({ mode: "recording" }),
   };
 
+  let _unlisten: null | (() => void) = null;
   let _pending = true;
+  let _recording = false;
+  let _completed = false;
   const _state = {
     get pending() {
       return _pending;
     },
+    get recording() {
+      return _recording;
+    },
+    get completed() {
+      return _completed;
+    },
     get codes() {
-      return ui.$shortcut.state.codes;
+      return ui.$shortcut.state.codes2;
     },
   };
 
   enum Events {
+    Register,
+    Unregister,
     StateChange,
   }
   type TheTypesOfEvents = {
+    [Events.Register]: { codes: string };
+    [Events.Unregister]: { codes: string };
     [Events.StateChange]: typeof _state;
   };
   const bus = base<TheTypesOfEvents>();
 
   ui.$shortcut.onStateChange(() => methods.refresh());
-
-  const cancelers = [
-    props.app.onKeydown((event) => {
-      if (_pending) {
-        return;
-      }
-      event.preventDefault();
-      console.log(event.code);
-      ui.$shortcut.methods.handleKeydown(event);
-    }),
-    props.app.onKeyup((event) => {
-      if (_pending) {
-        return;
-      }
-      ui.$shortcut.methods.handleKeyup(event);
-    }),
-  ];
+  ui.$shortcut.onShortcutComplete(() => {
+    if (_unlisten) {
+      _unlisten();
+    }
+    _completed = true;
+    bus.emit(Events.Register, { codes: ui.$shortcut.state.codes2.join("+") });
+  });
 
   return {
     methods,
     state: _state,
     destroy() {
-      for (let i = 0; i < cancelers.length; i += 1) {
-        cancelers[i]();
+      if (_unlisten) {
+        _unlisten();
       }
       bus.destroy();
+    },
+    onRegister(handler: Handler<TheTypesOfEvents[Events.Register]>) {
+      return bus.on(Events.Register, handler);
+    },
+    onUnregister(handler: Handler<TheTypesOfEvents[Events.Unregister]>) {
+      return bus.on(Events.Unregister, handler);
     },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
       return bus.on(Events.StateChange, handler);
@@ -89,6 +147,9 @@ function SettingsViewModel(props: ViewComponentProps) {
     settings: {
       data: new RequestCore(fetchUserSettings, { client: props.client }),
       update: new RequestCore(updateUserSettings, { client: props.client }),
+      update_by_path: new RequestCore(updateUserSettingsWithPath, { client: props.client }),
+      register_shortcut: new RequestCore(registerShortcut, { client: props.client }),
+      unregister_shortcut: new RequestCore(unregisterShortcut, { client: props.client }),
     },
   };
   const methods = {
@@ -101,7 +162,14 @@ function SettingsViewModel(props: ViewComponentProps) {
         return;
       }
       ui.$form_settings.setValue(r.data);
+      if (r.data.shortcut.toggle_main_window_visible) {
+        ui.$recorder.methods.setExistingCodes(r.data.shortcut.toggle_main_window_visible);
+      }
     },
+    updateSettingsByPath: debounce(800, (path: string, opt: { value: unknown }) => {
+      console.log("[PAGE]settings/settings.tsx - updateSettingsByPath", path, opt.value);
+      request.settings.update_by_path.run({ path, value: opt.value });
+    }),
   };
   const ui = {
     $view: new ScrollViewCore({}),
@@ -140,7 +208,14 @@ function SettingsViewModel(props: ViewComponentProps) {
                   required: true,
                 },
               ],
-              input: new InputCore({ defaultValue: "" }),
+              input: new InputCore({
+                defaultValue: "",
+                onChange() {
+                  methods.updateSettingsByPath("douyin.cookie", {
+                    value: ui.$form_settings.getValueWithPath(["douyin", "cookie"]),
+                  });
+                },
+              }),
             }),
           },
         }),
@@ -154,7 +229,14 @@ function SettingsViewModel(props: ViewComponentProps) {
                   required: true,
                 },
               ],
-              input: new InputCore({ defaultValue: "" }),
+              input: new InputCore({
+                defaultValue: "",
+                onChange() {
+                  methods.updateSettingsByPath("paste_event.callback_endpoint", {
+                    value: ui.$form_settings.getValueWithPath(["paste_event", "callback_endpoint"]),
+                  });
+                },
+              }),
             }),
           },
         }),
@@ -180,6 +262,19 @@ function SettingsViewModel(props: ViewComponentProps) {
 
   request.settings.data.onStateChange(() => methods.refresh());
   ui.$recorder.onStateChange(() => methods.refresh());
+  ui.$recorder.onRegister(async (v) => {
+    await request.settings.update_by_path.run({ path: "shortcut.toggle_main_window_visible", value: v.codes });
+    request.settings.register_shortcut.run({
+      shortcut: v.codes,
+      command: "ToggleMainWindowVisible",
+    });
+  });
+  ui.$recorder.onUnregister(async (v) => {
+    await request.settings.update_by_path.run({ path: "shortcut.toggle_main_window_visible", value: "" });
+    request.settings.unregister_shortcut.run({
+      shortcut: v.codes,
+    });
+  });
 
   return {
     methods,
@@ -214,13 +309,13 @@ export function SettingsView(props: ViewComponentProps) {
               <Match when={state().recorder.pending}>
                 <div
                   onClick={() => {
-                    vm.ui.$recorder.methods.handleClick();
+                    vm.ui.$recorder.methods.handleClickStartRecord();
                   }}
                 >
                   点击录制
                 </div>
               </Match>
-              <Match when={!state().recorder.pending}>
+              <Match when={state().recorder.recording || state().recorder.completed}>
                 <div class="flex gap-1">
                   <For each={state().recorder.codes}>
                     {(code) => {
@@ -232,6 +327,15 @@ export function SettingsView(props: ViewComponentProps) {
                     }}
                   </For>
                 </div>
+                <Show when={state().recorder.completed}>
+                  <div
+                    onClick={() => {
+                      vm.ui.$recorder.methods.handleClickReset();
+                    }}
+                  >
+                    Reset
+                  </div>
+                </Show>
               </Match>
             </Switch>
           </div>
@@ -245,13 +349,13 @@ export function SettingsView(props: ViewComponentProps) {
           <div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.paste_event}>
               <FieldV2 store={vm.ui.$form_settings.fields.paste_event.fields.callback_endpoint}>
-                <Textarea store={vm.ui.$form_settings.fields.paste_event.fields.callback_endpoint.input} />
+                <Textarea
+                  spellcheck={false}
+                  store={vm.ui.$form_settings.fields.paste_event.fields.callback_endpoint.input}
+                />
               </FieldV2>
             </FieldObjV2>
           </div>
-        </div>
-        <div class="mt-4 space-x-1">
-          <Button store={vm.ui.$btn_submit}>提交</Button>
         </div>
       </div>
     </ScrollView>

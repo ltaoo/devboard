@@ -1,6 +1,7 @@
 package biz
 
 import (
+	"fmt"
 	"strings"
 
 	"golang.design/x/hotkey"
@@ -18,7 +19,7 @@ var HotkeyModifierCodeMap = map[string]hotkey.Modifier{
 }
 var HotkeyCodeMap = map[string]hotkey.Key{
 	"Escape":       hotkey.KeyEscape,
-	"BackQuote":    hotkey.Key(0x32), // ~
+	"Backquote":    hotkey.Key(0x32), // ~
 	"Digit1":       hotkey.Key1,
 	"Digit2":       hotkey.Key2,
 	"Digit3":       hotkey.Key3,
@@ -79,10 +80,10 @@ func MapFrontendShortcutTo(codes string) {
 	// keys := strings.Split(codes, "+")
 }
 
-func NewHotkey(vvv string) *hotkey.Hotkey {
+func NewHotkey(vvv string) (*hotkey.Hotkey, error) {
 	keys := strings.Split(vvv, "+")
 	if len(keys) == 0 {
-		return nil
+		return nil, fmt.Errorf("the shortcut is empty")
 	}
 	var modifiers []hotkey.Modifier
 	var key hotkey.Key
@@ -99,8 +100,8 @@ func NewHotkey(vvv string) *hotkey.Hotkey {
 		}
 	}
 	if key == 0 {
-		return nil
+		return nil, fmt.Errorf("there's must have a key")
 	}
 	hk := hotkey.New(modifiers, key)
-	return hk
+	return hk, nil
 }

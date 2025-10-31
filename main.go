@@ -151,14 +151,6 @@ func main() {
 		}
 		db.Seed(database, machine_id)
 
-		biz.
-			SetName(cfg.ProductName).
-			SetDatabase(database).
-			SetConfig(cfg).
-			SetMachineId(machine_id).
-			InitializeControllerMap().
-			InitializeUserConfig(cfg)
-
 		// Create a new window with the necessary options.
 		// 'Title' is the title of the window.
 		// 'Mac' options tailor the window when running on macOS.
@@ -341,20 +333,6 @@ func main() {
 				}
 			}
 		}()
-		go func() {
-			// biz.RegisterShortcutWithCommand("MetaLeft+BackQuote", "ToggleMainWindowVisible")
-			biz.RegisterShortcut("MetaLeft+BackQuote", func(biz *_biz.BizApp) {
-				fmt.Println("MetaLeft+BackQuote")
-				if win.IsVisible() {
-					win.Hide()
-				} else {
-					win.Show()
-					win.Focus()
-				}
-			}, func(err error) {
-				// ...
-			})
-		}()
 
 		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 			win.Hide()
@@ -375,7 +353,27 @@ func main() {
 		fmt.Println("--- The Application is Ready ---")
 		fmt.Println("----------------")
 		app.Event.Emit("lifecycle:ready")
-		biz.SetReady()
+
+		biz.
+			SetName(cfg.ProductName).
+			SetDatabase(database).
+			SetConfig(cfg).
+			SetMachineId(machine_id).
+			InitializeControllerMap().
+			InitializeUserConfig(cfg).
+			SetMainWindow(win).
+			SetReady()
+
+		go func() {
+			shortcut1 := biz.Perferences.Value.Shortcut.ToggleMainWindowVisible
+			// fmt.Println("check there's shortcut need to register", shortcut1)
+			if shortcut1 != "" {
+				err := biz.RegisterShortcutWithCommand(shortcut1, "ToggleMainWindowVisible")
+				if err != nil {
+					fmt.Println("register shortcut failed,", err.Error())
+				}
+			}
+		}()
 	}()
 	// Run the application. This blocks until the application has been exited.
 	if err := app.Run(); err != nil {

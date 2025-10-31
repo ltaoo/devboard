@@ -6,7 +6,7 @@ type KeyboardEvent = {
   preventDefault: () => void;
 };
 
-export function ShortcutModel(props: {}) {
+export function ShortcutModel(props: Partial<{ mode?: "normal" | "recording" }> = {}) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -46,6 +46,18 @@ export function ShortcutModel(props: {}) {
       const key1 = group_codes.join("+");
       const key2 = _pressed_codes.join("");
       return { key1, key2 };
+    },
+    setRecordingCodes(codes: string) {
+      console.log("[DOMAIN]shortcut - setRecordingCodes", codes);
+      codes.split("+").forEach((code) => {
+        _pressed_code_map_for_recording[code] = true;
+      });
+      methods.refresh();
+    },
+    reset() {
+      _pressed_code_map = {};
+      _pressed_code_map_for_recording = {};
+      methods.refresh();
     },
     testShortcut(
       opt: {
@@ -98,16 +110,22 @@ export function ShortcutModel(props: {}) {
         _pressed_codes = [event.code];
       }
       _pressed_code_map[event.code] = true;
+      _pressed_code_map_for_recording[event.code] = true;
       methods.refresh();
       methods.testShortcut({ ...methods.buildShortcut(), step: "keydown" }, event);
       methods.clearPressedKeys();
     },
     handleKeyup(event: { code: string; preventDefault: () => void }, opt: Partial<{ fake: boolean }> = {}) {
       methods.testShortcut({ ...methods.buildShortcut(), step: "keyup" }, event);
-      if (["MetaLeft"].includes(event.code)) {
+      if (["MetaLeft", "MetaRight"].includes(event.code)) {
         _pressed_code_map = {};
       }
       delete _pressed_code_map[event.code];
+      if (Object.keys(_pressed_code_map).length === 0) {
+        if (props.mode === "recording") {
+          bus.emit(Events.ShortcutComplete, { codes: Object.keys(_pressed_code_map_for_recording) });
+        }
+      }
       methods.refresh();
     },
   };
@@ -119,21 +137,27 @@ export function ShortcutModel(props: {}) {
     (event: { code: string; step?: "keydown" | "keyup"; preventDefault: () => void }) => void
   > = {};
   let _pressed_codes: string[] = [];
+  let _pressed_code_map_for_recording: Record<string, boolean> = {};
   let _pressed_code_map: Record<string, boolean> = {};
   let _continuous_timer: NodeJS.Timeout | number | null = null;
   let _state = {
     get codes() {
       return Object.keys(_pressed_code_map);
     },
+    get codes2() {
+      return Object.keys(_pressed_code_map_for_recording);
+    },
   };
   enum Events {
     Shortcut,
     Keydown,
+    ShortcutComplete,
     StateChange,
     Error,
   }
   type TheTypesOfEvents = {
     [Events.Shortcut]: { key: string };
+    [Events.ShortcutComplete]: { codes: string[] };
     [Events.Keydown]: KeyboardEvent;
     [Events.StateChange]: typeof _state;
     [Events.Error]: BizError;
@@ -150,6 +174,10 @@ export function ShortcutModel(props: {}) {
     },
     onShortcut(handler: Handler<TheTypesOfEvents[Events.Shortcut]>) {
       _handlers.push(handler);
+      return () => {};
+    },
+    onShortcutComplete(handler: Handler<TheTypesOfEvents[Events.ShortcutComplete]>) {
+      return bus.on(Events.ShortcutComplete, handler);
     },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
       return bus.on(Events.StateChange, handler);

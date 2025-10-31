@@ -22,14 +22,17 @@ type ControllerMap struct {
 }
 
 type BizApp struct {
-	Name                       string
-	MachineId                  string
-	Config                     *config.Config
-	UserConfig                 *UserSettings
-	DB                         *gorm.DB
 	app                        *application.App
+	Name                       string
+	DB                         *gorm.DB
+	Config                     *config.Config
+	Perferences                *UserSettings
+	MachineId                  string
 	Windows                    map[string]*application.WebviewWindow
+	MainWindow                 *application.WebviewWindow
 	Hotkey                     *hotkey.Hotkey
+	HotkeyMap                  map[string]*hotkey.Hotkey // 以 快捷键 为 key，hk 实例为值
+	CommandHotKeyMap           map[string]*hotkey.Hotkey // 以 Command 为 key，kh 实例为值
 	ManuallyWriteClipboardTime time.Time
 	ControllerMap              *ControllerMap
 	Ready                      bool
@@ -39,9 +42,10 @@ func New(app *application.App) *BizApp {
 	// hk := NewHotkey()
 
 	return &BizApp{
-		app:     app,
-		Windows: make(map[string]*application.WebviewWindow),
-		// Hotkey:  hk,
+		app:              app,
+		Windows:          make(map[string]*application.WebviewWindow),
+		HotkeyMap:        make(map[string]*hotkey.Hotkey),
+		CommandHotKeyMap: make(map[string]*hotkey.Hotkey),
 	}
 }
 
@@ -68,11 +72,11 @@ func (a *BizApp) SetConfig(config *config.Config) *BizApp {
 func (a *BizApp) InitializeUserConfig(cfg *config.Config) *BizApp {
 	biz_config := NewBizConfig(cfg.UserConfigDir, cfg.UserConfigName)
 	biz_config.InitializeConfig()
-	a.UserConfig = biz_config
+	a.Perferences = biz_config
 	return a
 }
 func (a *BizApp) SetUserConfig(config *UserSettings) *BizApp {
-	a.UserConfig = config
+	a.Perferences = config
 	return a
 }
 func (a *BizApp) InitializeControllerMap() *BizApp {
@@ -83,6 +87,11 @@ func (a *BizApp) InitializeControllerMap() *BizApp {
 	}
 	return a
 }
+func (a *BizApp) SetMainWindow(win *application.WebviewWindow) *BizApp {
+	a.MainWindow = win
+	return a
+}
+
 func (a *BizApp) SetReady() {
 	a.Ready = true
 }
@@ -123,6 +132,15 @@ func (a *BizApp) AppendWindow(url string, win *application.WebviewWindow) {
 		delete(a.Windows, url)
 	})
 	win.Focus()
+}
+
+func (a *BizApp) ToggleMainWindowVisible() {
+	if a.MainWindow.IsVisible() {
+		a.MainWindow.Hide()
+	} else {
+		a.MainWindow.Show()
+		a.MainWindow.Focus()
+	}
 }
 
 func (a *BizApp) ShowErrorWindow(search string) {
@@ -237,10 +255,10 @@ func (a *BizApp) DisableShortcut() {
 
 }
 
-func (a *BizApp) RegisterShortcut(vvv string, handler func(biz *BizApp), error_handler func(err error)) error {
-	hk := NewHotkey(vvv)
-	if hk == nil {
-		return fmt.Errorf("register shortcut fail")
+func (a *BizApp) RegisterShortcut(vvv string, handler func(biz *BizApp), error_handler func(err error)) (*hotkey.Hotkey, error) {
+	hk, err := NewHotkey(vvv)
+	if err != nil {
+		return nil, err
 	}
 	var register_global_shortcut func(hk *hotkey.Hotkey)
 	register_global_shortcut = func(hk *hotkey.Hotkey) {
@@ -265,8 +283,19 @@ func (a *BizApp) RegisterShortcut(vvv string, handler func(biz *BizApp), error_h
 		handler(a)
 		register_global_shortcut(hk)
 	}
-	register_global_shortcut(hk)
-	return nil
+	go func() {
+		register_global_shortcut(hk)
+	}()
+	a.HotkeyMap[vvv] = hk
+	return hk, nil
+}
+func (a BizApp) UnregisterShortcut(vvv string) error {
+	fmt.Println("[SERVICE]UnregisterShortcut", vvv)
+	hk, existing := a.HotkeyMap[vvv]
+	if !existing {
+		return fmt.Errorf("not found registered shortcut")
+	}
+	return hk.Unregister()
 }
 
 type CommandHandler struct {
@@ -278,7 +307,8 @@ var CommandHandlerMap = map[string]CommandHandler{
 	"ToggleMainWindowVisible": {
 		Description: "Open or hide the main window",
 		Handler: func(biz *BizApp) {
-			fmt.Println("111")
+			biz.ToggleMainWindowVisible()
+
 		},
 	},
 }
@@ -288,10 +318,27 @@ func (a *BizApp) RegisterShortcutWithCommand(shortcut string, command string) er
 	if !ok {
 		return fmt.Errorf("Not valid command")
 	}
-	a.RegisterShortcut(shortcut, func(biz *BizApp) {
+	existing_shortcut, ok := a.HotkeyMap[shortcut]
+	if ok {
+		existing_shortcut.Unregister()
+	}
+	existing_command, ok := a.CommandHotKeyMap[command]
+	if ok {
+		existing_command.Unregister()
+	}
+	hk, err := a.RegisterShortcut(shortcut, func(biz *BizApp) {
 		handler.Handler(a)
 	}, func(err error) {
 		//
 	})
+	if err != nil {
+		return err
+	}
+	a.CommandHotKeyMap[command] = hk
 	return nil
 }
+
+// func (a *BizApp) UnregisterShortcut(shortcut string) error {
+// 	a.UnRegisterShortcut(shortcut)
+// 	return nil
+// }
