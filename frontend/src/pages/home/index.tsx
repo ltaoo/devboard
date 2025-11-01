@@ -27,6 +27,7 @@ import { RequestCore, TheResponseOfRequestCore } from "@/domains/request";
 import { base, Handler } from "@/domains/base";
 import { ButtonCore, DialogCore, InputCore, PopoverCore, ScrollViewCore } from "@/domains/ui";
 import { WaterfallModel } from "@/domains/ui/waterfall/waterfall";
+import { listenMultiEvent } from "@/domains/app/utils";
 import { WaterfallCellModel } from "@/domains/ui/waterfall/cell";
 import { ListCore } from "@/domains/list";
 import { TheItemTypeFromListCore } from "@/domains/list/typing";
@@ -623,25 +624,28 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   ui.$waterfall.onStateChange(() => methods.refresh());
   ui.$list_highlight.onStateChange(() => methods.refresh());
   ui.$back_to_top.onStateChange(() => methods.refresh());
-  const unlisten = props.app.onKeydown((event) => {
-    // console.log("[PAGE]onKeydown", event.code);
-    ui.$shortcut.methods.handleKeydown(event);
-  });
-  const unlisten2 = props.app.onKeyup((event) => {
-    // console.log("[PAGE]onKeyup", event.code);
-    ui.$shortcut.methods.handleKeyup(event);
-  });
-  Events.On("clipboard:update", (event) => {
-    const created_paste_event = event.data[0];
-    if (!created_paste_event) {
-      return;
-    }
-    const vv = processPartialPasteEvent(created_paste_event);
-    methods.prepareLoadRecord(vv);
-  });
-  Events.On("m:refresh", (event) => {
-    props.history.reload();
-  });
+
+  const unlisten = listenMultiEvent([
+    props.app.onKeydown((event) => {
+      // console.log("[PAGE]onKeydown", event.code);
+      ui.$shortcut.methods.handleKeydown(event);
+    }),
+    props.app.onKeyup((event) => {
+      // console.log("[PAGE]onKeyup", event.code);
+      ui.$shortcut.methods.handleKeyup(event);
+    }),
+    Events.On("clipboard:update", (event) => {
+      const created_paste_event = event.data[0];
+      if (!created_paste_event) {
+        return;
+      }
+      const vv = processPartialPasteEvent(created_paste_event);
+      methods.prepareLoadRecord(vv);
+    }),
+    Events.On("m:refresh", (event) => {
+      props.history.reload();
+    }),
+  ]);
 
   return {
     request,
@@ -660,7 +664,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     destroy() {
       unlisten();
-      unlisten2();
       bus.destroy();
     },
     onStateChange(handler: Handler<TheTypesOfEvents[EventNames.StateChange]>) {
@@ -791,11 +794,6 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                             <div class="text-w-fg-1">{v.text}</div>
                           </div>
                         </Match>
-                        <Match when={isCodeContent(v.types) && v.text}>
-                          <div class="w-full overflow-auto">
-                            <CodeCard id={v.id} language={v.language} code={v.text!} />
-                          </div>
-                        </Match>
                         <Match when={v.type === "html" && v.text}>
                           <HTMLCard html={v.text!} />
                         </Match>
@@ -803,6 +801,11 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                           <AspectRatio class="relative" ratio={6 / 2}>
                             <img class="absolute w-full h-full object-cover" src={v.image_url!} />
                           </AspectRatio>
+                        </Match>
+                        <Match when={isCodeContent(v.types) && v.text}>
+                          <div class="w-full overflow-auto">
+                            <CodeCard id={v.id} language={v.language} code={v.text!} />
+                          </div>
                         </Match>
                       </Switch>
                     </div>
