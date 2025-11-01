@@ -148,6 +148,7 @@ func (s *PasteController) HandlePasteHTML(html_content string, extra *PasteExtra
 	r := _html.ParseHTMLContent(html_content)
 	text := extra.PlainText
 	html := r.HTMLContent
+	html = _html.CleanRichTextStrict(html)
 	details, _ := json.Marshal(&map[string]interface{}{
 		"source_url":   r.SourceURL,
 		"window_title": extra.WindowTitle,
