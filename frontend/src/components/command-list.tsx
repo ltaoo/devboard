@@ -8,12 +8,11 @@ import { ViewComponentProps } from "@/store/types";
 import { useViewModelStore } from "@/hooks";
 import { Input as InputPrimitive } from "@/packages/ui/input";
 import { Popover, ScrollView } from "@/components/ui";
-import { Input } from "@/components/ui/input";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { InputCore, InputProps, PopoverCore, ScrollViewCore, SelectCore } from "@/domains/ui";
-import { ListSelectModel, OptionWithTopInList } from "@/domains/list-select";
+import { ListHighlightModel, OptionWithTopInList } from "@/domains/list-highlight";
 
 export function CommandToolSelectModel(
   props: { app: ViewComponentProps["app"] } & {
@@ -185,7 +184,7 @@ export function CommandToolSelectModel(
     $popover: new PopoverCore({
       closeable: false,
     }),
-    $list_highlight: ListSelectModel({
+    $list_highlight: ListHighlightModel({
       $view,
     }),
   };
@@ -285,7 +284,7 @@ export function CommandToolSelect(props: { store: CommandToolSelectModel }) {
               fallback={
                 <div class="h-24">
                   <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <div class="flex flex-col items-center">
+                    <div class="flex items-center flex-col items-center">
                       <Bird class="w-12 h-12 text-w-fg-1" />
                       <div class="mt-1 text-center text-w-fg-1 text-sm whitespace-nowrap">没有数据</div>
                     </div>

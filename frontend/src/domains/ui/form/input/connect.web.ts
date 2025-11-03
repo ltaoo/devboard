@@ -10,6 +10,7 @@ export function connect(store: InputCore<string>, $input: HTMLInputElement) {
     $input.blur();
   };
   $input.addEventListener("focus", () => {
+    // console.log('[DOMAIN]ui/form/input - $input.addEventListener("focus');
     store.handleFocus();
   });
   $input.addEventListener("blur", () => {

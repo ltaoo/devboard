@@ -2,7 +2,7 @@
  * @file 用户配置
  */
 import { For, Match, Show, Switch } from "solid-js";
-import { Check, File } from "lucide-solid";
+import { BrushCleaning, Check, Delete, File } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -22,125 +22,7 @@ import {
   updateUserSettings,
   updateUserSettingsWithPath,
 } from "@/biz/settings/service";
-import { ShortcutModel } from "@/biz/shortcut/shortcut";
 import { debounce } from "@/utils/lodash/debounce";
-
-function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
-  const methods = {
-    refresh() {
-      bus.emit(Events.StateChange, { ..._state });
-    },
-    startListenKeyEvents() {
-      const cancelers = [
-        props.app.onKeydown((event) => {
-          if (_pending) {
-            return;
-          }
-          event.preventDefault();
-          console.log(event.code);
-          ui.$shortcut.methods.handleKeydown(event);
-        }),
-        props.app.onKeyup((event) => {
-          if (_pending) {
-            return;
-          }
-          ui.$shortcut.methods.handleKeyup(event);
-        }),
-      ];
-      _unlisten = function () {
-        for (let i = 0; i < cancelers.length; i += 1) {
-          const canc = cancelers[i];
-          canc();
-        }
-      };
-    },
-    setExistingCodes(codes: string) {
-      console.log("[DOMAIN]ShortcutRecordModel - setExistingCodes", codes);
-      _pending = false;
-      _recording = false;
-      _completed = true;
-      ui.$shortcut.methods.setRecordingCodes(codes);
-    },
-    handleClickStartRecord() {
-      _pending = false;
-      _recording = true;
-      methods.startListenKeyEvents();
-      methods.refresh();
-    },
-    handleClickReset() {
-      bus.emit(Events.Unregister, { codes: ui.$shortcut.state.codes2.join("+") });
-      _pending = true;
-      _recording = false;
-      _completed = false;
-      ui.$shortcut.methods.reset();
-      methods.startListenKeyEvents();
-      methods.refresh();
-    },
-  };
-  const ui = {
-    $shortcut: ShortcutModel({ mode: "recording" }),
-  };
-
-  let _unlisten: null | (() => void) = null;
-  let _pending = true;
-  let _recording = false;
-  let _completed = false;
-  const _state = {
-    get pending() {
-      return _pending;
-    },
-    get recording() {
-      return _recording;
-    },
-    get completed() {
-      return _completed;
-    },
-    get codes() {
-      return ui.$shortcut.state.codes2;
-    },
-  };
-
-  enum Events {
-    Register,
-    Unregister,
-    StateChange,
-  }
-  type TheTypesOfEvents = {
-    [Events.Register]: { codes: string };
-    [Events.Unregister]: { codes: string };
-    [Events.StateChange]: typeof _state;
-  };
-  const bus = base<TheTypesOfEvents>();
-
-  ui.$shortcut.onStateChange(() => methods.refresh());
-  ui.$shortcut.onShortcutComplete(() => {
-    if (_unlisten) {
-      _unlisten();
-    }
-    _completed = true;
-    bus.emit(Events.Register, { codes: ui.$shortcut.state.codes2.join("+") });
-  });
-
-  return {
-    methods,
-    state: _state,
-    destroy() {
-      if (_unlisten) {
-        _unlisten();
-      }
-      bus.destroy();
-    },
-    onRegister(handler: Handler<TheTypesOfEvents[Events.Register]>) {
-      return bus.on(Events.Register, handler);
-    },
-    onUnregister(handler: Handler<TheTypesOfEvents[Events.Unregister]>) {
-      return bus.on(Events.Unregister, handler);
-    },
-    onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
-      return bus.on(Events.StateChange, handler);
-    },
-  };
-}
 
 function SettingsViewModel(props: ViewComponentProps) {
   const request = {
@@ -162,9 +44,6 @@ function SettingsViewModel(props: ViewComponentProps) {
         return;
       }
       ui.$form_settings.setValue(r.data);
-      if (r.data.shortcut.toggle_main_window_visible) {
-        ui.$recorder.methods.setExistingCodes(r.data.shortcut.toggle_main_window_visible);
-      }
     },
     updateSettingsByPath: debounce(800, (path: string, opt: { value: unknown }) => {
       console.log("[PAGE]settings/settings.tsx - updateSettingsByPath", path, opt.value);
@@ -242,14 +121,9 @@ function SettingsViewModel(props: ViewComponentProps) {
         }),
       },
     }),
-    $recorder: ShortcutRecordModel(props),
   };
 
-  let _state = {
-    get recorder() {
-      return ui.$recorder.state;
-    },
-  };
+  let _state = {};
   enum Events {
     StateChange,
     Error,
@@ -261,20 +135,6 @@ function SettingsViewModel(props: ViewComponentProps) {
   const bus = base<TheTypesOfEvents>();
 
   request.settings.data.onStateChange(() => methods.refresh());
-  ui.$recorder.onStateChange(() => methods.refresh());
-  ui.$recorder.onRegister(async (v) => {
-    await request.settings.update_by_path.run({ path: "shortcut.toggle_main_window_visible", value: v.codes });
-    request.settings.register_shortcut.run({
-      shortcut: v.codes,
-      command: "ToggleMainWindowVisible",
-    });
-  });
-  ui.$recorder.onUnregister(async (v) => {
-    await request.settings.update_by_path.run({ path: "shortcut.toggle_main_window_visible", value: "" });
-    request.settings.unregister_shortcut.run({
-      shortcut: v.codes,
-    });
-  });
 
   return {
     methods,
@@ -284,7 +144,6 @@ function SettingsViewModel(props: ViewComponentProps) {
       methods.ready();
     },
     destroy() {
-      ui.$recorder.destroy();
       bus.destroy();
     },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
@@ -304,41 +163,6 @@ export function SettingsView(props: ViewComponentProps) {
       <div class="block">
         <div class="text-2xl text-w-fg-0">配置</div>
         <div class="mt-4 space-y-8">
-          <div class="h-[32px]">
-            <Switch>
-              <Match when={state().recorder.pending}>
-                <div
-                  onClick={() => {
-                    vm.ui.$recorder.methods.handleClickStartRecord();
-                  }}
-                >
-                  点击录制
-                </div>
-              </Match>
-              <Match when={state().recorder.recording || state().recorder.completed}>
-                <div class="flex gap-1">
-                  <For each={state().recorder.codes}>
-                    {(code) => {
-                      return (
-                        <div>
-                          <div>{code}</div>
-                        </div>
-                      );
-                    }}
-                  </For>
-                </div>
-                <Show when={state().recorder.completed}>
-                  <div
-                    onClick={() => {
-                      vm.ui.$recorder.methods.handleClickReset();
-                    }}
-                  >
-                    Reset
-                  </div>
-                </Show>
-              </Match>
-            </Switch>
-          </div>
           <div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.douyin}>
               <FieldV2 store={vm.ui.$form_settings.fields.douyin.fields.cookie}>

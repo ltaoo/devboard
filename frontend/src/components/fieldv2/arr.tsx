@@ -3,7 +3,6 @@ import { createSignal, For, Show } from "solid-js";
 import { ChevronDown, ChevronUp, Plus, Trash } from "lucide-solid";
 
 import { useViewModelStore } from "@/hooks";
-import { Flex } from "@/components/flex/flex";
 import { IconButton } from "@/components/icon-btn/icon-btn";
 
 import { ArrayFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
@@ -22,7 +21,7 @@ export function FieldArrV2<T extends (v: number) => any>(
   return (
     <Show when={!state().hidden}>
       <Show when={!props.hide_label}>
-        <Flex class="field justify-between">
+        <div class="field flex justify-between">
           <div class="field__label flex items-center justify-between">
             <div class="field__title ml-2 text-sm text-w-fg-0">{state().label}</div>
           </div>
@@ -33,7 +32,7 @@ export function FieldArrV2<T extends (v: number) => any>(
           >
             <Plus class="w-4 h-4 text-w-fg-0" />
           </IconButton>
-        </Flex>
+        </div>
       </Show>
       <div
         classList={{

@@ -160,6 +160,7 @@ export class InputCore<T> extends BaseDomain<TheTypesOfEvents<T>> implements Val
   }
   handleFocus() {
     this.isFocus = true;
+    this.emit(Events.Focus);
   }
   handleBlur() {
     this.isFocus = false;

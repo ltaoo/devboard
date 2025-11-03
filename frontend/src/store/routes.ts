@@ -63,8 +63,16 @@ const configure = {
         },
         children: {
           user_settings: {
-            title: "User Settings",
+            title: "用户配置",
             pathname: "/user_settings",
+          },
+          shortcut: {
+            title: "用户配置/快捷键",
+            pathname: "/shortcut",
+          },
+          ignore: {
+            title: "用户配置/忽略规则",
+            pathname: "/ignore",
           },
           category: {
             title: "分类",

@@ -6,6 +6,9 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"devboard/internal/biz"
+	"devboard/internal/controller"
+	"devboard/models"
+	"devboard/pkg/lodash"
 )
 
 type CommonService struct {
@@ -55,4 +58,45 @@ func (s *CommonService) UnregisterShortcut(body ShortcutRegisterBody) *Result {
 		return Error(err)
 	}
 	return Ok(nil)
+}
+
+func (s *CommonService) FetchAppList(body controller.AppListBody) *Result {
+	list, err := s.Biz.ControllerMap.App.FetchAppList(body)
+	if err != nil {
+		return Error(err)
+	}
+	result := lodash.Map(list, func(v *models.App, idx int) map[string]interface{} {
+		return map[string]interface{}{
+			"id":       v.Id,
+			"name":     v.Name,
+			"logo_url": v.LogoURL,
+		}
+	})
+	return Ok(controller.ListResp[map[string]interface{}]{
+		List:       result,
+		Page:       1,
+		PageSize:   100,
+		HasMore:    false,
+		NextMarker: "",
+	})
+}
+
+func (s *CommonService) FetchDeviceList(body controller.DeviceListBody) *Result {
+	list, err := s.Biz.ControllerMap.Device.FetchDeviceList(body)
+	if err != nil {
+		return Error(err)
+	}
+	result := lodash.Map(list, func(v *models.Device, idx int) map[string]interface{} {
+		return map[string]interface{}{
+			"id":   v.Id,
+			"name": v.Name,
+		}
+	})
+	return Ok(controller.ListResp[map[string]interface{}]{
+		List:       result,
+		Page:       1,
+		PageSize:   100,
+		HasMore:    false,
+		NextMarker: "",
+	})
 }

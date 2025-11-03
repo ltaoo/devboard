@@ -19,6 +19,8 @@ type ControllerMap struct {
 	Paste    *controller.PasteController
 	Category *controller.CategoryController
 	Remark   *controller.PasteEventRemarkController
+	App      *controller.AppController
+	Device   *controller.DeviceController
 }
 
 type BizApp struct {
@@ -84,6 +86,8 @@ func (a *BizApp) InitializeControllerMap() *BizApp {
 		Paste:    controller.NewPasteController(a.DB, a.MachineId),
 		Remark:   controller.NewRemarkController(a.DB),
 		Category: controller.NewCategoryController(a.DB),
+		Device:   controller.NewDeviceController(a.DB),
+		App:      controller.NewAppController(a.DB),
 	}
 	return a
 }

@@ -4,7 +4,7 @@ import { BizError } from "@/domains/error";
 
 export type OptionWithTopInList = { id: string; label: string; height: number; top?: number };
 
-export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) {
+export function ListHighlightModel(props: { $view: ScrollViewCore; num?: number }) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -235,4 +235,4 @@ export function ListSelectModel(props: { $view: ScrollViewCore; num?: number }) 
   };
 }
 
-export type ListSelectModel = ReturnType<typeof ListSelectModel>;
+export type ListHighlightModel = ReturnType<typeof ListHighlightModel>;
