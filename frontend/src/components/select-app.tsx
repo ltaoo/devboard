@@ -14,8 +14,10 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { InputCore, InputProps, PopoverCore, ScrollViewCore, SelectCore } from "@/domains/ui";
 import { ListHighlightModel, OptionWithTopInList } from "@/domains/list-highlight";
+import { ShortcutModel } from "@/biz/shortcut/shortcut";
+import { listenMultiEvent } from "@/domains/app/utils";
 
-export function WithTagsInputModel(
+export function TagSelectModel(
   props: { app: ViewComponentProps["app"] } & {
     defaultValue: InputCore<any>["defaultValue"];
     onEnter?: (event: { code: string; value: string }) => void;
@@ -44,6 +46,9 @@ export function WithTagsInputModel(
       // console.log("[]with-input setOptions", _options.length, _displayed_options.length);
       ui.$list_highlight.methods.setOptions(_displayed_options);
     },
+    updateInputRect(rect: { x: number; y: number; width: number; height: number }) {
+      _input_rect = rect;
+    },
     selectMenuOption(idx: number) {
       console.log("[]with-input selectMenuOption", _displayed_options.length, idx);
       if (_displayed_options.length === 0) {
@@ -53,7 +58,7 @@ export function WithTagsInputModel(
       if (!selected_option) {
         return;
       }
-      ui.$popover.hide();
+      //       ui.$popover.hide();
       const matched = { ...selected_option };
       const existing = _selected_options.find((v) => v.id === matched.id);
       if (existing) {
@@ -91,6 +96,20 @@ export function WithTagsInputModel(
       }
       // console.log("[COMPONENT]with-input - before blur", ui.$input.state.focus);
       ui.$input.blur();
+    },
+    registerKeyboardEvent() {
+      _unlisten = listenMultiEvent([
+        props.app.onKeydown((event) => {
+          console.log("[COMPONENT]SelectApp - props.app.onKeydown", event.code);
+          ui.$shortcut.methods.handleKeydown(event);
+        }),
+        props.app.onKeyup((event) => {
+          ui.$shortcut.methods.handleKeyup(event);
+        }),
+      ]);
+    },
+    unregisterKeyboardEvent() {
+      _unlisten();
     },
     openSelect(opt: Partial<{ force: boolean }> = {}) {
       const with_keyboard = _state.isFocus && ui.$input.value === "";
@@ -179,11 +198,15 @@ export function WithTagsInputModel(
     $list_highlight: ListHighlightModel({
       $view,
     }),
+    $shortcut: ShortcutModel(),
   };
 
   let _options: OptionWithTopInList[] = [];
   let _displayed_options: OptionWithTopInList[] = [];
   let _selected_options: OptionWithTopInList[] = [];
+  let _input_rect = { x: 0, y: 0, width: 0, height: 0 };
+  let _unlisten = () => {};
+
   let _state = {
     get options() {
       return _displayed_options.map((opt, idx) => {
@@ -194,10 +217,7 @@ export function WithTagsInputModel(
       });
     },
     get value() {
-      return {
-        keyword: ui.$input.value,
-        tags: _selected_options,
-      };
+      return _selected_options;
     },
     get tag() {
       return {
@@ -213,32 +233,73 @@ export function WithTagsInputModel(
     },
   };
   enum Events {
+    Change,
     StateChange,
     Error,
   }
   type TheTypesOfEvents = {
+    [Events.Change]: typeof _state.value;
     [Events.StateChange]: typeof _state;
     [Events.Error]: BizError;
   };
   const bus = base<TheTypesOfEvents>();
 
+  ui.$shortcut.methods.register({
+    ArrowUp() {
+      methods.moveToPrevOption({ step: 1 });
+    },
+    ArrowDown() {
+      methods.moveToNextOption({ step: 1 });
+    },
+    Enter(event) {
+      event.preventDefault();
+      methods.handleKeydownEnter();
+    },
+    Escape() {
+      if (ui.$popover.visible) {
+        ui.$popover.hide();
+      }
+    },
+  });
+
   ui.$list_highlight.onStateChange(() => methods.refresh());
   ui.$input.onStateChange(() => methods.refresh());
+  ui.$input.onFocus(() => {
+    ui.$popover.show({
+      x: _input_rect.x,
+      y: _input_rect.y + _input_rect.height + 8,
+    });
+    methods.registerKeyboardEvent();
+  });
+  ui.$input.onBlur(() => {
+    ui.$popover.hide();
+    methods.unregisterKeyboardEvent();
+  });
 
   return {
+    shape: "select" as const,
     methods,
     ui,
     state: _state,
+    get defaultValue() {
+      return props.defaultValue;
+    },
+    get value() {
+      return _state.value;
+    },
     get isFocus() {
       return _state.isFocus;
     },
     get isOpen() {
       return _state.isOpen;
     },
+    setValue(v: unknown[]) {},
     ready() {},
     destroy() {
+      _unlisten();
       bus.destroy();
     },
+    onChange() {},
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
       return bus.on(Events.StateChange, handler);
     },
@@ -247,15 +308,21 @@ export function WithTagsInputModel(
     },
   };
 }
-export type WithTagsInputModel = ReturnType<typeof WithTagsInputModel>;
+export type TagSelectModel = ReturnType<typeof TagSelectModel>;
 
-export function WithTagsInput(props: { store: WithTagsInputModel }) {
+export function TagSelect(props: { store: TagSelectModel }) {
   const [state, vm] = useViewModelStore(props.store);
 
   return (
     <>
       <div class="flex items-center border-2 border-w-fg-3 bg-w-bg-3 rounded-md p-2 space-x-2">
-        <div class="flex space-x-1">
+        <div
+          class="__a flex space-x-1"
+          onAnimationEnd={(event) => {
+            const { x, y, width, height } = event.target.getBoundingClientRect();
+            vm.methods.updateInputRect({ x, y, width, height });
+          }}
+        >
           <For each={state().tag.list}>
             {(tag) => {
               return (
@@ -278,6 +345,7 @@ export function WithTagsInput(props: { store: WithTagsInputModel }) {
             "outline-0 focus:outline-none focus:ring-0 focus:border-transparent": true,
           }}
           auto-capitalize="false"
+          spellcheck={false}
           style={{
             "vertical-align": "bottom",
           }}
@@ -329,19 +397,4 @@ export function WithTagsInput(props: { store: WithTagsInputModel }) {
       </Popover>
     </>
   );
-}
-
-export function buildOptionFromWaterfallCell($item: {
-  state: {
-    top?: number;
-    height: number;
-    payload: { id: string };
-  };
-}) {
-  return {
-    id: $item.state.payload.id,
-    label: $item.state.payload.id,
-    top: $item.state.top,
-    height: $item.state.height,
-  };
 }

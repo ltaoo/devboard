@@ -42,6 +42,12 @@ export const pages: Omit<Record<PageKeys, ViewComponent>, "root"> = {
   "root.settings.user_settings": lazy(async () => ({
     default: (await import("@/pages/settings/settings")).SettingsView,
   })),
+  "root.settings.shortcut": lazy(async () => ({
+    default: (await import("@/pages/settings/shortcut")).ShortcutSettingsView,
+  })),
+  "root.settings.ignore": lazy(async () => ({
+    default: (await import("@/pages/settings/ignore")).IgnoreSettingsView,
+  })),
   "root.settings.category": lazy(async () => ({
     default: (await import("@/pages/settings/category")).CategorySettingsView,
   })),

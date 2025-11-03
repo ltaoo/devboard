@@ -12,11 +12,13 @@ import {
 
 import { FetchParams } from "@/domains/list/typing";
 import { request } from "@/biz/requests";
-import { ListResponse } from "@/biz/requests/types";
+import { ListResponse, ListResponseWithCursor } from "@/biz/requests/types";
 import { TmpRequestResp, UnpackedRequestPayload } from "@/domains/request/utils";
 import { Result } from "@/domains/result";
 import { MutableRecord, Unpacked } from "@/types";
 import { parseJSONStr } from "@/utils";
+import { FetchAppList, FetchDeviceList } from "~/commonservice";
+import { TheResponseOfFetchFunction } from "@/domains/request";
 
 export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types: string[]; keyword: string }>) {
   return request.post<
@@ -66,10 +68,6 @@ export function processPartialPasteEvent(
   const categories = (v.categories ?? []).map((cate) => cate.label);
   const text = (() => {
     const tt = v.text;
-    if (v.content_type === PasteContentType.HTML) {
-      // 旧数据错误地写入了 text 字段，前端做个兼容？
-      return v.html || tt;
-    }
     if (categories.includes("time")) {
       if (!tt) {
         return tt;
@@ -83,6 +81,13 @@ export function processPartialPasteEvent(
         return dayjs(tt);
       })();
       return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
+    }
+    if (categories.includes("url")) {
+      return v.text;
+    }
+    if (v.content_type === PasteContentType.HTML) {
+      // 旧数据错误地写入了 text 字段，前端做个兼容？
+      return v.html || tt;
     }
     return tt;
   })();
@@ -255,3 +260,26 @@ export function fakePasteEvent(body: { text: string }) {
 export function downloadPasteContent(body: { paste_event_id: string }) {
   return request.post(DownloadContentWithPasteEventId, body);
 }
+
+export function fetchAppList() {
+  return request.post<
+    ListResponseWithCursor<{
+      id: string;
+      name: string;
+      logo_url: string;
+    }>
+  >(FetchAppList, {});
+}
+
+export type AppSummary = TheResponseOfFetchFunction<typeof fetchAppList>["list"][number];
+
+export function fetchDeviceList() {
+  return request.post<
+    ListResponseWithCursor<{
+      id: string;
+      name: string;
+    }>
+  >(FetchDeviceList, {});
+}
+
+export type DeviceSummary = TheResponseOfFetchFunction<typeof fetchDeviceList>["list"][number];

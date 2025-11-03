@@ -1,7 +1,7 @@
 import { Read, UpdateSettingsByPath, WriteConfig } from "~/configservice";
+import { RegisterShortcut, UnregisterShortcut } from "~/commonservice";
 
 import { request } from "@/biz/requests";
-import { RegisterShortcut, UnregisterShortcut } from "~/commonservice";
 
 type UserSettings = {
   douyin: {
@@ -12,8 +12,25 @@ type UserSettings = {
     disable_watch_clipboard: string;
     enable_watch_clipboard: string;
   };
+  ignore: {
+    max_length: number;
+    filename: string[];
+    extension: string[];
+    apps: string[];
+  };
   paste_event: {
     callback_endpoint: string;
+    /** 事件忽略的规则 */
+    ignore_rules: {
+      /** 指定文件名 */
+      filename: string[];
+      /** 指定后缀 */
+      extension: string[];
+      /** 最大长度 */
+      max_length: number;
+      /** 指定应用内 */
+      apps: string[];
+    };
   };
   synchronize: {
     webdav: {

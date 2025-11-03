@@ -2,7 +2,6 @@ import { For, Show, JSX } from "solid-js";
 import { Plus, XCircle } from "lucide-solid";
 
 import { useViewModelStore } from "@/hooks";
-import { Flex } from "@/components/flex/flex";
 
 import { MultipleImageUploadModel } from "@/biz/multiple_image_upload";
 import { ImageUploadCore } from "@/domains/ui/form/image-upload";
@@ -23,9 +22,9 @@ function ImageUploadView(props: { store: ImageUploadCore } & JSX.HTMLAttributes<
       <Show
         when={state().url}
         fallback={
-          <Flex class="z-10 relative w-full h-full" items="center" justify="center">
+          <div class="z-10 flex items-center justify-center relative w-full h-full">
             <Plus class="w-8 h-8 text-w-fg-0" />
-          </Flex>
+          </div>
         }
       >
         <div class="z-10 overflow-hidden absolute inset-0 h-full rounded-lg">

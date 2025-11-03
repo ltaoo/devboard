@@ -1,5 +1,6 @@
 /**
  * @file 列表中多选
+ * @deprecated
  */
 import { BaseDomain, Handler } from "@/domains/base";
 

@@ -2,6 +2,8 @@ package lodash
 
 import "sync"
 
+// https://github.com/samber/lo/blob/master/map.go
+
 func Map[T any, R any](collection []T, iteratee func(item T, index int) R) []R {
 	result := make([]R, len(collection))
 

@@ -12,9 +12,7 @@ import { Button, ListView, Popover, ScrollView, Skeleton, Textarea } from "@/com
 import { RelativeTime } from "@/components/relative_time";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { WaterfallView } from "@/components/ui/waterfall/waterfall";
-import { Flex } from "@/components/flex/flex";
 import { buildOptionFromWaterfallCell, WithTagsInput, WithTagsInputModel } from "@/components/with-tags-input";
-import { DynamicContent } from "@/components/dynamic-content";
 import {
   DynamicContentWithClick,
   DynamicContentWithClickModel,
@@ -46,7 +44,7 @@ import {
   writePasteEvent,
 } from "@/biz/paste/service";
 import { ShortcutModel } from "@/biz/shortcut/shortcut";
-import { ListSelectModel } from "@/domains/list-select";
+import { ListHighlightModel } from "@/domains/list-highlight";
 import { createRemark } from "@/biz/remark/service";
 import { RefCore } from "@/domains/ui/cur";
 
@@ -345,7 +343,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       },
     }),
     $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 12, size: 10, buffer: 4 }),
-    $list_highlight: ListSelectModel({
+    $list_highlight: ListHighlightModel({
       $view,
     }),
     $map_copy_btn: ModelInList<DynamicContentWithClickModel>({}),
@@ -809,7 +807,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                         </Match>
                       </Switch>
                     </div>
-                    <Flex class="mt-1" items="center" justify="between">
+                    <div class="flex items-center justify-between mt-1">
                       <div class="flex items-center space-x-1 tags">
                         <div class="px-2 bg-w-bg-5 rounded-full">
                           <div class="text-w-fg-0 text-sm" title={v.id}>
@@ -885,7 +883,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                           </div>
                         </Show>
                       </div>
-                    </Flex>
+                    </div>
                   </div>
                 </div>
               );
