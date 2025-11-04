@@ -12,6 +12,7 @@ import (
 	"devboard/config"
 	"devboard/internal/controller"
 	"devboard/models"
+	"devboard/pkg/system"
 	// "devboard/internal/service"
 )
 
@@ -38,6 +39,8 @@ type BizApp struct {
 	ManuallyWriteClipboardTime time.Time
 	ControllerMap              *ControllerMap
 	Ready                      bool
+
+	prev_app *system.ForegroundProcess
 }
 
 func New(app *application.App) *BizApp {
@@ -141,10 +144,21 @@ func (a *BizApp) AppendWindow(url string, win *application.WebviewWindow) {
 func (a *BizApp) ToggleMainWindowVisible() {
 	if a.MainWindow.IsVisible() {
 		a.MainWindow.Hide()
-	} else {
-		a.MainWindow.Show()
-		a.MainWindow.Focus()
+		fmt.Println("after main window hide, check there's the prev app")
+		if a.prev_app != nil {
+			fmt.Println(a.prev_app.Name)
+			system.ActiveProcess(a.prev_app.Reference)
+			a.prev_app = nil
+		}
+		return
 	}
+	p, err := system.GetForegroundProcess()
+	if err == nil {
+		fmt.Println("after main window show, save the app success", p.Name)
+		a.prev_app = p
+	}
+	a.MainWindow.Show()
+	a.MainWindow.Focus()
 }
 
 func (a *BizApp) ShowErrorWindow(search string) {

@@ -70,7 +70,7 @@ export function ShortcutModel(props: Partial<{ mode?: "normal" | "recording" }> 
       event: KeyboardEvent
     ) {
       const { key1, key2, step } = opt;
-      console.log("[BIZ]shortcut - test shortcut", key1, key2, step, _shortcut_map, _pressed_code_map);
+      // console.log("[BIZ]shortcut - test shortcut", key1, key2, step, _shortcut_map, _pressed_code_map);
 
       if (step === "keydown" && key1.includes("+")) {
         // methods.invokeHandlers(event, key1);
