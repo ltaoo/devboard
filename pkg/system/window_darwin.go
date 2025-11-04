@@ -36,6 +36,8 @@ var (
 	_bundleURL            = objc.RegisterName("bundleURL")
 	_path                 = objc.RegisterName("path")
 
+	_activateWithOptions = objc.RegisterName("activateWithOptions:")
+
 	_NSMutableArray         = objc.GetClass("NSMutableArray")
 	_NSArray                = objc.GetClass("NSArray")
 	_objectAtIndex          = objc.RegisterName("objectAtIndex:")

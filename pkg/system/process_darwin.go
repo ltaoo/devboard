@@ -11,6 +11,11 @@ import (
 	"github.com/ebitengine/purego/objc"
 )
 
+const (
+	NSApplicationActivateAllWindows        = 1 << 0
+	NSApplicationActivateIgnoringOtherApps = 1 << 1
+)
+
 func get_foreground_process() (*ForegroundProcess, error) {
 	v, err := get_foreground_window()
 	if err != nil {
@@ -41,5 +46,19 @@ func get_foreground_process() (*ForegroundProcess, error) {
 		Name:            name_without_exe,
 		ExecuteFullPath: full_process_path,
 		WindowTitle:     window_title,
+		Reference:       __app,
 	}, nil
+}
+
+func active_process(v interface{}) error {
+	__app, ok := v.(objc.ID)
+	if !ok {
+		return fmt.Errorf("get foreground app fail")
+	}
+	options := NSApplicationActivateAllWindows | NSApplicationActivateIgnoringOtherApps
+	__r := __app.Send(_activateWithOptions, options)
+	if __r == 0 {
+		return fmt.Errorf("唤起失败")
+	}
+	return nil
 }

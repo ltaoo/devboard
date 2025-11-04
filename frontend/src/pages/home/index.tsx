@@ -47,6 +47,8 @@ import { ShortcutModel } from "@/biz/shortcut/shortcut";
 import { ListHighlightModel } from "@/domains/list-highlight";
 import { createRemark } from "@/biz/remark/service";
 import { RefCore } from "@/domains/ui/cur";
+import { SlateEditorModel } from "@/biz/slate/slate";
+import { SlateView } from "@/components/slate/slate";
 
 const copy_buttons = [
   {
@@ -153,14 +155,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$view.setScrollTop(0);
       _added_records = [];
       ui.$waterfall.methods.resetRange();
-    },
-    clickPasteWithIdx() {
-      const idx = ui.$list_highlight.state.idx;
-      const $cell = ui.$waterfall.$items[idx];
-      const $click = ui.$map_copy_btn.methods.get($cell.state.payload.id);
-      if ($click) {
-        $click.methods.click();
-      }
     },
     async copyPasteRecord(v: PasteRecord) {
       console.log("[PAGE]home/index - copyPasteRecord");
@@ -296,16 +290,16 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         content: v.text,
       });
     },
-    handleHotkeyCopy(event: { code: string }) {
-      if (ui.$input_search.isFocus) {
-        if (event.code === "Enter") {
-          ui.$input_search.methods.handleKeydownEnter();
-          return;
-        }
-        return;
-      }
-      methods.clickPasteWithIdx();
-    },
+    // handleHotkeyCopy(event: { code: string }) {
+    //   if (ui.$input_search.isFocus) {
+    //     if (event.code === "Enter") {
+    //       ui.$input_search.methods.handleKeydownEnter();
+    //       return;
+    //     }
+    //     return;
+    //   }
+    //   methods.clickPasteWithIdx();
+    // },
   };
   const $view = new ScrollViewCore({
     async onPullToRefresh() {
@@ -349,6 +343,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     $map_copy_btn: ModelInList<DynamicContentWithClickModel>({}),
     $shortcut: ShortcutModel({}),
     $commands: CommandToolSelectModel({ app: props.app, defaultValue: "" }),
+    $input_main: SlateEditorModel(),
   };
 
   let _selected_files = [] as SelectedFile[];
@@ -384,6 +379,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   ui.$shortcut.methods.register({
     "KeyK,ArrowUp"(event) {
       console.log("[]shortcut - KeyK", ui.$input_search.isFocus, event.code);
+      if (ui.$input_main.isFocus) {
+        return;
+      }
       if (ui.$commands.isFocus) {
         if (event.code === "ArrowUp") {
           ui.$commands.methods.moveToPrevOption({ step: 1 });
@@ -414,6 +412,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     "KeyJ,ArrowDown"(event) {
       // console.log("[]shortcut - KeyJ", ui.$input_search.isFocus, ui.$input_search.isOpen, event.code);
       // console.log("[]shortcut - moveToNextOption");
+      if (ui.$input_main.isFocus) {
+        return;
+      }
       if (ui.$commands.isFocus) {
         if (event.code === "ArrowDown") {
           ui.$commands.methods.moveToNextOption({ step: 1 });
@@ -454,32 +455,54 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$list_highlight.methods.resetIdx();
       methods.backToTop();
     },
-    KeyYKeyY(event) {
+    "KeyYKeyY,Enter"(event) {
+      if (ui.$input_main.isFocus) {
+        return;
+      }
       if (ui.$commands.isFocus) {
         return;
       }
-      methods.handleHotkeyCopy(event);
+      if (ui.$input_search.isFocus) {
+        if (event.code === "Enter") {
+          ui.$input_search.methods.handleKeydownEnter();
+          return;
+        }
+        return;
+      }
+      const idx = ui.$list_highlight.state.idx;
+      const $cell = ui.$waterfall.$items[idx];
+      if (!$cell) {
+        return;
+      }
+      const $click = ui.$map_copy_btn.methods.get($cell.state.payload.id);
+      if (!$click) {
+        return;
+      }
+      $click.methods.click();
     },
     Space(event) {
-      console.log("[PAGE]home/index - key Space", ui.$input_search.isFocus);
+      // console.log("[PAGE]home/index - key Space", ui.$input_search.isFocus);
+      if (ui.$input_main.isFocus) {
+        return;
+      }
       if (ui.$commands.isFocus) {
         return;
       }
       if (ui.$input_search.isFocus) {
         return;
       }
-      event.preventDefault();
       const idx = ui.$list_highlight.state.idx;
       const $cell = ui.$waterfall.$items[idx];
-      methods.previewPasteContent($cell.state.payload);
-    },
-    Enter(event) {
-      if (ui.$commands.isFocus) {
+      if (!$cell) {
         return;
       }
-      methods.handleHotkeyCopy(event);
+      event.preventDefault();
+      methods.previewPasteContent($cell.state.payload);
     },
     Backspace() {
+      if (ui.$input_main.isFocus) {
+        return;
+      }
       if (ui.$commands.isFocus) {
         return;
       }
@@ -533,6 +556,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$input_search.methods.openSelect({ force: true });
     },
     "MetaLeft+KeyF,ShiftLeft+KeyA,KeyO"(event) {
+      if (ui.$input_main.isFocus) {
+        return;
+      }
       if (ui.$commands.isFocus) {
         return;
       }
@@ -651,14 +677,14 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     ui,
     state: _state,
     async ready() {
-      (async () => {
-        const r = await request.category.tree.run();
-        if (r.error) {
-          return;
-        }
-        ui.$input_search.methods.setOptions(r.data);
-      })();
-      const r = await request.paste.list.init();
+      // (async () => {
+      //   const r = await request.category.tree.run();
+      //   if (r.error) {
+      //     return;
+      //   }
+      //   ui.$input_search.methods.setOptions(r.data);
+      // })();
+      // const r = await request.paste.list.init();
     },
     destroy() {
       unlisten();
@@ -691,9 +717,12 @@ export const HomeIndexView = (props: ViewComponentProps) => {
             "w-full": !props.app.env.pc,
           }}
         >
-          <div class="p-4 pb-0">
-            <WithTagsInput store={vm.ui.$input_search} />
+          <div class="p-2">
+            <SlateView store={vm.ui.$input_main} />
           </div>
+          {/* <div class="p-4 pb-0">
+            <WithTagsInput store={vm.ui.$input_search} />
+          </div> */}
           <WaterfallView
             class="relative p-4"
             store={vm.ui.$waterfall}

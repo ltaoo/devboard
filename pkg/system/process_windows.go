@@ -61,3 +61,7 @@ func get_foreground_process() (*ForegroundProcess, error) {
 		WindowTitle:     window_title,
 	}, nil
 }
+
+func active_process(id interface{}) error {
+	return nil
+}
