@@ -17,11 +17,11 @@ import { onCreateScrollView } from "@/domains/ui/scroll-view";
 import { onRequestCreated, RequestCore } from "@/domains/request/index";
 import { Result } from "@/domains/result/index";
 import { fetchApplicationState } from "@/biz/services";
-import { query_stringify } from "@/utils";
 
 import { PageKeys, routes, routesWithPathname } from "./routes";
 import { client } from "./http_client";
 import { storage } from "./storage";
+import { sleep } from "@/utils";
 
 // if (window.location.hostname === "t.fithub.top") {
 //   request.setEnv("dev");
@@ -75,7 +75,7 @@ const view = new RouteViewCore({
 });
 view.isRoot = true;
 const requests = {
-  state: new RequestCore(fetchApplicationState, { client }),
+  ready: new RequestCore(fetchApplicationState, { client }),
 };
 export const history = new HistoryCore<PageKeys, RouteConfig<PageKeys>>({
   view,
@@ -94,19 +94,19 @@ export const app = new Application({
     const { pathname, query } = history.$router;
     const route = routesWithPathname[pathname];
     console.log("[ROOT]onMount", pathname, query, route, app.$user.isLogin);
-    // await checkApplicationReady();
-    const r = await requests.state.run();
-    if (r.error) {
-      return Result.Err(r.error);
-    }
-    if (!route) {
-      history.push("root.notfound");
-      return Result.Ok(null);
-    }
-    if (!history.isLayout(route.name)) {
-      history.push(route.name, query, { ignore: true });
-      return Result.Ok(null);
-    }
+    // await sleep(3000);
+    // const r = await requests.ready.run();
+    // if (r.error) {
+    //   return Result.Err(r.error);
+    // }
+    //   if (!route) {
+    //     history.push("root.notfound");
+    //     return Result.Ok(null);
+    //   }
+    //   if (!history.isLayout(route.name)) {
+    //     history.push(route.name, query, { ignore: true });
+    //     return Result.Ok(null);
+    //   }
     history.push("root.home.index");
     return Result.Ok(null);
   },

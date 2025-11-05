@@ -186,7 +186,7 @@ func main() {
 			Width:            450,
 			Height:           680,
 			BackgroundColour: application.NewRGB(27, 38, 54),
-			URL:              "/",
+			URL:              "/home/index",
 		})
 
 		app.KeyBinding.Add("CmdOrCtrl+,", func(win application.Window) {

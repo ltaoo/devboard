@@ -118,4 +118,4 @@ SlateTextNodeModel.create = function () {};
 SlateTextNodeModel.fromJSON = function (value = {}) {};
 SlateTextNodeModel.toJSON = function (options = {}) {};
 
-type SlateTextNodeModel = ReturnType<typeof SlateTextNodeModel>;
+export type SlateTextNodeModel = ReturnType<typeof SlateTextNodeModel>;

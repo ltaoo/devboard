@@ -343,7 +343,32 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     $map_copy_btn: ModelInList<DynamicContentWithClickModel>({}),
     $shortcut: ShortcutModel({}),
     $commands: CommandToolSelectModel({ app: props.app, defaultValue: "" }),
-    $input_main: SlateEditorModel(),
+    $input_main: SlateEditorModel({
+      defaultValue: [
+        {
+          type: "paragraph",
+          children: [
+            {
+              text: "Slate is flexible enough to add **decorations** that can format text based on its content. For example, this editor has **Markdown** preview decorations on it, to make it _dead_ simple to make an editor with built-in Markdown previewing.",
+            },
+          ],
+        },
+        {
+          type: "paragraph",
+          children: [{ text: "## Try it out!" }],
+        },
+        {
+          type: "paragraph",
+          children: [
+            {
+              type: "paragraph",
+              children: [{ text: "Try it out for yourself!" }],
+            },
+            { text: "Hello" },
+          ],
+        },
+      ],
+    }),
   };
 
   let _selected_files = [] as SelectedFile[];
@@ -719,6 +744,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
         >
           <div class="p-2">
             <SlateView store={vm.ui.$input_main} />
+            {/* <Button store={vm.ui.$btn_test}>打印</Button> */}
           </div>
           {/* <div class="p-4 pb-0">
             <WithTagsInput store={vm.ui.$input_search} />

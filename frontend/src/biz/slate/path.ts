@@ -42,4 +42,8 @@ export function SlatePathModel(props: {}) {
   };
 }
 
+SlatePathModel.isPath = function isPath(value: any) {
+  return Array.isArray(value) && (value.length === 0 || typeof value[0] === "number");
+};
+
 type SlatePathModel = ReturnType<typeof SlatePathModel>;
