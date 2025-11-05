@@ -88,6 +88,15 @@ export function remove_arr_item<T>(arr: T[], index: number) {
   }
   return [...arr.slice(0, index), ...arr.slice(index + 1)];
 }
+export function arr_item_to_arr<T>(arr: T[], v: T, index: number) {
+  if (index <= 0) {
+    return [v, ...arr];
+  }
+  if (index >= arr.length) {
+    return [...arr, v];
+  }
+  return [...arr.slice(0, index), v, ...arr.slice(index)];
+}
 
 export function has_value(v: any) {
   return v !== undefined && v !== null;
