@@ -49,6 +49,7 @@ import { createRemark } from "@/biz/remark/service";
 import { RefCore } from "@/domains/ui/cur";
 import { SlateEditorModel } from "@/biz/slate/slate";
 import { SlateView } from "@/components/slate/slate";
+import { SlateDescendantType } from "@/biz/slate/types";
 
 const copy_buttons = [
   {
@@ -346,25 +347,39 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     $input_main: SlateEditorModel({
       defaultValue: [
         {
-          type: "paragraph",
+          type: SlateDescendantType.Paragraph,
           children: [
             {
+              type: SlateDescendantType.Text,
               text: "Slate is flexible enough to add **decorations** that can format text based on its content. For example, this editor has **Markdown** preview decorations on it, to make it _dead_ simple to make an editor with built-in Markdown previewing.",
             },
           ],
         },
         {
-          type: "paragraph",
-          children: [{ text: "## Try it out!" }],
-        },
-        {
-          type: "paragraph",
+          type: SlateDescendantType.Paragraph,
           children: [
             {
-              type: "paragraph",
-              children: [{ text: "Try it out for yourself!" }],
+              type: SlateDescendantType.Text,
+              text: "## Try it out!",
             },
-            { text: "Hello" },
+          ],
+        },
+        {
+          type: SlateDescendantType.Paragraph,
+          children: [
+            {
+              type: SlateDescendantType.Paragraph,
+              children: [
+                {
+                  type: SlateDescendantType.Text,
+                  text: "Try it out for yourself!",
+                },
+              ],
+            },
+            {
+              type: SlateDescendantType.Text,
+              text: "Hello",
+            },
           ],
         },
       ],
