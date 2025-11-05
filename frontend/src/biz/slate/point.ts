@@ -6,6 +6,11 @@
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 
+export type SlatePoint = {
+  path: number[];
+  offset: number;
+};
+
 export function SlatePointModel(props: {}) {
   const methods = {
     refresh() {
@@ -46,4 +51,8 @@ export function SlatePointModel(props: {}) {
   };
 }
 
-type SlatePointModel = ReturnType<typeof SlatePointModel>;
+SlatePointModel.isSamePoint = function (a: SlatePoint, b: SlatePoint) {
+  return a.path.join("_") === b.path.join("_") && a.offset === b.offset;
+};
+
+export type SlatePointModel = ReturnType<typeof SlatePointModel>;
