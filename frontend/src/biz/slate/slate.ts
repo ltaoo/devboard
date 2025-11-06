@@ -1,10 +1,10 @@
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { ShortcutModel } from "@/biz/shortcut/shortcut";
+import { uidFactory } from "@/utils";
 
 import { SlatePoint, SlatePointModel } from "./point";
 import { SlateSelectionModel } from "./selection";
-import { isObject } from "./utils/is-object";
 import {
   SlateText,
   SlateParagraph,
@@ -14,7 +14,10 @@ import {
   SlateDescendantType,
   SlateOperationType,
 } from "./types";
-import { uidFactory } from "@/utils";
+import { SlateHistoryModel } from "./history";
+import { isObject } from "./utils/is-object";
+import { deleteTextInRange, insertTextAtOffset } from "./utils/text";
+import { depthFirstSearch } from "./utils/node";
 
 type BeforeInputEvent = {
   preventDefault(): void;
@@ -46,8 +49,9 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    apply(operation: SlateOperation) {
-      bus.emit(Events.Action, operation);
+    apply(operations: SlateOperation[]) {
+      ui.$history.methods.push(operations, { start: ui.$selection.start, end: ui.$selection.end });
+      bus.emit(Events.Action, operations);
     },
     isText(value: any): value is SlateText {
       return isObject(value) && typeof value.text === "string";
@@ -98,75 +102,88 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
     //         focus: methods.end(to || at),
     //       };
     //     },
-    _insertText(text: string, options: TextInsertTextOptions = {}) {
-      const path = ui.$selection.start.path;
-      const node = methods.findNodeByPath(path) as SlateDescendant | null;
-      console.log("[]_insertText", text, path, node);
-      if (!node || node.type !== SlateDescendantType.Text) {
+    /** 输入文本内容 */
+    insertText(text: string, options: TextInsertTextOptions = {}) {
+      const selection = ui.$selection;
+      if (!selection) {
         return;
       }
-      const isEmptyTextNode = node.text === "";
+      let start = ui.$selection.start;
+      let end = ui.$selection.end;
+      const start_node = methods.findNodeByPath(start.path) as SlateDescendant | null;
+      if (!start_node || start_node.type !== SlateDescendantType.Text) {
+        return;
+      }
+      let is_finish_composing = false;
       if (_start_before_composing && _end_before_composing) {
         ui.$selection.methods.setStartAndEnd({ start: _start_before_composing, end: _end_before_composing });
+        is_finish_composing = true;
         _start_before_composing = null;
         _end_before_composing = null;
       }
-      const offset = ui.$selection.start.offset;
-      node.text = node.text.substring(0, offset) + text + node.text.substring(offset);
-      // ui.$selection.methods.moveForward({ step: isEmptyTextNode ? text.length - 1 : text.length });
-      ui.$selection.methods.moveForward({ step: text.length });
-      methods.apply({ type: SlateOperationType.InsertText, wholeText: node.text, node, path, offset });
-    },
-    insertText(text: string, options: TextInsertTextOptions = {}) {
-      //       const { selection, marks } = editor;
-      const selection = ui.$selection;
-      //       const marks = _marks;
-      if (selection) {
-        // if (marks) {
-        //   const node = { text, ...marks };
-        //   Transforms.insertNodes(node, {
-        //     at: options.at,
-        //     voids: options.voids,
-        //   });
-        // } else {
-        //   Transforms.insertText(text, options);
-        methods._insertText(text, options);
-        // }
-        // _marks = null;
+      start = ui.$selection.start;
+      end = ui.$selection.end;
+      const original_text = start_node.text;
+      const inserted_text = text;
+      const is_same_point = SlatePointModel.isSamePoint(start, end);
+      if (is_same_point) {
+        start_node.text = insertTextAtOffset(original_text, inserted_text, start.offset);
+        methods.apply([
+          {
+            type: SlateOperationType.InsertText,
+            text: inserted_text,
+            //     node: start_node,
+            path: start.path,
+            offset: start.offset,
+          },
+          //   {
+          //     type: SlateOperationType.SetSelection,
+          //     start: ui.$selection.start,
+          //     end: ui.$selection.start,
+          //   },
+        ]);
+        ui.$selection.methods.moveForward({ step: text.length });
+        bus.emit(Events.SelectionChange, {
+          start: ui.$selection.start,
+          end: ui.$selection.start,
+        });
+      } else {
+        const range = [start.offset, end.offset] as [number, number];
+        start_node.text = insertTextAtOffset(deleteTextInRange(original_text, range), inserted_text, range[0]);
+        // ui.$selection.methods.moveForward({ step: text.length, collapse: true });
+        const deleted_text = original_text.substring(range[0], range[1]);
+        fmt.Println("[]insertText - before DeleteText", original_text, range, deleted_text, start_node.text);
+        methods.apply([
+          {
+            type: SlateOperationType.RemoveText,
+            // 先选择再输入中文的场景，如 hello 选择 ell，再输入，$target.innerHTML 是 ho，所以不能再删除任何内容了
+            text: is_finish_composing ? "" : deleted_text,
+            path: start.path,
+            offset: start.offset,
+          },
+          {
+            type: SlateOperationType.InsertText,
+            text: inserted_text,
+            path: start.path,
+            offset: start.offset,
+          },
+          //   {
+          //     type: SlateOperationType.SetSelection,
+          //     start: ui.$selection.start,
+          //     end: ui.$selection.start,
+          //   },
+        ]);
+        ui.$selection.methods.collapseToOffset({ offset: start.offset + inserted_text.length });
+        bus.emit(Events.SelectionChange, {
+          start: ui.$selection.start,
+          end: ui.$selection.start,
+        });
+        fmt.Println("[]insertText - before InsertText", inserted_text);
       }
     },
-    isCaretAtLineEnd() {
-      if (!ui.$selection.collapsed) {
-        return false;
-      }
-      const { start } = ui.$selection;
-      console.log("[]slate/slate - isCaretAtLineEnd", start.path, start.offset);
-      let i = 0;
-      let n = _children[start.path[i]];
-      while (i < start.path.length - 1) {
-        i += 1;
-        const idx = start.path[i];
-        if (n.type === SlateDescendantType.Paragraph) {
-          // console.log("[]slate/slate - isCaretAtLineEnd", i, idx, n.children);
-          if (idx !== n.children.length - 1) {
-            return false;
-          }
-          n = n.children[idx];
-        }
-      }
-      if (n.type === SlateDescendantType.Text) {
-        // hack 零宽度字符的情况
-        if (n.text === "") {
-          return true;
-        }
-        if (start.offset === n.text.length) {
-          return true;
-        }
-      }
-      return false;
-    },
+    /** 新增行 */
     insertLine() {
-      const isCaretAtLineEnd = methods.isCaretAtLineEnd();
+      const isCaretAtLineEnd = methods.isCaretAtLineEnd(ui.$selection.start);
       console.log("[]slate/slate - insertLine", isCaretAtLineEnd);
       if (isCaretAtLineEnd) {
         const { start } = ui.$selection;
@@ -178,13 +195,25 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
         _children = [..._children.slice(0, line_idx + 1), created_node, ..._children.slice(line_idx + 1)];
         ui.$selection.methods.moveToNextLineHead();
         console.log("[]slate/slate - insertLine _children", _children);
-        methods.apply({
-          type: SlateOperationType.InsertLine,
-          idx: line_idx,
-          node: created_node,
+        methods.apply([
+          {
+            type: SlateOperationType.InsertLine,
+            node: created_node,
+            path: [line_idx],
+          },
+          //   {
+          //     type: SlateOperationType.SetSelection,
+          //     start: ui.$selection.start,
+          //     end: ui.$selection.start,
+          //   },
+        ]);
+        bus.emit(Events.SelectionChange, {
+          start: ui.$selection.start,
+          end: ui.$selection.start,
         });
       }
     },
+    /** 删除 */
     deleteBackward(param: Partial<{ unit: "character" }> = {}) {
       let start = ui.$selection.start;
       let end = ui.$selection.end;
@@ -195,25 +224,48 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
       if (node.text === "") {
         return;
       }
-      const isSamePoint = SlatePointModel.isSamePoint(start, end);
-      console.log("[]deleteBackward - before node.text.substring", node.text, isSamePoint, start.offset, end.offset);
-      if (isSamePoint) {
-        node.text = node.text.substring(0, start.offset - 1) + node.text.substring(end.offset);
-        // ui.$selection.methods.moveBackward({ min: node.text === "" ? 1 : 0 });
-        ui.$selection.methods.moveBackward();
-      } else {
-        node.text = node.text.substring(0, start.offset) + node.text.substring(end.offset);
-        ui.$selection.methods.collapseToHead();
-      }
+      const is_same_point = SlatePointModel.isSamePoint(start, end);
+      const original_text = node.text;
+      //       console.log("[]deleteBackward - before node.text.substring", isSamePoint, node.text, start.offset, end.offset);
+      const { path, text, range } = (() => {
+        if (is_same_point) {
+          const range = [start.offset - 1, end.offset] as [number, number];
+          node.text = deleteTextInRange(original_text, range);
+          ui.$selection.methods.moveBackward();
+          const deleted_text = original_text.substring(range[0], range[1]);
+          //   console.log("[]deleteBackward - before substring", original_text, deleted_text, node.text, range);
+          return {
+            text: deleted_text,
+            path: start.path,
+            range,
+          };
+        } else {
+          const range = [start.offset, end.offset] as [number, number];
+          node.text = deleteTextInRange(original_text, range);
+          ui.$selection.methods.collapseToHead();
+          const deleted_text = original_text.substring(range[0], range[1]);
+          //   console.log("[]deleteBackward - before substring", original_text, deleted_text, node.text, range);
+          return {
+            text: deleted_text,
+            path: start.path,
+            range,
+          };
+        }
+      })();
       start = ui.$selection.start;
       end = ui.$selection.end;
-      console.log("[]deleteBackward - after node.text.substring", node.text, node);
-      methods.apply({
-        type: SlateOperationType.DeleteText,
-        wholeText: node.text,
-        node,
-        path: start.path,
-        offset: start.offset,
+      //       console.log("[]deleteBackward - after node.text.substring", node.text, text, range);
+      methods.apply([
+        {
+          type: SlateOperationType.RemoveText,
+          text,
+          path,
+          offset: range[0],
+        },
+      ]);
+      bus.emit(Events.SelectionChange, {
+        start: ui.$selection.start,
+        end: ui.$selection.start,
       });
     },
     mapNodeWithKey(key?: string) {
@@ -222,24 +274,32 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
       }
       return depthFirstSearch(_children, Number(key));
     },
-    /** Hotkey 实现根据 event 判断是否匹配命令 */
-    isMoveLineBackward(event: KeyDownEvent) {},
-    isMoveLineForward(event: KeyDownEvent) {},
-    isExtendLineBackward(event: KeyDownEvent) {},
-    isExtendLineForward(event: KeyDownEvent) {},
-    isMoveBackward(event: KeyDownEvent) {},
-    isMoveForward(event: KeyDownEvent) {},
-    isMoveWordBackward(event: KeyDownEvent) {},
-    isMoveWordForward(event: KeyDownEvent) {},
-    isBold(event: KeyDownEvent) {},
-    isItalic(event: KeyDownEvent) {},
-    isSplitBlock(event: KeyDownEvent) {},
-    isDeleteBackward(event: KeyDownEvent) {},
-    isDeleteForward(event: KeyDownEvent) {},
-    isDeleteLineBackward(event: KeyDownEvent) {},
-    isDeleteLineForward(event: KeyDownEvent) {},
-    isDeleteWordBackward(event: KeyDownEvent) {},
-    isDeleteWordForward(event: KeyDownEvent) {},
+    isCaretAtLineEnd(start: SlatePoint) {
+      //       if (!ui.$selection.collapsed) {
+      //         return false;
+      //       }
+      //       const { start } = ui.$selection;
+      console.log("[]slate/slate - isCaretAtLineEnd", start.path, start.offset);
+      let i = 0;
+      let n = _children[start.path[i]];
+      while (i < start.path.length - 1) {
+        i += 1;
+        const idx = start.path[i];
+        if (n.type === SlateDescendantType.Paragraph) {
+          if (idx !== n.children.length - 1) {
+            return false;
+          }
+          n = n.children[idx];
+        }
+      }
+      if (n.type === SlateDescendantType.Text) {
+        if (start.offset === n.text.length) {
+          return true;
+        }
+      }
+      return false;
+    },
+    checkIsSelectAll() {},
     collapse() {},
     /** 移动光标 */
     move(opts: { unit: "line"; edge?: "focus"; reverse?: boolean }) {},
@@ -276,25 +336,16 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
       _is_composing = true;
     },
     handleCompositionStart(event: CompositionStartEvent) {
-      console.log("[BIZ]slate/slate - handleCompositionStart");
       _is_composing = true;
-      _start_before_composing = ui.$selection.start;
-      _end_before_composing = ui.$selection.end;
+      _start_before_composing = { ...ui.$selection.start };
+      _end_before_composing = { ...ui.$selection.end };
+      console.log(
+        "[BIZ]slate/slate - handleCompositionStart",
+        _start_before_composing.offset,
+        _end_before_composing.offset
+      );
     },
     handleKeyDown(event: KeyDownEvent) {
-      //       if (_is_composing && !event.nativeEvent.isComposing) {
-      //         _is_composing = false;
-      //       }
-      //       if (_is_composing) {
-      //         return;
-      //       }
-      //       //       console.log("[]handleKeyDown - code", event.code);
-      //       if (event.code === "Backspace") {
-      //         event.preventDefault();
-      //         methods.deleteBackward();
-      //         return;
-      //       }
-      //       // 判断是否移动光标
       ui.$shortcut.methods.handleKeydown(event);
     },
     handleKeyUp(event: KeyDownEvent) {
@@ -310,6 +361,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
   };
   const ui = {
     $selection: SlateSelectionModel(),
+    $history: SlateHistoryModel(),
     $shortcut: ShortcutModel(),
   };
 
@@ -334,27 +386,27 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
   };
   enum Events {
     Action,
+    SelectionChange,
     StateChange,
     Error,
   }
   type TheTypesOfEvents = {
-    [Events.Action]: SlateOperation;
+    [Events.Action]: SlateOperation[];
+    [Events.SelectionChange]: { start: SlatePoint; end: SlatePoint };
     [Events.StateChange]: typeof _state;
     [Events.Error]: BizError;
   };
   const bus = base<TheTypesOfEvents>();
 
   ui.$shortcut.methods.register({
-    "ArrowUp,ArrowDown,ArrowLeft,ArrowRight"() {
-      setTimeout(() => {
-        methods.getCaretPosition();
-      }, 0);
-    },
-    "MetaLeft+KeyA"() {
-      console.log("[]MetaLeft+KeyA");
-      setTimeout(() => {
-        methods.getCaretPosition();
-      }, 0);
+    "MetaLeft+KeyZ"() {
+      console.log("[]MetaLeft+KeyZ");
+      const { operations, selection } = ui.$history.methods.undo();
+      console.log(operations, selection);
+      methods.apply(operations);
+      if (selection) {
+        bus.emit(Events.SelectionChange, selection);
+      }
     },
     Enter(event) {
       if (_is_composing) {
@@ -388,6 +440,9 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
     onAction(handler: Handler<TheTypesOfEvents[Events.Action]>) {
       return bus.on(Events.Action, handler);
     },
+    onSelectionChange(handler: Handler<TheTypesOfEvents[Events.SelectionChange]>) {
+      return bus.on(Events.SelectionChange, handler);
+    },
     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
       return bus.on(Events.StateChange, handler);
     },
@@ -419,26 +474,4 @@ function addKeysToSlateNodes(nodes: SlateDescendant[]): SlateDescendant[] {
     // @ts-ignore
     return { ...node, key };
   });
-}
-
-/**
- * 深度优先搜索 - 适合查找深层节点
- */
-function depthFirstSearch(nodes: (SlateDescendant & { key?: number })[], targetKey: number): SlateDescendant | null {
-  for (const node of nodes) {
-    // 检查当前节点
-    if (node.key === targetKey) {
-      return node;
-    }
-
-    // 如果是段落节点，递归搜索子节点
-    if (node.type === SlateDescendantType.Paragraph && node.children) {
-      const found = depthFirstSearch(node.children, targetKey);
-      if (found) {
-        return found;
-      }
-    }
-  }
-
-  return null;
 }

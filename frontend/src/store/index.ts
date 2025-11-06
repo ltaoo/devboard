@@ -21,11 +21,19 @@ import { fetchApplicationState } from "@/biz/services";
 import { PageKeys, routes, routesWithPathname } from "./routes";
 import { client } from "./http_client";
 import { storage } from "./storage";
-import { sleep } from "@/utils";
 
-// if (window.location.hostname === "t.fithub.top") {
-//   request.setEnv("dev");
-// }
+globalThis.fmt = {
+  Println: (...args: any[]) => {
+    console.log(...args);
+  },
+};
+
+if (!Array.prototype.last) {
+  Array.prototype.last = function <T>(): T | null {
+    return this.length > 0 ? this[this.length - 1] : null;
+  };
+}
+
 onListCreated((ins) => {
   ins.onError((e) => {
     app.tip({

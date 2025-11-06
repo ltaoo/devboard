@@ -14,10 +14,10 @@ export function SlateSelectionModel() {
       bus.emit(Events.StateChange, { ..._state });
     },
     /** 光标向前移动n步 */
-    moveForward(param: Partial<{ step: number }> = {}) {
-      const { step = 1 } = param;
+    moveForward(param: Partial<{ step: number; min: number; collapse: boolean }> = {}) {
+      const { step = 1, collapse = true } = param;
       _start.offset += step;
-      _end.offset += step;
+      _end.offset = _start.offset;
       methods.setStartAndEnd({ start: _start, end: _end });
     },
     /** 光标向后移动n步 */
@@ -36,7 +36,7 @@ export function SlateSelectionModel() {
         offset: 0,
       };
       _end = { ..._start };
-      console.log("[]moveToNextLineHead - ", _start);
+      //       console.log("[]moveToNextLineHead - ", _start);
       methods.refresh();
     },
     /** 从选区变成位于起点的光标 */
@@ -47,6 +47,11 @@ export function SlateSelectionModel() {
     /** 从选区变成位于终点光标 */
     collapseToEnd() {
       _start = { ..._end };
+      methods.setStartAndEnd({ start: _start, end: _end });
+    },
+    collapseToOffset(param: { offset: number }) {
+      _start.offset = param.offset;
+      _end = { ..._start };
       methods.setStartAndEnd({ start: _start, end: _end });
     },
     setStartAndEnd(param: { start: SlatePoint; end: SlatePoint }) {
@@ -60,7 +65,7 @@ export function SlateSelectionModel() {
       methods.refresh();
     },
     handleChange(event: { start: SlatePoint; end: SlatePoint; collapsed: boolean }) {
-      console.log('[]slate/selection - handleChange', event.start);
+      //       console.log("[]slate/selection - handleChange", event.start);
       _start = event.start;
       _end = event.end;
       _is_collapsed = event.collapsed;

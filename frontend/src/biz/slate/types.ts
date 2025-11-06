@@ -1,4 +1,5 @@
 import { MutableRecord2 } from "@/types";
+import { SlatePoint } from "./point";
 
 export type SlateNode = {};
 export enum SlateDescendantType {
@@ -13,37 +14,40 @@ export type SlateDescendant = MutableRecord2<{
 }>;
 
 export enum SlateOperationType {
-  InsertText,
-  DeleteText,
-  InsertLine,
+  InsertText = "insert_text",
+  RemoveText = "remove_text",
+  InsertLine = "insert_line",
+  SetSelection = "set_selection",
 }
 export type SlateOperationInsertText = {
-  /** 操作后的文本 */
-  wholeText: string;
-  node: SlateDescendant;
-  /** 操作位置 */
-  offset: number;
-  /** 操作节点路径 */
+  /** 插入的文本 */
+  text: string;
+  // node: SlateDescendant;
   path: number[];
+  offset: number;
 };
-export type SlateOperationDeleteText = {
-  /** 操作后的文本 */
-  wholeText: string;
-  node: SlateDescendant;
-  /** 操作位置 */
-  offset: number;
-  /** 操作节点路径 */
+export type SlateOperationRemoveText = {
+  /** 删除的文本 */
+  text: string;
+  // node: SlateDescendant;
   path: number[];
+  offset: number;
 };
 export type SlateOperationInsertLine = {
-  /** 插入的位置 */
-  idx: number;
+  /** 插入的位置，取第一个元素，就是 line index */
+  path: number[];
   node: SlateDescendant;
+};
+/** 设置选区/光标位置 */
+export type SlateOperationSetSelection = {
+  start: SlatePoint;
+  end: SlatePoint;
 };
 export type SlateOperation = MutableRecord2<{
   [SlateOperationType.InsertText]: SlateOperationInsertText;
-  [SlateOperationType.DeleteText]: SlateOperationDeleteText;
+  [SlateOperationType.RemoveText]: SlateOperationRemoveText;
   [SlateOperationType.InsertLine]: SlateOperationInsertLine;
+  [SlateOperationType.SetSelection]: SlateOperationSetSelection;
 }>;
 
 type ExtendableTypes =
