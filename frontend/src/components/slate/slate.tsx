@@ -7,7 +7,7 @@ import { SlateEditorModel } from "@/biz/slate/slate";
 import { SlateDescendant, SlateDescendantType, SlateOperationType } from "@/biz/slate/types";
 import { SlatePoint } from "@/biz/slate/point";
 import { ButtonCore } from "@/domains/ui";
-import { findNodeWithPath, getNodePath, applyCaretPosition, connect } from "@/biz/slate/connect.web";
+import { findNodeWithPath, getNodePath, refreshSelection, connect } from "@/biz/slate/connect.web";
 import { deleteTextAtOffset, deleteTextInRange, insertTextAtOffset } from "@/biz/slate/utils/text";
 
 export function SlateView(props: { store: SlateEditorModel }) {
@@ -98,47 +98,63 @@ function SlateEditable(props: { store: SlateEditorModel }) {
   });
 
   vm.onAction((operations) => {
+    console.log("[]slate/slate.tsx - vm.onAction", operations.length);
     if (!$input) {
       return;
     }
     for (let i = 0; i < operations.length; i += 1) {
       const op = operations[i];
-      if (op.type === SlateOperationType.InsertText) {
-        const $target = findNodeWithPath($input as Element, op.path) as Element | null;
-        if (!$target) {
-          return;
+      console.log("[]slate/slate.tsx - vm.onAction", i, op.type);
+      (() => {
+        if (op.type === SlateOperationType.InsertText) {
+          const $target = findNodeWithPath($input as Element, op.path) as Element | null;
+          if (!$target) {
+            return;
+          }
+          console.log("[]vm.onAction - SlateOperationType.InsertText", $target.innerHTML, op.text);
+          $target.innerHTML = insertTextAtOffset($target.innerHTML, op.text, op.offset);
         }
-        console.log("[]vm.onAction - SlateOperationType.InsertText", $target.innerHTML, op.text);
-        $target.innerHTML = insertTextAtOffset($target.innerHTML, op.text, op.offset);
-      }
-      if (op.type === SlateOperationType.RemoveText) {
-        const $target = findNodeWithPath($input as Element, op.path) as Element | null;
-        if (!$target) {
-          return;
+        if (op.type === SlateOperationType.RemoveText) {
+          const $target = findNodeWithPath($input as Element, op.path) as Element | null;
+          if (!$target) {
+            return;
+          }
+          console.log(
+            "[]vm.onAction - SlateOperationType.DeleteText",
+            $target.innerHTML,
+            op.text,
+            op.offset,
+            op.ignore
+          );
+          if (op.ignore) {
+            return;
+          }
+          if (!op.text) {
+            return;
+          }
+          const nextText = deleteTextAtOffset($target.innerHTML, op.text, op.offset);
+          $target.innerHTML = nextText === "" ? TEXT_EMPTY_PLACEHOLDER : nextText;
         }
-        console.log("[]vm.onAction - SlateOperationType.DeleteText", $target.innerHTML, op.text, op.offset);
-        const nextText = deleteTextAtOffset($target.innerHTML, op.text, op.offset);
-        $target.innerHTML = nextText === "" ? TEXT_EMPTY_PLACEHOLDER : nextText;
-      }
-      if (op.type === SlateOperationType.InsertLine) {
-        const $node = renderElement(op.node);
-        if (!$node) {
-          return;
+        if (op.type === SlateOperationType.InsertLine) {
+          const $node = renderElement(op.node);
+          if (!$node) {
+            return;
+          }
+          const idx = op.path[0] + 1;
+          if (idx > $input.children.length - 1) {
+            $input.appendChild($node);
+          } else {
+            $input.insertBefore($node, $input.children[idx]);
+          }
         }
-        const idx = op.path[0] + 1;
-        if (idx > $input.children.length - 1) {
-          $input.appendChild($node);
-        } else {
-          $input.insertBefore($node, $input.children[idx]);
-        }
-      }
+      })();
     }
   });
   vm.onSelectionChange(({ start, end }) => {
     if (!$input) {
       return;
     }
-    applyCaretPosition($input, start, end);
+    refreshSelection($input, start, end);
   });
   onMount(() => {
     if (!$input) {

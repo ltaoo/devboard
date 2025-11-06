@@ -345,6 +345,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     $shortcut: ShortcutModel({}),
     $commands: CommandToolSelectModel({ app: props.app, defaultValue: "" }),
     $input_main: SlateEditorModel({
+      app: props.app,
       defaultValue: [
         {
           type: SlateDescendantType.Paragraph,

@@ -14,6 +14,8 @@ import { HistoryCore } from "@/domains/history/index";
 import { connect as connectApplication } from "@/domains/app/connect.web";
 import { connect as connectHistory } from "@/domains/history/connect.web";
 import { onCreateScrollView } from "@/domains/ui/scroll-view";
+import { connect as connectClipboard } from "@/domains/clipboard/connect.web";
+import { ClipboardModel } from "@/domains/clipboard";
 import { onRequestCreated, RequestCore } from "@/domains/request/index";
 import { Result } from "@/domains/result/index";
 import { fetchApplicationState } from "@/biz/services";
@@ -93,11 +95,13 @@ export const history = new HistoryCore<PageKeys, RouteConfig<PageKeys>>({
     root: view,
   } as Record<PageKeys, RouteViewCore>,
 });
+export const clipboard = ClipboardModel();
 // @todo 临时解决方案
 let _pending_redirect: null | { name: PageKeys; pathname: string; query: Record<string, string> } = null;
 export const app = new Application({
   user,
   storage,
+  clipboard,
   async beforeReady() {
     const { pathname, query } = history.$router;
     const route = routesWithPathname[pathname];
@@ -133,6 +137,7 @@ app.setEnv({
 });
 connectApplication(app);
 connectHistory(history);
+connectClipboard(clipboard);
 history.onClickLink(({ href, target }) => {
   const { pathname, query } = NavigatorCore.parse(href);
   const route = routesWithPathname[pathname];

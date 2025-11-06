@@ -29,6 +29,7 @@ export type SlateOperationInsertText = {
 export type SlateOperationRemoveText = {
   /** 删除的文本 */
   text: string;
+  ignore?: boolean;
   // node: SlateDescendant;
   path: number[];
   offset: number;

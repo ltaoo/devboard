@@ -5,6 +5,7 @@
 import { BaseDomain, Handler } from "@/domains/base";
 import { UserCore } from "@/biz/user/index";
 import { StorageCore } from "@/domains/storage/index";
+import { ClipboardModel } from "@/domains/clipboard";
 import { Result } from "@/domains/result/index";
 import { JSONObject } from "@/types/index";
 
@@ -104,6 +105,7 @@ type ApplicationState = {
 type ApplicationProps<T extends { storage: StorageCore<any> }> = {
   user: UserCore;
   storage: T["storage"];
+  clipboard: ClipboardModel;
   // history: HistoryCore;
   /**
    * 应用加载前的声明周期，只有返回 Result.Ok() 页面才会展示内容
@@ -116,6 +118,7 @@ export class Application<T extends { storage: StorageCore<any> }> extends BaseDo
   /** 用户 */
   $user: UserCore;
   $storage: T["storage"];
+  $clipboard: ClipboardModel;
 
   lifetimes: Pick<ApplicationProps<T>, "beforeReady" | "onReady">;
 
@@ -171,10 +174,11 @@ export class Application<T extends { storage: StorageCore<any> }> extends BaseDo
   constructor(props: ApplicationProps<T>) {
     super();
 
-    const { user, storage, beforeReady, onReady } = props;
+    const { user, storage, clipboard, beforeReady, onReady } = props;
 
     this.$user = user;
     this.$storage = storage;
+    this.$clipboard = clipboard;
 
     this.lifetimes = {
       beforeReady,
@@ -269,7 +273,8 @@ export class Application<T extends { storage: StorageCore<any> }> extends BaseDo
   }
   /** 复制文本到粘贴板 */
   copy(text: string) {
-    throw new Error("请实现 copy 方法");
+    // throw new Error("请实现 copy 方法");
+    this.$clipboard.methods.writeText(text);
   }
   getComputedStyle(el: unknown): {} {
     throw new Error("请实现 getComputedStyle 方法");
