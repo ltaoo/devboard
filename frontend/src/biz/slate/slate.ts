@@ -16,8 +16,9 @@ import {
 } from "./types";
 import { SlateHistoryModel } from "./history";
 import { isObject } from "./utils/is-object";
-import { deleteTextInRange, insertTextAtOffset } from "./utils/text";
+import { deleteTextAtOffset, deleteTextInRange, insertTextAtOffset } from "./utils/text";
 import { depthFirstSearch } from "./utils/node";
+import { ViewComponentProps } from "@/store/types";
 
 type BeforeInputEvent = {
   preventDefault(): void;
@@ -44,7 +45,7 @@ type TextInsertTextOptions = {
   voids?: boolean;
 };
 
-export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
+export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app: ViewComponentProps["app"] }) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -125,6 +126,9 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
       end = ui.$selection.end;
       const original_text = start_node.text;
       const inserted_text = text;
+      if ([" ", "，", "。", "；"].includes(inserted_text)) {
+        ui.$history.methods.mark();
+      }
       const is_same_point = SlatePointModel.isSamePoint(start, end);
       if (is_same_point) {
         start_node.text = insertTextAtOffset(original_text, inserted_text, start.offset);
@@ -132,54 +136,60 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
           {
             type: SlateOperationType.InsertText,
             text: inserted_text,
-            //     node: start_node,
             path: start.path,
             offset: start.offset,
           },
-          //   {
-          //     type: SlateOperationType.SetSelection,
-          //     start: ui.$selection.start,
-          //     end: ui.$selection.start,
-          //   },
         ]);
         ui.$selection.methods.moveForward({ step: text.length });
         bus.emit(Events.SelectionChange, {
           start: ui.$selection.start,
           end: ui.$selection.start,
         });
-      } else {
-        const range = [start.offset, end.offset] as [number, number];
-        start_node.text = insertTextAtOffset(deleteTextInRange(original_text, range), inserted_text, range[0]);
-        // ui.$selection.methods.moveForward({ step: text.length, collapse: true });
-        const deleted_text = original_text.substring(range[0], range[1]);
-        fmt.Println("[]insertText - before DeleteText", original_text, range, deleted_text, start_node.text);
-        methods.apply([
-          {
-            type: SlateOperationType.RemoveText,
-            // 先选择再输入中文的场景，如 hello 选择 ell，再输入，$target.innerHTML 是 ho，所以不能再删除任何内容了
-            text: is_finish_composing ? "" : deleted_text,
-            path: start.path,
-            offset: start.offset,
-          },
-          {
-            type: SlateOperationType.InsertText,
-            text: inserted_text,
-            path: start.path,
-            offset: start.offset,
-          },
-          //   {
-          //     type: SlateOperationType.SetSelection,
-          //     start: ui.$selection.start,
-          //     end: ui.$selection.start,
-          //   },
-        ]);
-        ui.$selection.methods.collapseToOffset({ offset: start.offset + inserted_text.length });
-        bus.emit(Events.SelectionChange, {
-          start: ui.$selection.start,
-          end: ui.$selection.start,
-        });
-        fmt.Println("[]insertText - before InsertText", inserted_text);
+        return;
       }
+      const range = [start.offset, end.offset] as [number, number];
+      // ui.$selection.methods.moveForward({ step: text.length, collapse: true });
+      const deleted_text = original_text.substring(range[0], range[1]);
+      fmt.Println("[]insertText - before DeleteText", original_text, range, deleted_text, start_node.text);
+      // const ops = [];
+      start_node.text = insertTextAtOffset(deleteTextInRange(original_text, range), inserted_text, range[0]);
+      if (!is_finish_composing) {
+        // ops.push({
+        //   type: SlateOperationType.RemoveText,
+        //   // 先选择再输入中文的场景，如 hello 选择 ell，再输入，$target.innerHTML 是 ho，所以不能再删除任何内容了
+        //   text: is_finish_composing ? "" : deleted_text,
+        //   path: start.path,
+        //   offset: start.offset,
+        // } as SlateOperation);
+      }
+      // ops.push({
+      //   type: SlateOperationType.InsertText,
+      //   text: inserted_text,
+      //   path: start.path,
+      //   offset: start.offset,
+      // } as SlateOperation);
+      methods.apply([
+        {
+          type: SlateOperationType.RemoveText,
+          // 先选择再输入中文的场景，如 hello 选择 ell，再输入，$target.innerHTML 是 ho，所以不能再删除任何内容了
+          ignore: true,
+          text: deleted_text,
+          path: start.path,
+          offset: start.offset,
+        },
+        {
+          type: SlateOperationType.InsertText,
+          text: inserted_text,
+          path: start.path,
+          offset: start.offset,
+        },
+      ]);
+      ui.$selection.methods.collapseToOffset({ offset: start.offset + inserted_text.length });
+      bus.emit(Events.SelectionChange, {
+        start: ui.$selection.start,
+        end: ui.$selection.start,
+      });
+      // fmt.Println("[]insertText - before InsertText", inserted_text);
     },
     /** 新增行 */
     insertLine() {
@@ -201,11 +211,6 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
             node: created_node,
             path: [line_idx],
           },
-          //   {
-          //     type: SlateOperationType.SetSelection,
-          //     start: ui.$selection.start,
-          //     end: ui.$selection.start,
-          //   },
         ]);
         bus.emit(Events.SelectionChange, {
           start: ui.$selection.start,
@@ -224,49 +229,59 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
       if (node.text === "") {
         return;
       }
-      const is_same_point = SlatePointModel.isSamePoint(start, end);
       const original_text = node.text;
-      //       console.log("[]deleteBackward - before node.text.substring", isSamePoint, node.text, start.offset, end.offset);
-      const { path, text, range } = (() => {
-        if (is_same_point) {
-          const range = [start.offset - 1, end.offset] as [number, number];
-          node.text = deleteTextInRange(original_text, range);
-          ui.$selection.methods.moveBackward();
-          const deleted_text = original_text.substring(range[0], range[1]);
-          //   console.log("[]deleteBackward - before substring", original_text, deleted_text, node.text, range);
-          return {
+      const is_same_point = SlatePointModel.isSamePoint(start, end);
+      console.log("[]deleteBackward - ", is_same_point, original_text, start.offset, end.offset);
+      if (is_same_point) {
+        const range = [start.offset - 1, end.offset] as [number, number];
+        const deleted_text = original_text.substring(range[0], range[1]);
+        //   console.log("[]deleteBackward - before substring", original_text, deleted_text, node.text, range);
+        // return {
+        //   text: deleted_text,
+        //   path: start.path,
+        //   range,
+        // };
+        node.text = deleteTextAtOffset(original_text, deleted_text, range[0]);
+        methods.apply([
+          {
+            type: SlateOperationType.RemoveText,
             text: deleted_text,
             path: start.path,
-            range,
-          };
-        } else {
-          const range = [start.offset, end.offset] as [number, number];
-          node.text = deleteTextInRange(original_text, range);
-          ui.$selection.methods.collapseToHead();
-          const deleted_text = original_text.substring(range[0], range[1]);
-          //   console.log("[]deleteBackward - before substring", original_text, deleted_text, node.text, range);
-          return {
-            text: deleted_text,
-            path: start.path,
-            range,
-          };
-        }
-      })();
-      start = ui.$selection.start;
-      end = ui.$selection.end;
-      //       console.log("[]deleteBackward - after node.text.substring", node.text, text, range);
+            offset: range[0],
+          },
+        ]);
+        ui.$selection.methods.moveBackward();
+        bus.emit(Events.SelectionChange, {
+          start: ui.$selection.start,
+          end: ui.$selection.start,
+        });
+        return;
+      }
+      const range = [start.offset, end.offset] as [number, number];
+      const deleted_text = original_text.substring(range[0], range[1]);
+      //   console.log("[]deleteBackward - before substring", original_text, deleted_text, node.text, range);
+      // return {
+      //   text: deleted_text,
+      //   path: start.path,
+      //   range,
+      // };
+      node.text = deleteTextAtOffset(original_text, deleted_text, range[0]);
       methods.apply([
         {
           type: SlateOperationType.RemoveText,
-          text,
-          path,
+          text: deleted_text,
+          path: start.path,
           offset: range[0],
         },
       ]);
+      ui.$selection.methods.collapseToHead();
       bus.emit(Events.SelectionChange, {
         start: ui.$selection.start,
         end: ui.$selection.start,
       });
+      // start = ui.$selection.start;
+      // end = ui.$selection.end;
+      //       console.log("[]deleteBackward - after node.text.substring", node.text, text, range);
     },
     mapNodeWithKey(key?: string) {
       if (!key) {
@@ -279,7 +294,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
       //         return false;
       //       }
       //       const { start } = ui.$selection;
-      console.log("[]slate/slate - isCaretAtLineEnd", start.path, start.offset);
+      // console.log("[]slate/slate - isCaretAtLineEnd", start.path, start.offset);
       let i = 0;
       let n = _children[start.path[i]];
       while (i < start.path.length - 1) {
@@ -311,6 +326,9 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
         return;
       }
       const text = event.data as string;
+      if (text === null) {
+        return;
+      }
       console.log("[DOMAIN]slate/slate - handleBeforeInput", text);
       methods.insertText(text);
     },
@@ -402,11 +420,37 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
     "MetaLeft+KeyZ"() {
       console.log("[]MetaLeft+KeyZ");
       const { operations, selection } = ui.$history.methods.undo();
-      console.log(operations, selection);
-      methods.apply(operations);
+      // console.log(operations, selection);
+      for (let i = 0; i < operations.length; i += 1) {
+        const op = operations[i];
+        if (op.type === SlateOperationType.InsertText) {
+          const node = methods.findNodeByPath(op.path);
+          if (node && node.type === SlateDescendantType.Text) {
+            node.text = insertTextAtOffset(node.text, op.text, op.offset);
+          }
+        }
+        if (op.type === SlateOperationType.RemoveText) {
+          const node = methods.findNodeByPath(op.path);
+          if (node && node.type === SlateDescendantType.Text) {
+            node.text = deleteTextAtOffset(node.text, op.text, op.offset);
+          }
+        }
+      }
+      bus.emit(Events.Action, operations);
       if (selection) {
         bus.emit(Events.SelectionChange, selection);
       }
+    },
+    async "MetaLeft+KeyV"(event) {
+      event.preventDefault();
+      console.log("[]slate/slate - MetaLeft+KeyV");
+      const r = await props.app.$clipboard.readText();
+      if (r.error) {
+        console.log("", r.error.message);
+        return;
+      }
+      const text = r.data;
+      console.log(text);
     },
     Enter(event) {
       if (_is_composing) {
@@ -416,7 +460,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[] }) {
       methods.insertLine();
     },
     Backspace(event) {
-      console.log("[BIZ]slate/slate - Backspace -", _is_composing, _is_cancel_composing);
+      // console.log("[BIZ]slate/slate - Backspace -", _is_composing, _is_cancel_composing);
       if (_is_cancel_composing || _is_composing) {
         _is_cancel_composing = false;
         return;

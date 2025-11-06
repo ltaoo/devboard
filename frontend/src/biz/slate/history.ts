@@ -17,6 +17,9 @@ export function SlateHistoryModel() {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
+    mark() {
+      _need_new_batch = true;
+    },
     push(ops: SlateOperation[], selection: { start: SlatePoint; end: SlatePoint }) {
       //       _stacks.unshift({
       //         ...op,
@@ -31,9 +34,14 @@ export function SlateHistoryModel() {
       if (need_save) {
         if (!last_batch) {
           need_merge_with_last_batch = false;
+        } else if (last_batch.operations.length != 0) {
+          need_merge_with_last_batch = true;
         }
       }
-
+      if (_need_new_batch) {
+        need_merge_with_last_batch = false;
+        _need_new_batch = false;
+      }
       if (last_batch && need_merge_with_last_batch) {
         last_batch.operations.push(...ops);
       } else {
@@ -44,11 +52,13 @@ export function SlateHistoryModel() {
         _undo_list.push(batch);
       }
       _redo_list = [];
+      console.log("[]slate/history - push", _undo_list);
       methods.refresh();
     },
     undo() {
       const last_batch = _undo_list.last();
-      const operations = last_batch ? last_batch.operations : [];
+      console.log("[]slate/history - undo after .last(", last_batch);
+      const operations = last_batch ? last_batch.operations.reverse() : [];
       const result: SlateOperation[] = [];
       for (let i = 0; i < operations.length; i += 1) {
         const op = operations[i];
@@ -60,6 +70,16 @@ export function SlateHistoryModel() {
               path: op.path,
               offset: op.offset,
             });
+            break;
+          }
+          case SlateOperationType.RemoveText: {
+            result.push({
+              type: SlateOperationType.InsertText,
+              text: op.text,
+              path: op.path,
+              offset: op.offset,
+            });
+            break;
           }
           //   case SlateOperationType.SetSelection: {
           //     result.push({
@@ -71,6 +91,8 @@ export function SlateHistoryModel() {
           //   }
         }
       }
+      _undo_list.pop();
+      console.log("[]slate/history - undo before return(", result);
       return {
         operations: result,
         selection: last_batch?.selectionBefore ?? null,
@@ -82,6 +104,7 @@ export function SlateHistoryModel() {
   let _stacks: (SlateOperation & { created_at: string })[] = [];
   let _undo_list: SlateHistoryStack[] = [];
   let _redo_list: SlateHistoryStack[] = [];
+  let _need_new_batch = false;
   let _state = {
     get stacks() {
       return _stacks.map((stack) => {

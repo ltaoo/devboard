@@ -33,7 +33,7 @@ export function connect(vm: SlateEditorModel, $input: Element) {
     const offset_end = range.endOffset;
     // const path_start = vm.methods.mapNodeWithKey($start.dataset["slate-node-key"]);
     // const path_end = vm.methods.mapNodeWithKey($end.dataset["slate-node-key"]);
-    console.log("[]getCaretPosition - ", $start);
+    // console.log("[]getCaretPosition - ", $start);
     if ($start === $input) {
       return;
     }
@@ -105,7 +105,7 @@ export function findNodeWithPath($elm: Element, path: number[]): Element | null 
   return findNodeWithPath($v, path.slice(1));
 }
 
-export function applyCaretPosition($editor: Element, start: SlatePoint, end: SlatePoint) {
+export function refreshSelection($editor: Element, start: SlatePoint, end: SlatePoint) {
   //     const { start, end } = vm.ui.$selection.state;
   const $node_start = findNodeWithPath($editor as Element, start.path);
   const $node_end = findNodeWithPath($editor as Element, end.path);
