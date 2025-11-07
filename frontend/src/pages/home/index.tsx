@@ -3,7 +3,7 @@
  */
 import { For, Match, Show, Switch } from "solid-js";
 import { Bird, Check, ChevronUp, Copy, Download, Earth, Eye, File, Folder, Link, Trash } from "lucide-solid";
-import { Browser, Dialogs, Events } from "@wailsio/runtime";
+// import { Browser, Dialogs, Events } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -225,28 +225,28 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       methods.previewPasteContent(v);
     },
     async handleClickOuterURL(event: { url: string }) {
-      const r = await Dialogs.Question({
-        Title: "Open URL",
-        Message: "Are you sure open the url: " + event.url,
-        Buttons: [
-          {
-            Label: "Cancel",
-            IsCancel: true,
-          },
-          {
-            Label: "Confirm",
-            IsDefault: true,
-          },
-        ],
-      });
-      if (r !== "Confirm") {
-        return;
-      }
-      Browser.OpenURL(event.url);
+      // const r = await Dialogs.Question({
+      //   Title: "Open URL",
+      //   Message: "Are you sure open the url: " + event.url,
+      //   Buttons: [
+      //     {
+      //       Label: "Cancel",
+      //       IsCancel: true,
+      //     },
+      //     {
+      //       Label: "Confirm",
+      //       IsDefault: true,
+      //     },
+      //   ],
+      // });
+      // if (r !== "Confirm") {
+      //   return;
+      // }
+      // Browser.OpenURL(event.url);
     },
     handleClickURL(url: string) {
-      Browser.OpenURL(url);
-      return;
+      // Browser.OpenURL(url);
+      // return;
     },
     async handleClickCopyBtn(v: PasteRecord) {
       methods.copyPasteRecord(v);
@@ -620,10 +620,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$input_search.methods.blur();
     },
     EscapeEscape(event) {
-      setTimeout(() => {
-        Events.Emit({ name: "m:hide-main-window", data: null });
-        // 100 是为了 keyup 能正确清除掉按下的 Esc
-      }, 100);
+      // setTimeout(() => {
+      //   Events.Emit({ name: "m:hide-main-window", data: null });
+      //   // 100 是为了 keyup 能正确清除掉按下的 Esc
+      // }, 100);
     },
   });
   ui.$commands.methods.setOptions([
@@ -700,17 +700,17 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // console.log("[PAGE]onKeyup", event.code);
       ui.$shortcut.methods.handleKeyup(event);
     }),
-    Events.On("clipboard:update", (event) => {
-      const created_paste_event = event.data[0];
-      if (!created_paste_event) {
-        return;
-      }
-      const vv = processPartialPasteEvent(created_paste_event);
-      methods.prepareLoadRecord(vv);
-    }),
-    Events.On("m:refresh", (event) => {
-      props.history.reload();
-    }),
+    // Events.On("clipboard:update", (event) => {
+    //   const created_paste_event = event.data[0];
+    //   if (!created_paste_event) {
+    //     return;
+    //   }
+    //   const vv = processPartialPasteEvent(created_paste_event);
+    //   methods.prepareLoadRecord(vv);
+    // }),
+    // Events.On("m:refresh", (event) => {
+    //   props.history.reload();
+    // }),
   ]);
 
   return {
