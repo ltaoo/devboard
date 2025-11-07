@@ -13,5 +13,8 @@ export function deleteTextAtOffset(text: string, deleted: string, offset: number
 }
 
 export function insertTextAtOffset(text: string, inserted: string, offset: number) {
+  if (text === "") {
+    return inserted;
+  }
   return text.substring(0, offset) + inserted + text.substring(offset);
 }

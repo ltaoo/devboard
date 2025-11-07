@@ -24,8 +24,12 @@ export function connect(vm: SlateEditorModel, $input: Element) {
       return;
     }
     const range = selection.getRangeAt(0);
-    const $start = range.startContainer.parentNode as HTMLDivElement | null;
-    const $end = range.endContainer.parentNode as HTMLDivElement | null;
+    const $start = findInnerTextNode(range.startContainer.parentNode) as HTMLDivElement | null;
+    const $end = findInnerTextNode(range.endContainer.parentNode) as HTMLDivElement | null;
+    if (!$start || !$end) {
+      return;
+    }
+    console.log("[]getCaretPosition - ", $start);
     if (!$start || !$end) {
       return;
     }
@@ -70,6 +74,23 @@ export function connect(vm: SlateEditorModel, $input: Element) {
     selection.removeAllRanges();
     selection.addRange(range);
   };
+}
+
+function findInnerTextNode($node?: any) {
+  // console.log('[]findInnerTextNode', $node?.tagName);
+  if (!$node) {
+    return null;
+  }
+  while ($node) {
+    if ($node.tagName === "SPAN") {
+      return $node;
+    }
+    $node = $node.childNodes[0] as Element;
+    if (!$node) {
+      return null;
+    }
+  }
+  return null;
 }
 
 export function getNodePath(targetNode: Element, rootNode: Element) {

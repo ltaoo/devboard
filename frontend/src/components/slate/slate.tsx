@@ -14,6 +14,8 @@ import { isElement, isText } from "@/biz/slate/utils/node";
 export function SlateView(props: { store: SlateEditorModel }) {
   return <SlateEditable store={props.store} />;
 }
+// const TEXT_EMPTY_PLACEHOLDER = "&#8203;";
+// const TEXT_EMPTY_PLACEHOLDER = "&#xFEFF;<br>";
 // const TEXT_EMPTY_PLACEHOLDER = "&#x2060;<br>";
 // const TEXT_EMPTY_PLACEHOLDER = "<br>";
 const TEXT_EMPTY_PLACEHOLDER = "&nbsp;";
@@ -45,8 +47,9 @@ function SlateEditable(props: { store: SlateEditorModel }) {
           if (!$target) {
             return;
           }
-          console.log("[]vm.onAction - SlateOperationType.InsertText", $target.innerHTML, op.text);
-          $target.innerHTML = insertTextAtOffset($target.innerHTML, op.text, op.offset);
+          console.log("[]vm.onAction - SlateOperationType.InsertText", $target, op.path, op.text);
+          const t = insertTextAtOffset(getNodeText($target), op.text, op.offset);
+          $target.innerHTML = t;
           return;
         }
         if (op.type === SlateOperationType.RemoveText) {
@@ -58,7 +61,7 @@ function SlateEditable(props: { store: SlateEditorModel }) {
           if (op.ignore || !op.text) {
             return;
           }
-          $target.innerHTML = formatText(deleteTextAtOffset($target.innerHTML, op.text, op.offset));
+          $target.innerHTML = formatText(deleteTextAtOffset(getNodeText($target), op.text, op.offset));
           return;
         }
         if (op.type === SlateOperationType.InsertLines) {
@@ -99,10 +102,13 @@ function SlateEditable(props: { store: SlateEditorModel }) {
       })();
     }
   });
-  vm.onSelectionChange(({ start, end }) => {
+  vm.onSelectionChange(({ type, start, end }) => {
     if (!$input) {
       return;
     }
+    //     if (type === SlateOperationType.InsertText) {
+    //       return;
+    //     }
     refreshSelection($input, start, end);
   });
   onMount(() => {
