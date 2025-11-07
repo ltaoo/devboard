@@ -6,7 +6,7 @@
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { SlatePoint, SlatePointModel } from "./point";
-import { SlateDescendant } from "./types";
+import { SlateDescendant, SlateDescendantType } from "./types";
 
 export function SlateSelectionModel() {
   const methods = {
@@ -29,6 +29,14 @@ export function SlateSelectionModel() {
       }
       _end.offset = _start.offset;
       methods.setStartAndEnd({ start: _start, end: _end });
+    },
+    moveToPrevLineHead() {
+      _start = {
+        path: [_start.path[0] - 1, 0],
+        offset: 0,
+      };
+      _end = { ..._start };
+      methods.refresh();
     },
     moveToNextLineHead() {
       _start = {
@@ -55,8 +63,8 @@ export function SlateSelectionModel() {
       methods.setStartAndEnd({ start: _start, end: _end });
     },
     setStartAndEnd(param: { start: SlatePoint; end: SlatePoint }) {
-      _start = param.start;
-      _end = param.end;
+      _start = { ...param.start };
+      _end = { ...param.end };
       _is_collapsed = SlatePointModel.isSamePoint(param.start, param.end);
       _dirty = true;
       setTimeout(() => {
@@ -76,6 +84,10 @@ export function SlateSelectionModel() {
   let _start: SlatePoint = { path: [], offset: 0 };
   let _end: SlatePoint = { path: [], offset: 0 };
   let _is_collapsed = true;
+  /** 当前选区是否被聚焦 */
+  let _is_focused = false;
+  /** 当前选区包含的文本格式 */
+  let _marks = [];
   let _dirty = false;
   const ui = {};
 
@@ -138,55 +150,99 @@ export function SlateSelectionModel() {
   };
 }
 
+/** 获取指定行的末尾位置 */
+SlateSelectionModel.getLineLastPoint = function (nodes: SlateDescendant[], line_idx: number) {
+  const path: number[] = [line_idx];
+  let offset = 0;
+  let node: SlateDescendant | null = nodes[line_idx];
+  while (node) {
+    if (node.type === SlateDescendantType.Paragraph) {
+      path.push(node.children.length - 1);
+      node = node.children[node.children.length - 1];
+    } else if (node.type === SlateDescendantType.Text) {
+      offset = node.text.length;
+      node = null;
+    }
+  }
+  return {
+    path,
+    offset,
+  };
+};
+/** 获取指定行的末尾节点 */
+SlateSelectionModel.getLineLastNode = function (nodes: SlateDescendant[], line_idx: number) {
+  const path: number[] = [line_idx];
+  let offset = 0;
+  let node: SlateDescendant | null = nodes[line_idx];
+  let result = node;
+  while (node) {
+    if (node.type === SlateDescendantType.Paragraph) {
+      path.push(node.children.length - 1);
+      node = node.children[node.children.length - 1];
+    } else if (node.type === SlateDescendantType.Text) {
+      offset = node.text.length;
+      result = node;
+      node = null;
+    }
+  }
+  return {
+    path,
+    offset,
+    node: result,
+  };
+};
+/** 获取指定行的首个点 */
+SlateSelectionModel.getLineFirstNode = function (nodes: SlateDescendant[], line_idx: number) {
+  const path: number[] = [line_idx];
+  let offset = 0;
+  let node: SlateDescendant | null = nodes[line_idx];
+  let result = node;
+  while (node) {
+    if (node.type === SlateDescendantType.Paragraph) {
+      path.push(0);
+      node = node.children[0];
+    } else if (node.type === SlateDescendantType.Text) {
+      result = node;
+      node = null;
+    }
+  }
+  return {
+    path,
+    offset,
+    node: result,
+  };
+};
+SlateSelectionModel.isCaretAtLineEnd = function (nodes: SlateDescendant[], start: SlatePoint) {
+  let i = 0;
+  let n = nodes[start.path[i]];
+  while (i < start.path.length - 1) {
+    i += 1;
+    const idx = start.path[i];
+    if (n.type === SlateDescendantType.Paragraph) {
+      if (idx !== n.children.length - 1) {
+        return false;
+      }
+      n = n.children[idx];
+    }
+  }
+  if (n.type === SlateDescendantType.Text) {
+    if (start.offset === n.text.length) {
+      return true;
+    }
+  }
+  return false;
+};
+
+SlateSelectionModel.removeLine = function (nodes: SlateDescendant[], idx: number) {
+  return [...nodes.slice(0, idx), ...nodes.slice(idx + 1)];
+};
+SlateSelectionModel.removeLinesBetweenStartAndEnd = function (
+  nodes: SlateDescendant[],
+  start: SlatePoint,
+  end: SlatePoint
+) {
+  return [...nodes.slice(0, start.path[0] + 1), ...nodes.slice(end.path[0] + 1)];
+};
+SlateSelectionModel.removeNode = function (nodes: SlateDescendant[], point: SlatePoint) {};
+
 export type SlateSelectionModel = ReturnType<typeof SlateSelectionModel>;
-
-// export function SlateSelectionModel() {
-//   const methods = {
-//     refresh() {
-//       bus.emit(Events.StateChange, { ..._state });
-//     },
-//   };
-//   const ui = {};
-
-//   /** 选区的起始节点 */
-//   let _anchor_node = null;
-//   /** 选区的终点节点 */
-//   let _focus_node = null;
-//   /** 选区在 起始节点 中的偏移 */
-//   let _anchor_offset = 0;
-//   /** 选区在 终点节点 中的偏移 */
-//   let _focus_offset = 0;
-//   /** 选区是否折叠 */
-//   let _is_collapsed = false;
-//   /** 当前选区是否被聚焦 */
-//   let _is_focused = false;
-//   /** 当前选区包含的文本格式 */
-//   let _marks = [];
-
-//   let _state = {};
-//   enum Events {
-//     StateChange,
-//     Error,
-//   }
-//   type TheTypesOfEvents = {
-//     [Events.StateChange]: typeof _state;
-//     [Events.Error]: BizError;
-//   };
-//   const bus = base<TheTypesOfEvents>();
-
-//   return {
-//     methods,
-//     ui,
-//     state: _state,
-//     ready() {},
-//     destroy() {
-//       bus.destroy();
-//     },
-//     onStateChange(handler: Handler<TheTypesOfEvents[Events.StateChange]>) {
-//       return bus.on(Events.StateChange, handler);
-//     },
-//     onError(handler: Handler<TheTypesOfEvents[Events.Error]>) {
-//       return bus.on(Events.Error, handler);
-//     },
-//   };
-// }

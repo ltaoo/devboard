@@ -16,7 +16,10 @@ export type SlateDescendant = MutableRecord2<{
 export enum SlateOperationType {
   InsertText = "insert_text",
   RemoveText = "remove_text",
-  InsertLine = "insert_line",
+  InsertLines = "insert_line",
+  RemoveLines = "remove_lines",
+  MergeNode = "merge_node",
+  SplitNode = "split_node",
   SetSelection = "set_selection",
 }
 export type SlateOperationInsertText = {
@@ -34,9 +37,25 @@ export type SlateOperationRemoveText = {
   path: number[];
   offset: number;
 };
-export type SlateOperationInsertLine = {
+export type SlateOperationInsertLines = {
   /** 插入的位置，取第一个元素，就是 line index */
   path: number[];
+  node: SlateDescendant[];
+  // text: string;
+};
+export type SlateOperationRemoveLines = {
+  /** 插入的位置，取第一个元素，就是 line index */
+  path: number[];
+  node: SlateDescendant[];
+  // text: string;
+};
+export type SlateOperationMergeNode = {
+  point1: SlatePoint;
+  point2: SlatePoint;
+};
+export type SlateOperationSplitNode = {
+  path: number[];
+  offset: number;
   node: SlateDescendant;
 };
 /** 设置选区/光标位置 */
@@ -47,7 +66,10 @@ export type SlateOperationSetSelection = {
 export type SlateOperation = MutableRecord2<{
   [SlateOperationType.InsertText]: SlateOperationInsertText;
   [SlateOperationType.RemoveText]: SlateOperationRemoveText;
-  [SlateOperationType.InsertLine]: SlateOperationInsertLine;
+  [SlateOperationType.InsertLines]: SlateOperationInsertLines;
+  [SlateOperationType.RemoveLines]: SlateOperationRemoveLines;
+  [SlateOperationType.MergeNode]: SlateOperationMergeNode;
+  [SlateOperationType.SplitNode]: SlateOperationSplitNode;
   [SlateOperationType.SetSelection]: SlateOperationSetSelection;
 }>;
 

@@ -51,8 +51,14 @@ export function SlatePointModel(props: {}) {
   };
 }
 
-SlatePointModel.isSamePoint = function (a: SlatePoint, b: SlatePoint) {
-  return a.path.join("_") === b.path.join("_") && a.offset === b.offset;
+SlatePointModel.isSamePoint = function (point1: SlatePoint, point2: SlatePoint) {
+  return point1.path.join("_") === point2.path.join("_") && point1.offset === point2.offset;
+};
+SlatePointModel.isAtLineHead = function (point: SlatePoint) {
+  return point.offset === 0;
+};
+SlatePointModel.isAtFirstLineHead = function (point: SlatePoint) {
+  return point.path[0] === 0 && point.offset === 0;
 };
 
 export type SlatePointModel = ReturnType<typeof SlatePointModel>;
