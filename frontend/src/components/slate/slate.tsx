@@ -15,10 +15,10 @@ export function SlateView(props: { store: SlateEditorModel }) {
   return <SlateEditable store={props.store} />;
 }
 // const TEXT_EMPTY_PLACEHOLDER = "&#8203;";
-// const TEXT_EMPTY_PLACEHOLDER = "&#xFEFF;<br>";
-// const TEXT_EMPTY_PLACEHOLDER = "&#x2060;<br>";
-// const TEXT_EMPTY_PLACEHOLDER = "<br>";
-const TEXT_EMPTY_PLACEHOLDER = "&nbsp;";
+// const TEXT_EMPTY_PLACEHOLDER = "";
+// const TEXT_EMPTY_PLACEHOLDER = "&#x2060;";
+const TEXT_EMPTY_PLACEHOLDER = "<br>";
+// const TEXT_EMPTY_PLACEHOLDER = "&nbsp;";
 
 function SlateEditable(props: { store: SlateEditorModel }) {
   let $input: HTMLDivElement | undefined;
@@ -47,9 +47,16 @@ function SlateEditable(props: { store: SlateEditorModel }) {
           if (!$target) {
             return;
           }
-          console.log("[]vm.onAction - SlateOperationType.InsertText", $target, op.path, op.text);
+          console.log("[]vm.onAction - SlateOperationType.InsertText", $target.tagName, op.path, op.text);
           const t = insertTextAtOffset(getNodeText($target), op.text, op.offset);
-          $target.innerHTML = t;
+          if ($target.tagName === "BR") {
+            // $target.tagName = "SPAN";
+            const $span = document.createElement("span");
+            $span.innerHTML = t;
+            $target.parentNode?.replaceChild($span, $target);
+          } else {
+            $target.innerHTML = t;
+          }
           return;
         }
         if (op.type === SlateOperationType.RemoveText) {

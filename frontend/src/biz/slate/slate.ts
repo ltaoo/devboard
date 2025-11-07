@@ -128,28 +128,12 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       // ui.$selection.methods.moveForward({ step: text.length, collapse: true });
       const deleted_text = original_text.substring(range[0], range[1]);
       fmt.Println("[]insertText - before DeleteText", original_text, range, deleted_text, node1.text);
-      // const ops = [];
       node1.text = insertTextAtOffset(deleteTextInRange(original_text, range), inserted_text, range[0]);
-      if (!is_finish_composing) {
-        // ops.push({
-        //   type: SlateOperationType.RemoveText,
-        //   // 先选择再输入中文的场景，如 hello 选择 ell，再输入，$target.innerHTML 是 ho，所以不能再删除任何内容了
-        //   text: is_finish_composing ? "" : deleted_text,
-        //   path: start.path,
-        //   offset: start.offset,
-        // } as SlateOperation);
-      }
-      // ops.push({
-      //   type: SlateOperationType.InsertText,
-      //   text: inserted_text,
-      //   path: start.path,
-      //   offset: start.offset,
-      // } as SlateOperation);
       methods.apply([
         {
           type: SlateOperationType.RemoveText,
           // 先选择再输入中文的场景，如 hello 选择 ell，再输入，$target.innerHTML 是 ho，所以不能再删除任何内容了
-          ignore: true,
+          ignore: is_finish_composing,
           text: deleted_text,
           path: start.path,
           offset: start.offset,
@@ -485,7 +469,20 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
     handleInput(event: InputEvent) {},
     handleBlur(event: BlurEvent) {},
     handleFocus(event: FocusEvent) {},
-    handleClick() {},
+    handleClick() {
+      // const node = methods.findNodeByPath(ui.$selection.start.path);
+      // if (!node) {
+      //   return;
+      // }
+      // if (node.type === SlateDescendantType.Text && node.text === "" && ui.$selection.start.offset !== 0) {
+      //   ui.$selection.methods.moveBackward();
+      //   bus.emit(Events.SelectionChange, {
+      //     type: SlateOperationType.RemoveText,
+      //     start: ui.$selection.start,
+      //     end: ui.$selection.start,
+      //   });
+      // }
+    },
     handleCompositionEnd(event: CompositionEndEvent) {
       const text = event.data as string;
       // 如果合成过程删除，会触发 end 事件
@@ -570,44 +567,44 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
   const bus = base<TheTypesOfEvents>();
 
   ui.$shortcut.methods.register({
-    ArrowRight(event) {
-      const node = methods.findNodeByPath(ui.$selection.start.path);
-      if (!node) {
-        return;
-      }
-      if (node.type === SlateDescendantType.Text && node.text === "") {
-        event.preventDefault();
-        ui.$selection.methods.moveToNextLineHead();
-        bus.emit(Events.SelectionChange, {
-          type: SlateOperationType.Unknown,
-          start: ui.$selection.start,
-          end: ui.$selection.start,
-        });
-      }
-    },
-    ArrowLeft(event) {
-      //       console.log("[]ArrowLeft", [ui.$selection.start.path[0] - 1, 0]);
-      if (ui.$selection.start.offset !== 0) {
-        return;
-      }
-      const path = ui.$selection.start.path;
-      path[0] = path[0] - 1;
-      const node = methods.findNodeByPath(path);
-      if (!node) {
-        return;
-      }
-      console.log("[]ArrowLeft", node);
-      if (node.type === SlateDescendantType.Text && node.text === "") {
-        event.preventDefault();
-        // ui.$selection.methods.moveToPrevLineHead();
-        console.log("[]ArrowLeft", ui.$selection.start);
-        bus.emit(Events.SelectionChange, {
-          type: SlateOperationType.Unknown,
-          start: ui.$selection.start,
-          end: ui.$selection.start,
-        });
-      }
-    },
+    // ArrowRight(event) {
+    //   const node = methods.findNodeByPath(ui.$selection.start.path);
+    //   if (!node) {
+    //     return;
+    //   }
+    //   if (node.type === SlateDescendantType.Text && node.text === "") {
+    //     event.preventDefault();
+    //     ui.$selection.methods.moveToNextLineHead();
+    //     bus.emit(Events.SelectionChange, {
+    //       type: SlateOperationType.Unknown,
+    //       start: ui.$selection.start,
+    //       end: ui.$selection.start,
+    //     });
+    //   }
+    // },
+    // ArrowLeft(event) {
+    //   //       console.log("[]ArrowLeft", [ui.$selection.start.path[0] - 1, 0]);
+    //   if (ui.$selection.start.offset !== 0) {
+    //     return;
+    //   }
+    //   const path = ui.$selection.start.path;
+    //   path[0] = path[0] - 1;
+    //   const node = methods.findNodeByPath(path);
+    //   if (!node) {
+    //     return;
+    //   }
+    //   console.log("[]ArrowLeft", node);
+    //   if (node.type === SlateDescendantType.Text && node.text === "") {
+    //     event.preventDefault();
+    //     // ui.$selection.methods.moveToPrevLineHead();
+    //     console.log("[]ArrowLeft", ui.$selection.start);
+    //     bus.emit(Events.SelectionChange, {
+    //       type: SlateOperationType.Unknown,
+    //       start: ui.$selection.start,
+    //       end: ui.$selection.start,
+    //     });
+    //   }
+    // },
     "MetaLeft+KeyZ"() {
       console.log("[]MetaLeft+KeyZ");
       const { operations, selection } = ui.$history.methods.undo();
