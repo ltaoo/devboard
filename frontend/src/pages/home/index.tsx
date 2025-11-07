@@ -352,7 +352,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
           children: [
             {
               type: SlateDescendantType.Text,
-              text: "Slate is flexible enough to add **decorations** that can format text based on its content. For example, this editor has **Markdown** preview decorations on it, to make it _dead_ simple to make an editor with built-in Markdown previewing.",
+              text: "Slate is flexible enough to add **decorations** that can format text based on its content.",
             },
           ],
         },
@@ -368,18 +368,19 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         {
           type: SlateDescendantType.Paragraph,
           children: [
-            {
-              type: SlateDescendantType.Paragraph,
-              children: [
-                {
-                  type: SlateDescendantType.Text,
-                  text: "Try it out for yourself!",
-                },
-              ],
-            },
+            // {
+            //   type: SlateDescendantType.Paragraph,
+            //   children: [
+            //     {
+            //       type: SlateDescendantType.Text,
+            //       text: "Try it out for yourself!",
+            //     },
+            //   ],
+            // },
             {
               type: SlateDescendantType.Text,
-              text: "Hello",
+              // text: "Hello",
+              text: "Try it out for yourself!",
             },
           ],
         },

@@ -81,14 +81,22 @@ export function SlateHistoryModel() {
             });
             break;
           }
-          //   case SlateOperationType.SetSelection: {
-          //     result.push({
-          //       type: SlateOperationType.SetSelection,
-          //       text: op.text,
-          //       path: op.path,
-          //       offset: op.offset,
-          //     });
-          //   }
+        //   case SlateOperationType.SplitNode: {
+        //     result.push({
+        //       type: SlateOperationType.MergeNode,
+        //       path: op.path,
+        //       offset: op.offset,
+        //     });
+        //     break;
+        //   }
+        //   case SlateOperationType.MergeNode: {
+        //     result.push({
+        //       type: SlateOperationType.SplitNode,
+        //       path: op.path,
+        //       offset: op.offset,
+        //     });
+        //     break;
+        //   }
         }
       }
       _undo_list.pop();

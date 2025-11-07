@@ -1,4 +1,5 @@
-import { SlateDescendant, SlateDescendantType } from "../types";
+import { SlateDescendant, SlateDescendantType, SlateNode, SlateParagraph, SlateText } from "../types";
+import { isObject } from "./is-object";
 
 /**
  * 深度优先搜索 - 适合查找深层节点
@@ -23,4 +24,28 @@ export function depthFirstSearch(
   }
 
   return null;
+}
+
+export function isText(value: any): value is SlateText {
+  return isObject(value) && typeof value.text === "string";
+}
+export function isElement(value: any, extra: Partial<{ deep: boolean }> = {}): value is SlateParagraph {
+  const { deep = false } = extra;
+  if (!isObject(value)) {
+    return false;
+  }
+  // PERF: No need to use the full Editor.isEditor here
+  const isEditor = typeof value.apply === "function";
+  if (isEditor) {
+    return false;
+  }
+  const isChildrenValid = deep ? isNodeList(value.children) : Array.isArray(value.children);
+  return isChildrenValid;
+}
+export function isNode(value: any, extra: { deep: boolean }): value is SlateNode {
+  return isText(value) || isElement(value, extra);
+}
+
+export function isNodeList(value: any) {
+  return Array.isArray(value) && value.every((v) => isNode(v, { deep: true }));
 }
