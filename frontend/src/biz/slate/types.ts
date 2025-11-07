@@ -21,6 +21,7 @@ export enum SlateOperationType {
   MergeNode = "merge_node",
   SplitNode = "split_node",
   SetSelection = "set_selection",
+  Unknown = "unknown",
 }
 export type SlateOperationInsertText = {
   /** 插入的文本 */

@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.span {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
 .safe-height {
   height: env(safe-area-inset-bottom);
   height: constant(safe-area-inset-bottom);
