@@ -1,3 +1,4 @@
+import { ViewComponentProps } from "@/store/types";
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { ShortcutModel } from "@/biz/shortcut/shortcut";
@@ -18,7 +19,7 @@ import { SlateHistoryModel } from "./history";
 import { isObject } from "./utils/is-object";
 import { deleteTextAtOffset, deleteTextInRange, insertTextAtOffset } from "./utils/text";
 import { depthFirstSearch } from "./utils/node";
-import { ViewComponentProps } from "@/store/types";
+import { SlateNodeOperations } from "./op.node";
 
 type BeforeInputEvent = {
   preventDefault(): void;
@@ -49,6 +50,9 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
+    },
+    emitSelectionChange(v: { type?: SlateOperationType; start: SlatePoint; end: SlatePoint }) {
+      bus.emit(Events.SelectionChange, v);
     },
     apply(operations: SlateOperation[]) {
       ui.$history.methods.push(operations, { start: ui.$selection.start, end: ui.$selection.end });
@@ -117,7 +121,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
           },
         ]);
         ui.$selection.methods.moveForward({ step: text.length });
-        bus.emit(Events.SelectionChange, {
+        methods.emitSelectionChange({
           type: SlateOperationType.InsertText,
           start: ui.$selection.start,
           end: ui.$selection.start,
@@ -146,7 +150,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         },
       ]);
       ui.$selection.methods.collapseToOffset({ offset: start.offset + inserted_text.length });
-      bus.emit(Events.SelectionChange, {
+      methods.emitSelectionChange({
         type: SlateOperationType.InsertText,
         start: ui.$selection.start,
         end: ui.$selection.start,
@@ -171,7 +175,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         },
       ]);
       ui.$selection.methods.moveToNextLineHead();
-      bus.emit(Events.SelectionChange, {
+      methods.emitSelectionChange({
         type: SlateOperationType.InsertLines,
         start: ui.$selection.start,
         end: ui.$selection.start,
@@ -195,7 +199,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         },
       ]);
       ui.$selection.methods.moveToNextLineHead();
-      bus.emit(Events.SelectionChange, {
+      methods.emitSelectionChange({
         type: SlateOperationType.InsertLines,
         start: ui.$selection.start,
         end: ui.$selection.start,
@@ -206,35 +210,21 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       const { start, end } = ui.$selection;
       const is_same_point = SlatePointModel.isSamePoint(start, end);
       if (is_same_point) {
-        const node = methods.findNodeByPath(start.path);
-        if (!node || node.type !== SlateDescendantType.Text) {
-          return;
-        }
-        const original_text = node.text;
-        const text1 = original_text.slice(0, start.offset);
-        const text2 = original_text.slice(start.offset);
-        node.text = text1;
-        const created_node = {
-          type: SlateDescendantType.Paragraph,
-          children: [
-            {
-              type: SlateDescendantType.Text,
-              text: text2,
-            },
-          ],
-        } as SlateDescendant;
-        _children = [..._children.slice(0, start.path[0] + 1), created_node, ..._children.slice(start.path[0] + 1)];
+        const next_selection = ui.$selection.methods.calcNextLineHead();
+        const op: SlateOperation = {
+          type: SlateOperationType.SplitNode,
+          path: start.path,
+          offset: start.offset,
+          start: next_selection.start,
+          end: next_selection.end,
+        };
+        _children = SlateNodeOperations.splitNode(_children, op);
         console.log("[]slate/slate - splitLine", _children);
-        methods.apply([
-          {
-            type: SlateOperationType.SplitNode,
-            path: start.path,
-            offset: start.offset,
-            node: created_node,
-          },
-        ]);
-        ui.$selection.methods.moveToNextLineHead();
-        bus.emit(Events.SelectionChange, {
+        methods.apply([op]);
+        // 这里不能放到 apply 前面，因为 apply 时要取当前光标位置，用于 Undo 操作
+        // 提前了，拿到的就是 apply 后的光标位置了
+        ui.$selection.methods.setStartAndEnd(next_selection);
+        methods.emitSelectionChange({
           type: SlateOperationType.SplitNode,
           start: ui.$selection.start,
           end: ui.$selection.start,
@@ -266,11 +256,13 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
           type: SlateOperationType.SplitNode,
           path: start.path,
           offset: start.offset,
-          node: created_node,
+          start,
+          end,
+          // node: created_node,
         },
       ]);
       ui.$selection.methods.moveToNextLineHead();
-      bus.emit(Events.SelectionChange, {
+      methods.emitSelectionChange({
         type: SlateOperationType.SplitNode,
         start: ui.$selection.start,
         end: ui.$selection.start,
@@ -278,12 +270,9 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
     },
     mergeLines(start: SlatePoint) {
       // 需要合并两行
-      //   const prev_line = methods.findNodeByPath([start.path[0] - 1]);
-      //   const cur_line = methods.findNodeByPath(start.path);
       const prev_line_last_node = SlateSelectionModel.getLineLastNode(_children, start.path[0] - 1);
       const cur_line_last_node = SlateSelectionModel.getLineFirstNode(_children, start.path[0]);
       const target_point_after_merge = SlateSelectionModel.getLineLastPoint(_children, start.path[0] - 1);
-      //   console.log("[]prev line end point", start.path[0] - 1, point);
       if (
         prev_line_last_node.node.type === SlateDescendantType.Text &&
         cur_line_last_node.node.type === SlateDescendantType.Text
@@ -291,17 +280,18 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         prev_line_last_node.node.text = prev_line_last_node.node.text + cur_line_last_node.node.text;
         _children = SlateSelectionModel.removeLine(_children, start.path[0]);
       }
+      const op: SlateOperation = {
+        type: SlateOperationType.MergeNode,
+        path: prev_line_last_node.path,
+        offset: prev_line_last_node.offset,
+        start: cur_line_last_node,
+        end: cur_line_last_node,
+      };
       console.log("[]slate/slate - deleteBackward - merge node", _children[start.path[0] - 1]);
-      methods.apply([
-        {
-          type: SlateOperationType.MergeNode,
-          point1: { path: prev_line_last_node.path, offset: prev_line_last_node.offset },
-          point2: { path: cur_line_last_node.path, offset: cur_line_last_node.offset },
-        },
-      ]);
+      methods.apply([op]);
       console.log("[]slate/slate - deleteBackward - selection point", target_point_after_merge);
       ui.$selection.methods.setStartAndEnd({ start: target_point_after_merge, end: target_point_after_merge });
-      bus.emit(Events.SelectionChange, {
+      methods.emitSelectionChange({
         type: SlateOperationType.MergeNode,
         start: ui.$selection.start,
         end: ui.$selection.start,
@@ -312,18 +302,16 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       const original_text = node.text;
       const range = [point.offset - 1, point.offset] as [number, number];
       const deleted_text = original_text.substring(range[0], range[1]);
-      //   console.log("[]deleteBackward - before substring", original_text, deleted_text, node.text, range);
-      node.text = deleteTextAtOffset(original_text, deleted_text, range[0]);
-      methods.apply([
-        {
-          type: SlateOperationType.RemoveText,
-          text: deleted_text,
-          path: point.path,
-          offset: range[0],
-        },
-      ]);
+      const op: SlateOperation = {
+        type: SlateOperationType.RemoveText,
+        text: deleted_text,
+        path: point.path,
+        offset: range[0],
+      };
+      _children = SlateNodeOperations.removeText(_children, op);
+      methods.apply([op]);
       ui.$selection.methods.moveBackward();
-      bus.emit(Events.SelectionChange, {
+      methods.emitSelectionChange({
         type: SlateOperationType.RemoveText,
         start: ui.$selection.start,
         end: ui.$selection.start,
@@ -367,13 +355,17 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
             },
             {
               type: SlateOperationType.MergeNode,
-              point1: { path: start.path, offset: start.offset },
-              point2: { path: end.path, offset: end.offset },
+              path: start.path,
+              offset: start.offset,
+              start: start,
+              end: end,
+              // point1: { path: start.path, offset: start.offset },
+              // point2: { path: end.path, offset: end.offset },
             },
           ]);
           // console.log("[]slate/slate - deleteBackward - selection point", target_point_after_merge);
           ui.$selection.methods.setStartAndEnd({ start: start, end: start });
-          bus.emit(Events.SelectionChange, {
+          methods.emitSelectionChange({
             type: SlateOperationType.MergeNode,
             start: ui.$selection.start,
             end: ui.$selection.start,
@@ -385,13 +377,17 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         methods.apply([
           {
             type: SlateOperationType.MergeNode,
-            point1: { path: start.path, offset: start.offset },
-            point2: { path: end.path, offset: end.offset },
+            path: start.path,
+            offset: start.offset,
+            start,
+            end,
+            // point1: { path: start.path, offset: start.offset },
+            // point2: { path: end.path, offset: end.offset },
           },
         ]);
         // console.log("[]slate/slate - deleteBackward - selection point", target_point_after_merge);
         ui.$selection.methods.setStartAndEnd({ start: start, end: start });
-        bus.emit(Events.SelectionChange, {
+        methods.emitSelectionChange({
           type: SlateOperationType.MergeNode,
           start: ui.$selection.start,
           end: ui.$selection.start,
@@ -411,7 +407,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         },
       ]);
       ui.$selection.methods.collapseToHead();
-      bus.emit(Events.SelectionChange, {
+      methods.emitSelectionChange({
         start: ui.$selection.start,
         end: ui.$selection.start,
         type: SlateOperationType.RemoveText,
@@ -469,20 +465,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
     handleInput(event: InputEvent) {},
     handleBlur(event: BlurEvent) {},
     handleFocus(event: FocusEvent) {},
-    handleClick() {
-      // const node = methods.findNodeByPath(ui.$selection.start.path);
-      // if (!node) {
-      //   return;
-      // }
-      // if (node.type === SlateDescendantType.Text && node.text === "" && ui.$selection.start.offset !== 0) {
-      //   ui.$selection.methods.moveBackward();
-      //   bus.emit(Events.SelectionChange, {
-      //     type: SlateOperationType.RemoveText,
-      //     start: ui.$selection.start,
-      //     end: ui.$selection.start,
-      //   });
-      // }
-    },
+    handleClick() {},
     handleCompositionEnd(event: CompositionEndEvent) {
       const text = event.data as string;
       // 如果合成过程删除，会触发 end 事件
@@ -560,7 +543,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
   }
   type TheTypesOfEvents = {
     [Events.Action]: SlateOperation[];
-    [Events.SelectionChange]: { type: SlateOperationType; start: SlatePoint; end: SlatePoint };
+    [Events.SelectionChange]: { type?: SlateOperationType; start: SlatePoint; end: SlatePoint };
     [Events.StateChange]: typeof _state;
     [Events.Error]: BizError;
   };
@@ -622,6 +605,8 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
           if (node && node.type === SlateDescendantType.Text) {
             node.text = deleteTextAtOffset(node.text, op.text, op.offset);
           }
+        }
+        if (op.type === SlateOperationType.MergeNode) {
         }
       }
       bus.emit(Events.Action, operations);

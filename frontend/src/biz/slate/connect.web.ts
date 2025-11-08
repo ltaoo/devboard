@@ -1,5 +1,8 @@
+import { findInnerTextNode, findNodeByPath, getNodePath } from "./op.dom";
 import { SlatePoint } from "./point";
 import { SlateEditorModel } from "./slate";
+import { SlateDescendant, SlateDescendantType } from "./types";
+import { isElement, isText } from "./utils/node";
 
 export function connect(vm: SlateEditorModel, $input: Element) {
   document.addEventListener("selectionchange", (event) => {
@@ -59,8 +62,8 @@ export function connect(vm: SlateEditorModel, $input: Element) {
     });
   };
   vm.methods.setCaretPosition = function (arg: { start: SlatePoint; end: SlatePoint }) {
-    const $node_start = findNodeWithPath($input as Element, arg.start.path);
-    const $node_end = findNodeWithPath($input as Element, arg.start.path);
+    const $node_start = findNodeByPath($input as Element, arg.start.path);
+    const $node_end = findNodeByPath($input as Element, arg.start.path);
     if (!$node_start || !$node_end) {
       return;
     }
@@ -74,72 +77,4 @@ export function connect(vm: SlateEditorModel, $input: Element) {
     selection.removeAllRanges();
     selection.addRange(range);
   };
-}
-
-function findInnerTextNode($node?: any) {
-  // console.log('[]findInnerTextNode', $node?.tagName);
-  if (!$node) {
-    return null;
-  }
-  while ($node) {
-    if ($node.tagName === "SPAN") {
-      return $node;
-    }
-    $node = $node.childNodes[0] as Element;
-    if (!$node) {
-      return null;
-    }
-  }
-  return null;
-}
-
-export function getNodePath(targetNode: Element, rootNode: Element) {
-  const path = [];
-  let currentNode = targetNode;
-
-  // 从目标节点向上遍历直到根节点
-  while (currentNode && currentNode !== rootNode) {
-    const parent = currentNode.parentNode;
-    if (!parent) break;
-
-    // 获取当前节点在父节点中的索引
-    const children = Array.from(parent.children);
-    const index = children.indexOf(currentNode);
-
-    if (index !== -1) {
-      path.unshift(index); // 添加到路径开头
-    }
-    // @ts-ignore
-    currentNode = parent;
-  }
-
-  return path;
-}
-export function findNodeWithPath($elm: Element, path: number[]): Element | null {
-  if (path.length === 0) {
-    return $elm;
-  }
-  const $v = $elm.children[path[0]];
-  if (!$v) {
-    return null;
-  }
-  return findNodeWithPath($v, path.slice(1));
-}
-
-export function refreshSelection($editor: Element, start: SlatePoint, end: SlatePoint) {
-  //     const { start, end } = vm.ui.$selection.state;
-  const $node_start = findNodeWithPath($editor as Element, start.path);
-  const $node_end = findNodeWithPath($editor as Element, end.path);
-  if (!$node_start || !$node_end) {
-    return;
-  }
-  const selection = window.getSelection();
-  if (!selection) {
-    return;
-  }
-  const range = document.createRange();
-  range.setStart($node_start.childNodes[0], start.offset);
-  range.setEnd($node_end.childNodes[0], end.offset);
-  selection.removeAllRanges();
-  selection.addRange(range);
 }
