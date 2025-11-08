@@ -81,22 +81,46 @@ export function SlateHistoryModel() {
             });
             break;
           }
-        //   case SlateOperationType.SplitNode: {
-        //     result.push({
-        //       type: SlateOperationType.MergeNode,
-        //       path: op.path,
-        //       offset: op.offset,
-        //     });
-        //     break;
-        //   }
-        //   case SlateOperationType.MergeNode: {
-        //     result.push({
-        //       type: SlateOperationType.SplitNode,
-        //       path: op.path,
-        //       offset: op.offset,
-        //     });
-        //     break;
-        //   }
+          case SlateOperationType.InsertLines: {
+            result.push({
+              type: SlateOperationType.RemoveLines,
+              node: op.node,
+              path: op.path,
+            });
+            break;
+          }
+          case SlateOperationType.RemoveLines: {
+            result.push({
+              type: SlateOperationType.InsertLines,
+              node: op.node,
+              path: op.path,
+            });
+            break;
+          }
+          case SlateOperationType.SplitNode: {
+            result.push({
+              type: SlateOperationType.MergeNode,
+              path: op.path,
+              offset: op.offset,
+              start: {
+                path: op.start.path,
+                offset: op.start.offset,
+              },
+              end: {
+                path: op.end.path,
+                offset: op.end.offset,
+              },
+            });
+            break;
+          }
+          // case SlateOperationType.MergeNode: {
+          //   result.push({
+          //     type: SlateOperationType.SplitNode,
+          //     path: op.path,
+          //     offset: op.offset,
+          //   });
+          //   break;
+          // }
         }
       }
       _undo_list.pop();

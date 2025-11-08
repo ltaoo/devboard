@@ -51,13 +51,20 @@ export type SlateOperationRemoveLines = {
   // text: string;
 };
 export type SlateOperationMergeNode = {
-  point1: SlatePoint;
-  point2: SlatePoint;
+  /** 前一个节点的位置 */
+  path: number[];
+  offset: number;
+  /** 当前光标的位置，只用 end */
+  start: SlatePoint;
+  end: SlatePoint;
 };
 export type SlateOperationSplitNode = {
   path: number[];
   offset: number;
-  node: SlateDescendant;
+  /** 分割完成后的光标位置 */
+  start: SlatePoint;
+  /** 分割完成后的光标位置 */
+  end: SlatePoint;
 };
 /** 设置选区/光标位置 */
 export type SlateOperationSetSelection = {

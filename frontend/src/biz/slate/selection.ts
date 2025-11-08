@@ -38,12 +38,18 @@ export function SlateSelectionModel() {
       _end = { ..._start };
       methods.refresh();
     },
-    moveToNextLineHead() {
-      _start = {
+    calcNextLineHead() {
+      const start = {
         path: [_start.path[0] + 1, 0],
         offset: 0,
       };
-      _end = { ..._start };
+      const end = { ...start };
+      return { start, end };
+    },
+    moveToNextLineHead() {
+      const r = methods.calcNextLineHead();
+      _start = r.start;
+      _end = r.end;
       //       console.log("[]moveToNextLineHead - ", _start);
       methods.refresh();
     },
