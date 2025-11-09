@@ -82,5 +82,11 @@ SlatePathModel.isAncestor = function (path: number[], another: number[]): boolea
 SlatePathModel.parent = function (path: number[]) {
   return path.slice(0, -1);
 };
+SlatePathModel.isSameParent = function (path: number[], another: number[]) {
+  const i = path.length - 1;
+  const as = path.slice(0, i);
+  const bs = another.slice(0, i);
+  return SlatePathModel.equals(as, bs);
+};
 
 type SlatePathModel = ReturnType<typeof SlatePathModel>;

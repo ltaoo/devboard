@@ -312,18 +312,18 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     async onReachBottom() {
       // console.log("[PAGE]home/index - onReachBottom");
-      await request.paste.list.loadMore();
-      $view.finishLoadingMore();
+      // await request.paste.list.loadMore();
+      // $view.finishLoadingMore();
     },
     onScroll(pos) {
-      ui.$back_to_top.methods.handleScroll({ top: pos.scrollTop });
-      if (pos.scrollTop < 20) {
-        _added_records = [];
-        methods.refresh();
-      }
-      ui.$waterfall.methods.handleScroll({
-        scrollTop: pos.scrollTop,
-      });
+      // ui.$back_to_top.methods.handleScroll({ top: pos.scrollTop });
+      // if (pos.scrollTop < 20) {
+      //   _added_records = [];
+      //   methods.refresh();
+      // }
+      // ui.$waterfall.methods.handleScroll({
+      //   scrollTop: pos.scrollTop,
+      // });
     },
   });
   const ui = {

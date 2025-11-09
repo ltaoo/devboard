@@ -46,8 +46,10 @@ export const SlateDOMOperations = {
       return;
     }
     const text = getNodeText($node);
+    console.log("[op.dom]splitNode - 1. original text", text);
     const text1 = text.slice(0, op.offset);
     const text2 = text.slice(op.offset);
+    console.log("[op.dom]splitNode - 2. split", text1, text2);
     $node.innerHTML = formatText(text1);
     renderNodeThenInsertLine($input, {
       node: { type: SlateDescendantType.Paragraph, children: [{ type: SlateDescendantType.Text, text: text2 }] },
@@ -60,17 +62,20 @@ export const SlateDOMOperations = {
     }
     const $prev = findNodeByPath($input as Element, op.path) as Element | null;
     const $cur = findNodeByPath($input as Element, op.end.path) as Element | null;
-    console.log("[]vm.onAction - SlateOperationType.MergeNode", $prev, $cur, op.path, op.end.path);
+    console.log("[op.dom]mergeNode 0. find nodes", $prev, $cur);
+    // 输入中文，在合成过程，当前行的内容和下一行就已经被浏览器合并了，而且还是 <span>text1</span>text2 这样
+    console.log("[op.dom]mergeNode 0. find nodes", $prev, $cur);
     if (!$prev || !$cur) {
       return;
     }
     const text1 = getNodeText($prev);
     const text2 = getNodeText($cur);
+    console.log("[op.dom]mergeNode 1. text1 and text2", text1, text2);
     const text = text1 + text2;
     $prev.innerHTML = formatText(text);
-    const $line2 = findNodeByPath($input as Element, [op.end.path[0]]) as Element | null;
-    if ($line2) {
-      $line2.parentNode?.removeChild($line2);
+    const $node2 = findNodeByPath($input as Element, [op.end.path[0]]) as Element | null;
+    if ($node2) {
+      $node2.parentNode?.removeChild($node2);
     }
   },
   insertLines($input: Element, op: SlateOperation) {
@@ -83,15 +88,19 @@ export const SlateDOMOperations = {
     if (op.type !== SlateOperationType.RemoveLines) {
       return;
     }
-    const $target = findNodeByPath($input as Element, op.path);
+    //     console.log("[op.dom]removeLines - ", op.path, op.node);
+    const $target = findNodeByPath($input as Element, [op.path[0]]);
     if (!$target) {
       return;
     }
-    let count = 0;
-    while (count < op.node.length && $target.nextSibling) {
-      const sibling = $target.nextSibling;
-      sibling.remove();
-      count++;
+    if (!$target.parentNode) {
+      return;
+    }
+    let idx = op.path[0];
+    for (let i = 0; i < op.node.length; i += 1) {
+      //       console.log("[op.dom]removeLines - ", i, $target.parentNode.childNodes[i]);
+      $target.parentNode.childNodes[idx].remove();
+      idx += 1;
     }
   },
 };
@@ -259,11 +268,11 @@ export function findNodeByPath($elm: Element, path: number[]): Element | null {
   if (path.length === 0) {
     return $elm;
   }
-  const $v = $elm.children[path[0]];
+  const $v = $elm.childNodes[path[0]];
   if (!$v) {
     return null;
   }
-  return findNodeByPath($v, path.slice(1));
+  return findNodeByPath($v as Element, path.slice(1));
 }
 
 export function refreshSelection($editor: Element, start: SlatePoint, end: SlatePoint) {

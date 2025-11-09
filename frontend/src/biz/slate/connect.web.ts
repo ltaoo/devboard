@@ -32,7 +32,7 @@ export function connect(vm: SlateEditorModel, $input: Element) {
     if (!$start || !$end) {
       return;
     }
-    console.log("[]getCaretPosition - ", $start);
+    // console.log("[]getCaretPosition - ", $start);
     if (!$start || !$end) {
       return;
     }
