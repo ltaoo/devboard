@@ -142,7 +142,8 @@ func (a *BizApp) AppendWindow(url string, win *application.WebviewWindow) {
 }
 
 func (a *BizApp) ToggleMainWindowVisible() {
-	if a.MainWindow.IsVisible() {
+	fmt.Println("[]ToggleMainWindowVisible", a.MainWindow.IsVisible())
+	if a.MainWindow.IsFocused() {
 		a.MainWindow.Hide()
 		fmt.Println("after main window hide, check there's the prev app")
 		if a.prev_app != nil {

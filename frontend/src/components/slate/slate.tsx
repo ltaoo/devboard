@@ -34,7 +34,13 @@ function SlateEditable(props: { store: SlateEditorModel }) {
 
   const $btn = new ButtonCore({
     onClick() {
-      //       vm.methods.setCaretPosition();
+      vm.ui.$selection.methods.setStartAndEnd({ start: { path: [0], offset: 0 }, end: { path: [0], offset: 0 } });
+      vm.methods.emitSelectionChange({});
+    },
+  });
+  const $btn_refresh = new ButtonCore({
+    onClick() {
+      vm.methods.refresh();
     },
   });
 
@@ -94,7 +100,8 @@ function SlateEditable(props: { store: SlateEditorModel }) {
       <div
         ref={$input}
         class="overflow-y-auto p-1 border border-2 border-w-fg-3 rounded-md outline-none"
-        style={{ "white-space": "pre-wrap" }}
+        style={{ "white-space": "pre-wrap", "ime-mode": "disabled" }}
+        // style=“ime-mode:disabled”
         contenteditable
         onBeforeInput={vm.methods.handleBeforeInput}
         onClick={vm.methods.handleClick}
@@ -119,8 +126,9 @@ function SlateEditable(props: { store: SlateEditorModel }) {
         onCompositionUpdate={vm.methods.handleCompositionUpdate}
         onCompositionEnd={vm.methods.handleCompositionEnd}
       ></div>
-      <div>
+      <div class="flex gap-2">
         <Button store={$btn}>测试</Button>
+        <Button store={$btn_refresh}>刷新</Button>
       </div>
       <div class="flex gap-4">
         <div class="flex-1">

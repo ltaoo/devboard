@@ -19,7 +19,8 @@ import { SlateHistoryModel } from "./history";
 import { isObject } from "./utils/is-object";
 import { deleteTextAtOffset, deleteTextInRange, insertTextAtOffset } from "./utils/text";
 import { depthFirstSearch } from "./utils/node";
-import { SlateNodeOperations } from "./op.node";
+import { SlateNodeOperations, findNodeByPath } from "./op.node";
+import { SlatePathModel } from "./path";
 
 type BeforeInputEvent = {
   preventDefault(): void;
@@ -29,9 +30,14 @@ type BlurEvent = {};
 type FocusEvent = {};
 type CompositionEndEvent = {
   data: unknown;
+  preventDefault(): void;
 };
-type CompositionUpdateEvent = {};
-type CompositionStartEvent = {};
+type CompositionUpdateEvent = {
+  preventDefault(): void;
+};
+type CompositionStartEvent = {
+  preventDefault(): void;
+};
 type KeyDownEvent = {
   code: string;
   preventDefault(): void;
@@ -51,8 +57,12 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    emitSelectionChange(v: { type?: SlateOperationType; start: SlatePoint; end: SlatePoint }) {
-      bus.emit(Events.SelectionChange, v);
+    emitSelectionChange(v: { type?: SlateOperationType }) {
+      bus.emit(Events.SelectionChange, {
+        type: v.type,
+        start: ui.$selection.start,
+        end: ui.$selection.end,
+      });
     },
     apply(operations: SlateOperation[]) {
       ui.$history.methods.push(operations, { start: ui.$selection.start, end: ui.$selection.end });
@@ -123,10 +133,53 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         ui.$selection.methods.moveForward({ step: text.length });
         methods.emitSelectionChange({
           type: SlateOperationType.InsertText,
-          start: ui.$selection.start,
-          end: ui.$selection.start,
         });
         return;
+      }
+      if (!SlatePathModel.isSameParent(start.path, end.path)) {
+        // 跨行输入，先删除 start end 两行的选中部分，然后删除 start end 中间可能存在的行，然后合并 start end 行，最后插入输入的文本
+        const node2 = findNodeByPath(_children, end.path);
+        if (node2 && node2.type === SlateDescendantType.Text) {
+          const ops: SlateOperation[] = [];
+          const { op_start_delete_text, op_end_delete_text } = methods.removeContentCrossLines(
+            node1,
+            node2,
+            start,
+            end
+          );
+          _children = SlateNodeOperations.removeText(_children, op_start_delete_text);
+          _children = SlateNodeOperations.removeText(_children, op_end_delete_text);
+          ops.push(op_start_delete_text);
+          ops.push(op_end_delete_text);
+          const remove_line_maybe = methods.removeLinesCrossLines(start, end);
+          if (remove_line_maybe) {
+            _children = SlateNodeOperations.mergeNode(_children, remove_line_maybe.op_remove_lines);
+            ops.push(remove_line_maybe.op_remove_lines);
+          }
+          const op_merge_node: SlateOperation = {
+            type: SlateOperationType.MergeNode,
+            path: start.path,
+            offset: start.offset,
+            start: start,
+            end: remove_line_maybe ? remove_line_maybe.end : end,
+          };
+          _children = SlateNodeOperations.mergeNode(_children, op_merge_node);
+          ops.push(op_merge_node);
+          const op_insert_text: SlateOperation = {
+            type: SlateOperationType.InsertText,
+            text: inserted_text,
+            path: start.path,
+            offset: start.offset,
+          };
+          _children = SlateNodeOperations.removeText(_children, op_insert_text);
+          ops.push(op_insert_text);
+          methods.apply(ops);
+          ui.$selection.methods.collapseToOffset({ offset: start.offset + inserted_text.length });
+          methods.emitSelectionChange({
+            type: SlateOperationType.Unknown,
+          });
+          return;
+        }
       }
       const range = [start.offset, end.offset] as [number, number];
       // ui.$selection.methods.moveForward({ step: text.length, collapse: true });
@@ -152,8 +205,6 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       ui.$selection.methods.collapseToOffset({ offset: start.offset + inserted_text.length });
       methods.emitSelectionChange({
         type: SlateOperationType.InsertText,
-        start: ui.$selection.start,
-        end: ui.$selection.start,
       });
       // fmt.Println("[]insertText - before InsertText", inserted_text);
     },
@@ -177,32 +228,46 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       ui.$selection.methods.moveToNextLineHead();
       methods.emitSelectionChange({
         type: SlateOperationType.InsertLines,
-        start: ui.$selection.start,
-        end: ui.$selection.start,
       });
     },
     /** 后面新增行 */
     insertLineAfter() {
-      const { start } = ui.$selection;
-      const line_idx = start.path[0];
+      const { start, end } = ui.$selection;
       const created_node = {
         type: SlateDescendantType.Paragraph,
         children: [{ type: SlateDescendantType.Text, text: "" }],
       } as SlateDescendant;
-      _children = [..._children.slice(0, line_idx + 1), created_node, ..._children.slice(line_idx + 1)];
-      console.log("[]slate/slate - insertLineAfter _children", _children);
-      methods.apply([
-        {
-          type: SlateOperationType.InsertLines,
-          node: [created_node],
-          path: [line_idx],
-        },
-      ]);
+      // _children = [..._children.slice(0, line_idx + 1), created_node, ..._children.slice(line_idx + 1)];
+      const is_same_point = SlatePointModel.isSamePoint(start, end);
+      console.log("[]slate/slate - insertLineAfter", is_same_point, start, end);
+      const ops: SlateOperation[] = [];
+      if (!is_same_point) {
+        // 选中部分选取，然后回车
+        // @todo 还要考虑跨行的场景
+        const node = findNodeByPath(_children, start.path);
+        if (node && node.type === SlateDescendantType.Text) {
+          const deleted_text = node.text.substring(start.offset, end.offset);
+          const op: SlateOperation = {
+            type: SlateOperationType.RemoveText,
+            text: deleted_text,
+            path: start.path,
+            offset: start.offset,
+          };
+          _children = SlateNodeOperations.insertLines(_children, op);
+          ops.push(op);
+        }
+      }
+      const op: SlateOperation = {
+        type: SlateOperationType.InsertLines,
+        node: [created_node],
+        path: start.path,
+      };
+      _children = SlateNodeOperations.insertLines(_children, op);
+      ops.push(op);
+      methods.apply(ops);
       ui.$selection.methods.moveToNextLineHead();
       methods.emitSelectionChange({
         type: SlateOperationType.InsertLines,
-        start: ui.$selection.start,
-        end: ui.$selection.start,
       });
     },
     /** 拆分当前行 */
@@ -218,6 +283,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
           start: next_selection.start,
           end: next_selection.end,
         };
+        console.log("[]Before SplitNode op", op.path, op.offset, op.start, op.end);
         _children = SlateNodeOperations.splitNode(_children, op);
         console.log("[]slate/slate - splitLine", _children);
         methods.apply([op]);
@@ -226,8 +292,6 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         ui.$selection.methods.setStartAndEnd(next_selection);
         methods.emitSelectionChange({
           type: SlateOperationType.SplitNode,
-          start: ui.$selection.start,
-          end: ui.$selection.start,
         });
         return;
       }
@@ -237,35 +301,64 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       if (!node1 || node1.type !== SlateDescendantType.Text || !node2 || node2.type !== SlateDescendantType.Text) {
         return;
       }
-      const original_text = node1.text;
-      const text1 = original_text.slice(0, start.offset);
-      const text2 = original_text.slice(end.offset);
-      node1.text = text1;
-      const created_node = {
-        type: SlateDescendantType.Paragraph,
-        children: [
-          {
-            type: SlateDescendantType.Text,
-            text: text2,
-          },
-        ],
-      } as SlateDescendant;
-      _children = [..._children.slice(0, start.path[0] + 1), created_node, ..._children.slice(start.path[0] + 1)];
-      methods.apply([
-        {
+      if (SlatePathModel.isSameParent(start.path, end.path)) {
+        const original_text1 = node1.text;
+        const deleted_text1 = original_text1.substring(start.offset, end.offset);
+        // const text1 = original_text.slice(0, start.offset);
+        // const text2 = original_text.slice(end.offset);
+        // node1.text = text1;
+        const ops: SlateOperation[] = [];
+        const op: SlateOperation = {
+          type: SlateOperationType.RemoveText,
+          text: deleted_text1,
+          path: start.path,
+          offset: start.offset,
+        };
+        ops.push(op);
+        _children = SlateNodeOperations.removeText(_children, op);
+        const next_selection = ui.$selection.methods.calcNextLineHead();
+        const op2: SlateOperation = {
           type: SlateOperationType.SplitNode,
           path: start.path,
           offset: start.offset,
-          start,
-          end,
-          // node: created_node,
-        },
-      ]);
-      ui.$selection.methods.moveToNextLineHead();
+          start: next_selection.start,
+          end: next_selection.end,
+        };
+        _children = SlateNodeOperations.splitNode(_children, op2);
+        ops.push(op2);
+        methods.apply(ops);
+        ui.$selection.methods.setStartAndEnd(next_selection);
+        methods.emitSelectionChange({
+          type: SlateOperationType.SplitNode,
+        });
+        return;
+      }
+      // 跨节点回车删除内容并拆分行
+      const ops: SlateOperation[] = [];
+      const { op_start_delete_text, op_end_delete_text } = methods.removeContentCrossLines(node1, node2, start, end);
+      _children = SlateNodeOperations.removeText(_children, op_start_delete_text);
+      _children = SlateNodeOperations.removeText(_children, op_end_delete_text);
+      ops.push(op_start_delete_text);
+      ops.push(op_end_delete_text);
+      const remove_line_maybe = methods.removeLinesCrossLines(start, end);
+      if (remove_line_maybe) {
+        _children = SlateNodeOperations.mergeNode(_children, remove_line_maybe.op_remove_lines);
+        ops.push(remove_line_maybe.op_remove_lines);
+      }
+      const next_selection = ui.$selection.methods.calcNextLineHead();
+      const op_split_node: SlateOperation = {
+        type: SlateOperationType.SplitNode,
+        path: start.path,
+        offset: start.offset,
+        start: next_selection.start,
+        end: remove_line_maybe ? remove_line_maybe.end : next_selection.end,
+      };
+      _children = SlateNodeOperations.splitNode(_children, op_split_node);
+      ops.push(op_split_node);
+      methods.apply(ops);
+      ui.$selection.methods.setStartAndEnd(next_selection);
       methods.emitSelectionChange({
         type: SlateOperationType.SplitNode,
-        start: ui.$selection.start,
-        end: ui.$selection.start,
       });
     },
     mergeLines(start: SlatePoint) {
@@ -273,13 +366,13 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       const prev_line_last_node = SlateSelectionModel.getLineLastNode(_children, start.path[0] - 1);
       const cur_line_last_node = SlateSelectionModel.getLineFirstNode(_children, start.path[0]);
       const target_point_after_merge = SlateSelectionModel.getLineLastPoint(_children, start.path[0] - 1);
-      if (
-        prev_line_last_node.node.type === SlateDescendantType.Text &&
-        cur_line_last_node.node.type === SlateDescendantType.Text
-      ) {
-        prev_line_last_node.node.text = prev_line_last_node.node.text + cur_line_last_node.node.text;
-        _children = SlateSelectionModel.removeLine(_children, start.path[0]);
-      }
+      // if (
+      //   prev_line_last_node.node.type === SlateDescendantType.Text &&
+      //   cur_line_last_node.node.type === SlateDescendantType.Text
+      // ) {
+      //   prev_line_last_node.node.text = prev_line_last_node.node.text + cur_line_last_node.node.text;
+      //   _children = SlateSelectionModel.removeLine(_children, start.path[0]);
+      // }
       const op: SlateOperation = {
         type: SlateOperationType.MergeNode,
         path: prev_line_last_node.path,
@@ -287,14 +380,13 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         start: cur_line_last_node,
         end: cur_line_last_node,
       };
+      _children = SlateNodeOperations.mergeNode(_children, op);
       console.log("[]slate/slate - deleteBackward - merge node", _children[start.path[0] - 1]);
       methods.apply([op]);
       console.log("[]slate/slate - deleteBackward - selection point", target_point_after_merge);
       ui.$selection.methods.setStartAndEnd({ start: target_point_after_merge, end: target_point_after_merge });
       methods.emitSelectionChange({
         type: SlateOperationType.MergeNode,
-        start: ui.$selection.start,
-        end: ui.$selection.start,
       });
     },
     /** 删除指定位置的文本 */
@@ -313,12 +405,65 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       ui.$selection.methods.moveBackward();
       methods.emitSelectionChange({
         type: SlateOperationType.RemoveText,
-        start: ui.$selection.start,
-        end: ui.$selection.start,
       });
     },
-    /** 删除选中的文本 */
-    removeSelectedTexts(node: SlateText, arr: { start: SlatePoint; end: SlatePoint }) {
+    removeContentCrossLines(node1: SlateText, node2: SlateText, start: SlatePoint, end: SlatePoint) {
+      const deleted_text1 = node1.text.slice(start.offset);
+      // const remaining_text1 = node1.text.slice(0, start.offset);
+      const deleted_text2 = node2.text.slice(0, end.offset);
+      // const remaining_text2 = node2.text.slice(end.offset);
+      // node1.text = remaining_text1 + remaining_text2;
+      // _children = SlateSelectionModel.removeLinesBetweenStartAndEnd(_children, start, end);
+      //   console.log("[]slate/slate - removeSelectedText - cross lines", _children);
+      console.log("[]slate/slate - removeSelectedText - line1 delete text", deleted_text1, start.offset);
+      console.log("[]slate/slate - removeSelectedText - line2 delete text", deleted_text2, 0);
+      // const ops: SlateOperation[] = [];
+      const op_start_delete_text: SlateOperation = {
+        type: SlateOperationType.RemoveText,
+        text: deleted_text1,
+        path: start.path,
+        offset: start.offset,
+      };
+      // _children = SlateNodeOperations.removeText(_children, op_start_delete_text);
+      // ops.push(op_start_delete_text);
+      const op_end_delete_text: SlateOperation = {
+        type: SlateOperationType.RemoveText,
+        text: deleted_text2,
+        path: end.path,
+        offset: 0,
+      };
+      // _children = SlateNodeOperations.removeText(_children, op_end_delete_text);
+      // ops.push(op_end_delete_text);
+      return {
+        op_start_delete_text,
+        op_end_delete_text,
+      };
+    },
+    /** 跨行操作，删除、回车、输入 时，要不要删除中间的行，删除后 end 坐标应该在哪 */
+    removeLinesCrossLines(start: SlatePoint, end: SlatePoint) {
+      let _end = end;
+      console.log("[]slate/slate - removeSelectedText - need remove lines", end.path, start.path);
+      if (end.path[0] - start.path[0] > 1) {
+        const op3: SlateOperation = {
+          type: SlateOperationType.RemoveLines,
+          node: _children.slice(start.path[0] + 1, end.path[0]),
+          path: [start.path[0] + 1, 0],
+        };
+        _end = {
+          path: [end.path[0] - op3.node.length, 0],
+          offset: end.offset,
+        };
+        // _children = SlateNodeOperations.removeLines(_children, op3);
+        // ops.push(op3);
+        return {
+          end: _end,
+          op_remove_lines: op3,
+        };
+      }
+      return null;
+    },
+    /** 选中的文本后删除，可能是跨节点 */
+    removeSelectedTextsCrossNodes(node: SlateText, arr: { start: SlatePoint; end: SlatePoint }) {
       const { start, end } = arr;
       const node1 = methods.findNodeByPath(start.path);
       const node2 = methods.findNodeByPath(end.path);
@@ -326,49 +471,62 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       if (node1 && node2 && node1 !== node2) {
         // 跨节点删除
         if (node1.type === SlateDescendantType.Text && node2.type === SlateDescendantType.Text) {
-          const deleted_text1 = node1.text.slice(start.offset);
-          const remaining_text1 = node1.text.slice(0, start.offset);
-          const deleted_text2 = node2.text.slice(0, end.offset);
-          const remaining_text2 = node2.text.slice(end.offset);
-          node1.text = remaining_text1 + remaining_text2;
-          _children = SlateSelectionModel.removeLinesBetweenStartAndEnd(_children, start, end);
-          //   console.log("[]slate/slate - removeSelectedText - cross lines", _children);
-          console.log("[]slate/slate - removeSelectedText - line1 delete text", deleted_text1, start.offset);
-          console.log("[]slate/slate - removeSelectedText - line2 delete text", deleted_text2, 0);
-          methods.apply([
-            {
-              type: SlateOperationType.RemoveText,
-              text: deleted_text1,
-              path: start.path,
-              offset: start.offset,
-            },
-            {
-              type: SlateOperationType.RemoveText,
-              text: deleted_text2,
-              path: end.path,
-              offset: 0,
-            },
-            {
+          if (
+            SlateSelectionModel.isCaretAtLineHead(_children, start) &&
+            SlateSelectionModel.isCaretAtLineEnd(_children, end)
+          ) {
+            // 全选删除
+            methods.apply([
+              {
+                type: SlateOperationType.RemoveLines,
+                path: start.path,
+                node: [..._children],
+              },
+              {
+                type: SlateOperationType.InsertLines,
+                path: start.path,
+                node: [
+                  { type: SlateDescendantType.Paragraph, children: [{ type: SlateDescendantType.Text, text: "" }] },
+                ],
+              },
+            ]);
+            ui.$selection.methods.setToHead();
+            methods.emitSelectionChange({
               type: SlateOperationType.RemoveLines,
-              node: _children.slice(start.path[0] + 1, end.path[0] + 1),
-              path: end.path,
-            },
-            {
-              type: SlateOperationType.MergeNode,
-              path: start.path,
-              offset: start.offset,
-              start: start,
-              end: end,
-              // point1: { path: start.path, offset: start.offset },
-              // point2: { path: end.path, offset: end.offset },
-            },
-          ]);
+            });
+            return;
+          }
+          // 跨节点删除
+          const ops: SlateOperation[] = [];
+          const { op_start_delete_text, op_end_delete_text } = methods.removeContentCrossLines(
+            node1,
+            node2,
+            start,
+            end
+          );
+          _children = SlateNodeOperations.removeText(_children, op_start_delete_text);
+          _children = SlateNodeOperations.removeText(_children, op_end_delete_text);
+          ops.push(op_start_delete_text);
+          ops.push(op_end_delete_text);
+          const remove_line_maybe = methods.removeLinesCrossLines(start, end);
+          if (remove_line_maybe) {
+            _children = SlateNodeOperations.mergeNode(_children, remove_line_maybe.op_remove_lines);
+            ops.push(remove_line_maybe.op_remove_lines);
+          }
+          const op_merge_node: SlateOperation = {
+            type: SlateOperationType.MergeNode,
+            path: start.path,
+            offset: start.offset,
+            start: start,
+            end: remove_line_maybe ? remove_line_maybe.end : end,
+          };
+          _children = SlateNodeOperations.mergeNode(_children, op_merge_node);
+          ops.push(op_merge_node);
+          methods.apply(ops);
           // console.log("[]slate/slate - deleteBackward - selection point", target_point_after_merge);
           ui.$selection.methods.setStartAndEnd({ start: start, end: start });
           methods.emitSelectionChange({
             type: SlateOperationType.MergeNode,
-            start: ui.$selection.start,
-            end: ui.$selection.start,
           });
           return;
         }
@@ -389,8 +547,6 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         ui.$selection.methods.setStartAndEnd({ start: start, end: start });
         methods.emitSelectionChange({
           type: SlateOperationType.MergeNode,
-          start: ui.$selection.start,
-          end: ui.$selection.start,
         });
         return;
       }
@@ -408,8 +564,6 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       ]);
       ui.$selection.methods.collapseToHead();
       methods.emitSelectionChange({
-        start: ui.$selection.start,
-        end: ui.$selection.start,
         type: SlateOperationType.RemoveText,
       });
     },
@@ -436,7 +590,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         methods.removeText(node, start);
         return;
       }
-      methods.removeSelectedTexts(node, { start, end });
+      methods.removeSelectedTextsCrossNodes(node, { start, end });
     },
     mapNodeWithKey(key?: string) {
       if (!key) {
@@ -462,11 +616,14 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       console.log("[DOMAIN]slate/slate - handleBeforeInput", text);
       methods.insertText(text);
     },
-    handleInput(event: InputEvent) {},
+    handleInput(event: InputEvent) {
+      event.preventDefault();
+    },
     handleBlur(event: BlurEvent) {},
     handleFocus(event: FocusEvent) {},
     handleClick() {},
     handleCompositionEnd(event: CompositionEndEvent) {
+      event.preventDefault();
       const text = event.data as string;
       // 如果合成过程删除，会触发 end 事件
       _is_composing = false;
@@ -478,12 +635,14 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       methods.insertText(text);
     },
     handleCompositionUpdate(event: CompositionUpdateEvent) {
+      event.preventDefault();
       if (_is_composing) {
         return;
       }
       _is_composing = true;
     },
     handleCompositionStart(event: CompositionStartEvent) {
+      event.preventDefault();
       _is_composing = true;
       _start_before_composing = { ...ui.$selection.start };
       _end_before_composing = { ...ui.$selection.end };
@@ -494,10 +653,12 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       );
     },
     handleKeyDown(event: KeyDownEvent) {
-      ui.$shortcut.methods.handleKeydown(event);
+      event.preventDefault();
+      // ui.$shortcut.methods.handleKeydown(event);
     },
     handleKeyUp(event: KeyDownEvent) {
-      ui.$shortcut.methods.handleKeyup(event);
+      event.preventDefault();
+      // ui.$shortcut.methods.handleKeyup(event);
     },
     handleSelectionChange() {
       //       console.log("handleSelectionChange", ui.$selection.dirty);
@@ -591,23 +752,36 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
     "MetaLeft+KeyZ"() {
       console.log("[]MetaLeft+KeyZ");
       const { operations, selection } = ui.$history.methods.undo();
-      // console.log(operations, selection);
       for (let i = 0; i < operations.length; i += 1) {
-        const op = operations[i];
-        if (op.type === SlateOperationType.InsertText) {
-          const node = methods.findNodeByPath(op.path);
-          if (node && node.type === SlateDescendantType.Text) {
-            node.text = insertTextAtOffset(node.text, op.text, op.offset);
+        (() => {
+          const op = operations[i];
+          console.log("[]Undo op", i, op.type);
+          if (op.type === SlateOperationType.InsertText) {
+            _children = SlateNodeOperations.insertText(_children, op);
+            return;
           }
-        }
-        if (op.type === SlateOperationType.RemoveText) {
-          const node = methods.findNodeByPath(op.path);
-          if (node && node.type === SlateDescendantType.Text) {
-            node.text = deleteTextAtOffset(node.text, op.text, op.offset);
+          if (op.type === SlateOperationType.RemoveText) {
+            _children = SlateNodeOperations.removeText(_children, op);
+            return;
           }
-        }
-        if (op.type === SlateOperationType.MergeNode) {
-        }
+          if (op.type === SlateOperationType.MergeNode) {
+            _children = SlateNodeOperations.mergeNode(_children, op);
+            return;
+          }
+          if (op.type === SlateOperationType.SplitNode) {
+            console.log("[]Undo op", op.path, op.offset, op.start, op.end);
+            _children = SlateNodeOperations.splitNode(_children, op);
+            return;
+          }
+          if (op.type === SlateOperationType.InsertLines) {
+            _children = SlateNodeOperations.insertLines(_children, op);
+            return;
+          }
+          if (op.type === SlateOperationType.RemoveLines) {
+            _children = SlateNodeOperations.removeLines(_children, op);
+            return;
+          }
+        })();
       }
       bus.emit(Events.Action, operations);
       if (selection) {

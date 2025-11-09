@@ -85,7 +85,7 @@ export function SlateHistoryModel() {
             result.push({
               type: SlateOperationType.RemoveLines,
               node: op.node,
-              path: op.path,
+              path: [op.path[0] + 1],
             });
             break;
           }
@@ -93,7 +93,8 @@ export function SlateHistoryModel() {
             result.push({
               type: SlateOperationType.InsertLines,
               node: op.node,
-              path: op.path,
+              // 比如原先是删除了第二行 [1, 0]，反过来，就需要在第一行后面插入新行
+              path: [op.path[0] - 1],
             });
             break;
           }
@@ -113,14 +114,22 @@ export function SlateHistoryModel() {
             });
             break;
           }
-          // case SlateOperationType.MergeNode: {
-          //   result.push({
-          //     type: SlateOperationType.SplitNode,
-          //     path: op.path,
-          //     offset: op.offset,
-          //   });
-          //   break;
-          // }
+          case SlateOperationType.MergeNode: {
+            result.push({
+              type: SlateOperationType.SplitNode,
+              path: op.path,
+              offset: op.offset,
+              start: {
+                path: op.start.path,
+                offset: op.start.offset,
+              },
+              end: {
+                path: op.end.path,
+                offset: op.end.offset,
+              },
+            });
+            break;
+          }
         }
       }
       _undo_list.pop();

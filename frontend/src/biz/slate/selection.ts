@@ -7,6 +7,7 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { SlatePoint, SlatePointModel } from "./point";
 import { SlateDescendant, SlateDescendantType } from "./types";
+import { findNodeByPath } from "./op.node";
 
 export function SlateSelectionModel() {
   const methods = {
@@ -67,6 +68,11 @@ export function SlateSelectionModel() {
       _start.offset = param.offset;
       _end = { ..._start };
       methods.setStartAndEnd({ start: _start, end: _end });
+    },
+    setToHead() {
+      _start = { path: [0], offset: 0 };
+      _end = { path: [0], offset: 0 };
+      methods.refresh();
     },
     setStartAndEnd(param: { start: SlatePoint; end: SlatePoint }) {
       _start = { ...param.start };
@@ -219,20 +225,24 @@ SlateSelectionModel.getLineFirstNode = function (nodes: SlateDescendant[], line_
   };
 };
 SlateSelectionModel.isCaretAtLineEnd = function (nodes: SlateDescendant[], start: SlatePoint) {
-  let i = 0;
-  let n = nodes[start.path[i]];
-  while (i < start.path.length - 1) {
-    i += 1;
-    const idx = start.path[i];
-    if (n.type === SlateDescendantType.Paragraph) {
-      if (idx !== n.children.length - 1) {
-        return false;
-      }
-      n = n.children[idx];
-    }
+  const n = findNodeByPath(nodes, start.path);
+  if (!n) {
+    return false;
   }
   if (n.type === SlateDescendantType.Text) {
     if (start.offset === n.text.length) {
+      return true;
+    }
+  }
+  return false;
+};
+SlateSelectionModel.isCaretAtLineHead = function (nodes: SlateDescendant[], start: SlatePoint) {
+  const n = findNodeByPath(nodes, start.path);
+  if (!n) {
+    return false;
+  }
+  if (n.type === SlateDescendantType.Text) {
+    if (start.offset === 0) {
       return true;
     }
   }
