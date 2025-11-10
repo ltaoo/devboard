@@ -1,3 +1,4 @@
+import { update_arr_item } from "@/utils";
 import { SlatePoint } from "./point";
 import { SlateSelectionModel } from "./selection";
 import { SlateDescendant, SlateDescendantType, SlateOperation, SlateOperationType } from "./types";
@@ -11,6 +12,16 @@ export const SlateNodeOperations = {
     const node = findNodeByPath(nodes, op.path);
     if (node && node.type === SlateDescendantType.Text) {
       node.text = insertTextAtOffset(node.text, op.text, op.offset);
+    }
+    return nodes;
+  },
+  replaceText(nodes: SlateDescendant[], op: SlateOperation) {
+    if (op.type !== SlateOperationType.ReplaceText) {
+      return nodes;
+    }
+    const node = findNodeByPath(nodes, op.path);
+    if (node && node.type === SlateDescendantType.Text) {
+      node.text = insertTextAtOffset(op.original_text, op.text, op.offset);
     }
     return nodes;
   },
@@ -71,6 +82,10 @@ export const SlateNodeOperations = {
       cur_line_last_node.type === SlateDescendantType.Text
     ) {
       prev_line_last_node.text = prev_line_last_node.text + cur_line_last_node.text;
+      // nodes = update_arr_item(nodes, op.path[0], {
+      //   ...prev_line_last_node,
+      //   text: prev_line_last_node.text + cur_line_last_node.text,
+      // });
       nodes = SlateSelectionModel.removeLine(nodes, op.end.path[0]);
     }
     return nodes;
@@ -86,6 +101,11 @@ export const SlateNodeOperations = {
       return nodes;
     }
     return [...nodes.slice(0, op.path[0]), ...nodes.slice(op.path[0] + op.node.length)];
+  },
+  exec(nodes: SlateDescendant[], op: SlateOperation) {
+    if (op.type === SlateOperationType.InsertText) {
+      SlateNodeOperations.insertText(nodes, op);
+    }
   },
 };
 

@@ -10,30 +10,30 @@ export function ListHighlightModel(props: { $view: ScrollViewCore; num?: number 
       bus.emit(Events.StateChange, { ..._state });
     },
     setOptions(list: OptionWithTopInList[]) {
-      console.log("[DOMAIN]list-select - setOptions", list);
+      // console.log("[DOMAIN]list-select - setOptions", list);
       _options = list;
       _displayed_options = _options;
     },
     appendOptions(list: OptionWithTopInList[]) {
-      console.log("[DOMAIN]list-select - appendOptions", list);
+      // console.log("[DOMAIN]list-select - appendOptions", list);
       _options = [..._options, ...list];
       _displayed_options = _options;
     },
     deleteOptionById(id: string) {
-      console.log(
-        "[DOMAIN]list-select - deleteOptionById",
-        _options.find((v) => v.id === id),
-        _options.length
-      );
+      // console.log(
+      //   "[DOMAIN]list-select - deleteOptionById",
+      //   _options.find((v) => v.id === id),
+      //   _options.length
+      // );
       _options = _options.filter((opt) => opt.id !== id);
-      console.log("[DOMAIN]list-select - deleteOptionById after filter", _options.length);
+      // console.log("[DOMAIN]list-select - deleteOptionById after filter", _options.length);
       _displayed_options = _options;
     },
     getSelectedOption() {
       return _options[_opt_idx] ?? null;
     },
     unshiftOption(v: OptionWithTopInList) {
-      console.log("[DOMAIN]list-select - unshiftOption", v);
+      // console.log("[DOMAIN]list-select - unshiftOption", v);
       _options.unshift(v);
       _opt_idx += 1;
       if (_opt_idx > _options.length - 1) {

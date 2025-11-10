@@ -100,11 +100,11 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       let start = ui.$selection.start;
       let end = ui.$selection.end;
       const node1 = methods.findNodeByPath(start.path) as SlateDescendant | null;
-      console.log("[]insertText", start, end);
+      // console.log("[]insertText", start, end);
       if (!node1 || node1.type !== SlateDescendantType.Text) {
         return;
       }
-      console.log("[]insertText - is same point", start, end);
+      // console.log("[]insertText - is same point", start, end);
       let is_finish_composing = false;
       if (_start_before_composing && _end_before_composing) {
         ui.$selection.methods.setStartAndEnd({ start: _start_before_composing, end: _end_before_composing });
@@ -126,6 +126,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
           {
             type: SlateOperationType.InsertText,
             text: inserted_text,
+            original_text,
             path: start.path,
             offset: start.offset,
           },
@@ -168,6 +169,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
           const op_insert_text: SlateOperation = {
             type: SlateOperationType.InsertText,
             text: inserted_text,
+            original_text,
             path: start.path,
             offset: start.offset,
           };
@@ -192,12 +194,14 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
           // 先选择再输入中文的场景，如 hello 选择 ell，再输入，$target.innerHTML 是 ho，所以不能再删除任何内容了
           ignore: is_finish_composing,
           text: deleted_text,
+          original_text,
           path: start.path,
           offset: start.offset,
         },
         {
           type: SlateOperationType.InsertText,
           text: inserted_text,
+          original_text,
           path: start.path,
           offset: start.offset,
         },
@@ -246,10 +250,12 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         // @todo 还要考虑跨行的场景
         const node = findNodeByPath(_children, start.path);
         if (node && node.type === SlateDescendantType.Text) {
-          const deleted_text = node.text.substring(start.offset, end.offset);
+          const original_text = node.text;
+          const deleted_text = original_text.substring(start.offset, end.offset);
           const op: SlateOperation = {
             type: SlateOperationType.RemoveText,
             text: deleted_text,
+            original_text,
             path: start.path,
             offset: start.offset,
           };
@@ -311,6 +317,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         const op: SlateOperation = {
           type: SlateOperationType.RemoveText,
           text: deleted_text1,
+          original_text: original_text1,
           path: start.path,
           offset: start.offset,
         };
@@ -397,6 +404,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       const op: SlateOperation = {
         type: SlateOperationType.RemoveText,
         text: deleted_text,
+        original_text,
         path: point.path,
         offset: range[0],
       };
@@ -421,6 +429,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       const op_start_delete_text: SlateOperation = {
         type: SlateOperationType.RemoveText,
         text: deleted_text1,
+        original_text: node1.text,
         path: start.path,
         offset: start.offset,
       };
@@ -429,6 +438,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
       const op_end_delete_text: SlateOperation = {
         type: SlateOperationType.RemoveText,
         text: deleted_text2,
+        original_text: node2.text,
         path: end.path,
         offset: 0,
       };
@@ -558,6 +568,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         {
           type: SlateOperationType.RemoveText,
           text: deleted_text,
+          original_text,
           path: start.path,
           offset: range[0],
         },
@@ -606,10 +617,28 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
     setCaretPosition(arg: { start: SlatePoint; end: SlatePoint }) {},
     handleBeforeInput(event: BeforeInputEvent) {
       event.preventDefault();
-      if (_is_composing) {
+      const text = event.data as string;
+      if (
+        text &&
+        _is_composing &&
+        _start_before_composing &&
+        _start_node_clone &&
+        _start_node_clone.type === SlateDescendantType.Text
+      ) {
+        const insert_text = text;
+        const op: SlateOperation = {
+          type: SlateOperationType.ReplaceText,
+          text: insert_text,
+          original_text: _start_node_clone.text,
+          path: _start_before_composing.path,
+          offset: _start_before_composing.offset,
+        };
+        console.log("[DOMAIN]slate/slate - handleBeforeInput is composing", text, _start_node_clone.text);
+        // methods.apply([op]);
+        _children = SlateNodeOperations.replaceText(_children, op);
+        methods.refresh();
         return;
       }
-      const text = event.data as string;
       if (text === null) {
         return;
       }
@@ -618,6 +647,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
     },
     handleInput(event: InputEvent) {
       event.preventDefault();
+      // console.log('[]input', event.data);
     },
     handleBlur(event: BlurEvent) {},
     handleFocus(event: FocusEvent) {},
@@ -632,7 +662,19 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
         return;
       }
       console.log("[]handleCompositionEnd", text);
-      methods.insertText(text);
+      const node = findNodeByPath(_children, ui.$selection.start.path);
+      if (node && node.type === SlateDescendantType.Text) {
+        const op: SlateOperation = {
+          type: SlateOperationType.InsertText,
+          text,
+          original_text: node.text,
+          path: ui.$selection.start.path,
+          offset: ui.$selection.start.offset,
+        };
+        _children = SlateNodeOperations.insertText(_children, op);
+        methods.apply([op]);
+      }
+      // methods.insertText(text);
     },
     handleCompositionUpdate(event: CompositionUpdateEvent) {
       event.preventDefault();
@@ -644,21 +686,69 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
     handleCompositionStart(event: CompositionStartEvent) {
       event.preventDefault();
       _is_composing = true;
+      const node = findNodeByPath(_children, ui.$selection.start.path);
+      if (node) {
+        _start_node_clone = { ...node };
+      }
       _start_before_composing = { ...ui.$selection.start };
       _end_before_composing = { ...ui.$selection.end };
-      console.log(
-        "[BIZ]slate/slate - handleCompositionStart",
-        _start_before_composing.offset,
-        _end_before_composing.offset
-      );
+      console.log("[BIZ]slate/slate - handleCompositionStart");
+      const is_same_point = SlatePointModel.isSamePoint(ui.$selection.start, ui.$selection.end);
+      if (!is_same_point) {
+        // 在合成开始时，发现选择了文字，就提前处理好浏览器默认合并的行为，在 end 阶段就不会出问题了
+        const node1 = findNodeByPath(_children, ui.$selection.start.path);
+        const node2 = findNodeByPath(_children, ui.$selection.end.path);
+        if (node1 && node2 && node1.type === SlateDescendantType.Text && node2.type === SlateDescendantType.Text) {
+          const original_text1 = node1.text;
+          const original_text2 = node2.text;
+          const deleted_text1 = original_text1.slice(ui.$selection.start.offset);
+          const deleted_text2 = original_text2.slice(0, ui.$selection.end.offset);
+          console.log("[]handleCompositionStart nodes text", node1.text, node2.text);
+          const op_delete_text1: SlateOperation = {
+            type: SlateOperationType.RemoveText,
+            text: deleted_text1,
+            original_text: original_text1,
+            path: ui.$selection.start.path,
+            offset: ui.$selection.start.offset,
+          };
+          console.log("[]handleCompositionStart op1", op_delete_text1);
+          _children = SlateNodeOperations.removeText(_children, op_delete_text1);
+          const op_delete_text2: SlateOperation = {
+            type: SlateOperationType.RemoveText,
+            text: deleted_text2,
+            original_text: original_text2,
+            path: ui.$selection.end.path,
+            offset: 0,
+          };
+          console.log("[]handleCompositionStart op2", op_delete_text2);
+          _children = SlateNodeOperations.removeText(_children, op_delete_text2);
+          const op_merge_node: SlateOperation = {
+            type: SlateOperationType.MergeNode,
+            path: ui.$selection.start.path,
+            offset: ui.$selection.start.offset,
+            start: ui.$selection.end,
+            end: ui.$selection.end,
+            compositing: true,
+          };
+          _children = SlateNodeOperations.mergeNode(_children, op_merge_node);
+          const node = findNodeByPath(_children, ui.$selection.start.path);
+          if (node) {
+            _start_node_clone = { ...node };
+          }
+          bus.emit(Events.Action, [op_delete_text1, op_delete_text2, op_merge_node]);
+          ui.$selection.methods.collapseToOffset({ offset: _start_before_composing.offset });
+          methods.emitSelectionChange({ type: SlateOperationType.Unknown });
+        }
+      }
     },
     handleKeyDown(event: KeyDownEvent) {
-      event.preventDefault();
-      // ui.$shortcut.methods.handleKeydown(event);
+      // console.log('key down', event.code);
+      // event.preventDefault();
+      ui.$shortcut.methods.handleKeydown(event);
     },
     handleKeyUp(event: KeyDownEvent) {
-      event.preventDefault();
-      // ui.$shortcut.methods.handleKeyup(event);
+      // event.preventDefault();
+      ui.$shortcut.methods.handleKeyup(event);
     },
     handleSelectionChange() {
       //       console.log("handleSelectionChange", ui.$selection.dirty);
@@ -678,6 +768,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
   /** 是否处于 输入合成 中 */
   let _is_composing = false;
   let _is_cancel_composing = false;
+  let _start_node_clone: SlateDescendant | null = null;
   let _start_before_composing: SlatePoint | null = null;
   let _end_before_composing: SlatePoint | null = null;
   let _is_updating_selection = false;
