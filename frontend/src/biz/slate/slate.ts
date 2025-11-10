@@ -837,7 +837,7 @@ export function SlateEditorModel(props: { defaultValue?: SlateDescendant[]; app:
   let _start_before_composing: SlatePoint | null = null;
   let _end_before_composing: SlatePoint | null = null;
   let _is_updating_selection = false;
-  let _is_focus = true;
+  let _is_focus = false;
   //   let _children: Descendant[] = [];
   //   let _decorations: DecoratedRange[] = [];
   //   let _node: Ancestor;

@@ -3,7 +3,7 @@
  */
 import { For, Match, Show, Switch } from "solid-js";
 import { Bird, Check, ChevronUp, Copy, Download, Earth, Eye, File, Folder, Link, Trash } from "lucide-solid";
-// import { Browser, Dialogs, Events } from "@wailsio/runtime";
+import { Browser, Dialogs, Events } from "@wailsio/runtime";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -225,28 +225,28 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       methods.previewPasteContent(v);
     },
     async handleClickOuterURL(event: { url: string }) {
-      // const r = await Dialogs.Question({
-      //   Title: "Open URL",
-      //   Message: "Are you sure open the url: " + event.url,
-      //   Buttons: [
-      //     {
-      //       Label: "Cancel",
-      //       IsCancel: true,
-      //     },
-      //     {
-      //       Label: "Confirm",
-      //       IsDefault: true,
-      //     },
-      //   ],
-      // });
-      // if (r !== "Confirm") {
-      //   return;
-      // }
-      // Browser.OpenURL(event.url);
+      const r = await Dialogs.Question({
+        Title: "Open URL",
+        Message: "Are you sure open the url: " + event.url,
+        Buttons: [
+          {
+            Label: "Cancel",
+            IsCancel: true,
+          },
+          {
+            Label: "Confirm",
+            IsDefault: true,
+          },
+        ],
+      });
+      if (r !== "Confirm") {
+        return;
+      }
+      Browser.OpenURL(event.url);
     },
     handleClickURL(url: string) {
-      // Browser.OpenURL(url);
-      // return;
+      Browser.OpenURL(url);
+      return;
     },
     async handleClickCopyBtn(v: PasteRecord) {
       methods.copyPasteRecord(v);
@@ -311,19 +311,19 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // ui.$view.finishPullToRefresh();
     },
     async onReachBottom() {
-      // console.log("[PAGE]home/index - onReachBottom");
-      // await request.paste.list.loadMore();
-      // $view.finishLoadingMore();
+      console.log("[PAGE]home/index - onReachBottom");
+      await request.paste.list.loadMore();
+      $view.finishLoadingMore();
     },
     onScroll(pos) {
-      // ui.$back_to_top.methods.handleScroll({ top: pos.scrollTop });
-      // if (pos.scrollTop < 20) {
-      //   _added_records = [];
-      //   methods.refresh();
-      // }
-      // ui.$waterfall.methods.handleScroll({
-      //   scrollTop: pos.scrollTop,
-      // });
+      ui.$back_to_top.methods.handleScroll({ top: pos.scrollTop });
+      if (pos.scrollTop < 20) {
+        _added_records = [];
+        methods.refresh();
+      }
+      ui.$waterfall.methods.handleScroll({
+        scrollTop: pos.scrollTop,
+      });
     },
   });
   const ui = {
@@ -352,35 +352,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
           children: [
             {
               type: SlateDescendantType.Text,
-              text: "Slate is flexible enough to add **decorations** that can format text based on its content.",
-            },
-          ],
-        },
-        {
-          type: SlateDescendantType.Paragraph,
-          children: [
-            {
-              type: SlateDescendantType.Text,
-              text: "## Try it out!",
-            },
-          ],
-        },
-        {
-          type: SlateDescendantType.Paragraph,
-          children: [
-            // {
-            //   type: SlateDescendantType.Paragraph,
-            //   children: [
-            //     {
-            //       type: SlateDescendantType.Text,
-            //       text: "Try it out for yourself!",
-            //     },
-            //   ],
-            // },
-            {
-              type: SlateDescendantType.Text,
-              // text: "Hello",
-              text: "Try it out for yourself!",
+              text: "",
             },
           ],
         },
@@ -453,7 +425,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     "KeyJ,ArrowDown"(event) {
       // console.log("[]shortcut - KeyJ", ui.$input_search.isFocus, ui.$input_search.isOpen, event.code);
-      // console.log("[]shortcut - moveToNextOption");
+      console.log("[]shortcut - KeyJ");
       if (ui.$input_main.isFocus) {
         return;
       }
@@ -620,10 +592,10 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$input_search.methods.blur();
     },
     EscapeEscape(event) {
-      // setTimeout(() => {
-      //   Events.Emit({ name: "m:hide-main-window", data: null });
-      //   // 100 是为了 keyup 能正确清除掉按下的 Esc
-      // }, 100);
+      setTimeout(() => {
+        Events.Emit({ name: "m:hide-main-window", data: null });
+        // 100 是为了 keyup 能正确清除掉按下的 Esc
+      }, 100);
     },
   });
   ui.$commands.methods.setOptions([
@@ -700,17 +672,17 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // console.log("[PAGE]onKeyup", event.code);
       ui.$shortcut.methods.handleKeyup(event);
     }),
-    // Events.On("clipboard:update", (event) => {
-    //   const created_paste_event = event.data[0];
-    //   if (!created_paste_event) {
-    //     return;
-    //   }
-    //   const vv = processPartialPasteEvent(created_paste_event);
-    //   methods.prepareLoadRecord(vv);
-    // }),
-    // Events.On("m:refresh", (event) => {
-    //   props.history.reload();
-    // }),
+    Events.On("clipboard:update", (event) => {
+      const created_paste_event = event.data[0];
+      if (!created_paste_event) {
+        return;
+      }
+      const vv = processPartialPasteEvent(created_paste_event);
+      methods.prepareLoadRecord(vv);
+    }),
+    Events.On("m:refresh", (event) => {
+      props.history.reload();
+    }),
   ]);
 
   return {
@@ -719,14 +691,14 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     ui,
     state: _state,
     async ready() {
-      // (async () => {
-      //   const r = await request.category.tree.run();
-      //   if (r.error) {
-      //     return;
-      //   }
-      //   ui.$input_search.methods.setOptions(r.data);
-      // })();
-      // const r = await request.paste.list.init();
+      (async () => {
+        const r = await request.category.tree.run();
+        if (r.error) {
+          return;
+        }
+        ui.$input_search.methods.setOptions(r.data);
+      })();
+      const r = await request.paste.list.init();
     },
     destroy() {
       unlisten();
@@ -759,13 +731,12 @@ export const HomeIndexView = (props: ViewComponentProps) => {
             "w-full": !props.app.env.pc,
           }}
         >
-          <div class="p-2">
+          {/* <div class="p-2">
             <SlateView store={vm.ui.$input_main} />
-            {/* <Button store={vm.ui.$btn_test}>打印</Button> */}
-          </div>
-          {/* <div class="p-4 pb-0">
-            <WithTagsInput store={vm.ui.$input_search} />
           </div> */}
+          <div class="p-4 pb-0">
+            <WithTagsInput store={vm.ui.$input_search} />
+          </div>
           <WaterfallView
             class="relative p-4"
             store={vm.ui.$waterfall}
