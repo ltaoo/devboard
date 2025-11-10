@@ -104,8 +104,27 @@ export const SlateNodeOperations = {
   },
   exec(nodes: SlateDescendant[], op: SlateOperation) {
     if (op.type === SlateOperationType.InsertText) {
-      SlateNodeOperations.insertText(nodes, op);
+      return SlateNodeOperations.insertText(nodes, op);
     }
+    if (op.type === SlateOperationType.ReplaceText) {
+      return SlateNodeOperations.replaceText(nodes, op);
+    }
+    if (op.type === SlateOperationType.RemoveText) {
+      return SlateNodeOperations.removeText(nodes, op);
+    }
+    if (op.type === SlateOperationType.InsertLines) {
+      return SlateNodeOperations.insertLines(nodes, op);
+    }
+    if (op.type === SlateOperationType.RemoveLines) {
+      return SlateNodeOperations.removeLines(nodes, op);
+    }
+    if (op.type === SlateOperationType.MergeNode) {
+      return SlateNodeOperations.mergeNode(nodes, op);
+    }
+    if (op.type === SlateOperationType.SplitNode) {
+      return SlateNodeOperations.splitNode(nodes, op);
+    }
+    return nodes;
   },
 };
 

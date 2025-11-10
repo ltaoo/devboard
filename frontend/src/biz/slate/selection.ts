@@ -85,7 +85,7 @@ export function SlateSelectionModel() {
       methods.refresh();
     },
     handleChange(event: { start: SlatePoint; end: SlatePoint; collapsed: boolean }) {
-      console.log("[]slate/selection - handleChange", event.start);
+      // console.log("[]slate/selection - handleChange", event.start);
       _start = event.start;
       _end = event.end;
       _is_collapsed = event.collapsed;
@@ -148,6 +148,12 @@ export function SlateSelectionModel() {
     },
     get collapsed() {
       return _state.collapsed;
+    },
+    print() {
+      return {
+        start: `line: ${_start.path[0]} col: ${_start.offset}`,
+        end: `line: ${_end.path[0]} col: ${_end.offset}`,
+      };
     },
     ready() {},
     destroy() {

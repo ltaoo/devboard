@@ -6,7 +6,7 @@ import { isElement, isText } from "./utils/node";
 
 export function connect(vm: SlateEditorModel, $input: Element) {
   document.addEventListener("selectionchange", (event) => {
-    console.log('addEventListener("selectionchange', vm.ui.$selection.dirty);
+    // console.log('addEventListener("selectionchange', vm.ui.$selection.dirty);
     //       if (vm.ui.$selection.dirty) {
     //         return;
     //       }
@@ -29,7 +29,7 @@ export function connect(vm: SlateEditorModel, $input: Element) {
     const range = selection.getRangeAt(0);
     const $start = findInnerTextNode(range.startContainer.parentNode) as HTMLDivElement | null;
     const $end = findInnerTextNode(range.endContainer.parentNode) as HTMLDivElement | null;
-    console.log("[]getCaretPosition - ", range.startContainer, $start, $end);
+    // console.log("[]getCaretPosition - ", range.startContainer, $start, $end);
     if (!$start || !$end) {
       return;
     }
