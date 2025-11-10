@@ -50,13 +50,13 @@ export type SlateOperationRemoveText = {
 export type SlateOperationInsertLines = {
   /** 插入的位置，取第一个元素，就是 line index */
   path: number[];
-  node: SlateDescendant[];
+  node: (SlateDescendant & { key: number })[];
   // text: string;
 };
 export type SlateOperationRemoveLines = {
   /** 插入的位置，取第一个元素，就是 line index */
   path: number[];
-  node: SlateDescendant[];
+  node: (SlateDescendant & { key: number })[];
   // text: string;
 };
 export type SlateOperationMergeNode = {

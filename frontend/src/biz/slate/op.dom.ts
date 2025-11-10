@@ -52,7 +52,7 @@ export const SlateDOMOperations = {
     }
     const content = getNodeText($target);
     console.log("[op.dom]deleteText 2. content in current node", content);
-    $target.textContent = formatText(deleteTextAtOffset(op.original_text, op.text, op.offset));
+    $target.innerHTML = renderHTML(deleteTextAtOffset(content, op.text, op.offset));
   },
   splitNode($input: Element, op: SlateOperation) {
     if (op.type !== SlateOperationType.SplitNode) {
@@ -67,7 +67,7 @@ export const SlateDOMOperations = {
     const text1 = text.slice(0, op.offset);
     const text2 = text.slice(op.offset);
     console.log("[op.dom]splitNode - 2. split", text1, text2);
-    $node.textContent = formatText(text1);
+    $node.textContent = renderHTML(text1);
     renderNodeThenInsertLine($input, {
       node: { type: SlateDescendantType.Paragraph, children: [{ type: SlateDescendantType.Text, text: text2 }] },
       path: [op.path[0]],
@@ -89,27 +89,12 @@ export const SlateDOMOperations = {
     if ($cur) {
       const $parent = $cur.parentElement;
       $cur.remove();
-      // console.log("-------------------", $cur.parentElement?.childNodes.length, $cur.parentElement);
       if ($parent && $parent.childNodes.length === 0) {
         $parent.remove();
       }
     }
-    // const $node2 = findNodeByPath($input as Element, [op.end.path[0]]) as Element | null;
-    // console.log("[op.dom]mergeNode 2. the end line is existing", op.end.path, $node2);
-    // if ($node2) {
-    //   $node2.parentNode?.removeChild($node2);
-    // }
-    // const text = text1 + text2;
-    // console.log("[op.dom]mergeNode 1. text1 and text2", text1, text2, text);
-    // $prev.textContent = text;
-    // setTimeout(() => {
-    //   // const $prev = findNodeByPath($input as Element, op.path) as Element | null;
     const text = text1 + text2;
-    //   console.log("[op.dom]mergeNode 3. text1 and text2", $prev, text1);
-    // if ($prev) {
     $prev.textContent = text;
-    // }
-    // }, 20);
   },
   insertLines($input: Element, op: SlateOperation) {
     if (op.type !== SlateOperationType.InsertLines) {
@@ -129,11 +114,19 @@ export const SlateDOMOperations = {
     if (!$target.parentNode) {
       return;
     }
+    const $parent = $target.parentNode;
+    const count = op.node.length;
+    console.log("[op.dom]removeLines - ", count);
     let idx = op.path[0];
-    for (let i = 0; i < op.node.length; i += 1) {
-      //       console.log("[op.dom]removeLines - ", i, $target.parentNode.childNodes[i]);
-      $target.parentNode.childNodes[idx].remove();
+    const $nodes: Element[] = [];
+    for (let i = 0; i < count; i += 1) {
+      console.log("[op.dom]removeLines - ", i, idx, $parent);
+      // $parent.childNodes[idx].remove();
+      $nodes.push($parent.childNodes[idx] as Element);
       idx += 1;
+    }
+    for (let i = 0; i < $nodes.length; i += 1) {
+      $nodes[i].remove();
     }
   },
   exec($input: Element, op: SlateOperation) {
@@ -168,19 +161,26 @@ export const SlateDOMOperations = {
   },
 };
 
-export function renderText(node: SlateDescendant & { key?: number }): Element | null {
+export function renderText(node: SlateDescendant & { key?: number }, extra: { text?: boolean } = {}): Element | null {
   if (node.type === SlateDescendantType.Text) {
     const $text = document.createElement("span");
     $text.setAttribute("data-slate-node", "text");
     if (node.key) {
       $text.setAttribute("data-slate-node-key", String(node.key));
     }
-    $text.textContent = formatText(node.text);
+    if (extra.text) {
+      $text.textContent = node.text;
+    } else {
+      $text.innerHTML = renderHTML(node.text);
+    }
     return $text;
   }
   return null;
 }
-export function renderElement(node: SlateDescendant & { key?: number }): Element | null {
+export function renderElement(
+  node: SlateDescendant & { key?: number },
+  extra: { text?: boolean } = {}
+): Element | null {
   if (node.type === SlateDescendantType.Paragraph) {
     const $node = document.createElement("p");
     $node.setAttribute("data-slate-node", "element");
@@ -191,13 +191,13 @@ export function renderElement(node: SlateDescendant & { key?: number }): Element
     for (let i = 0; i < node.children.length; i += 1) {
       const child = node.children[i];
       if (child.type === SlateDescendantType.Text) {
-        const $child = renderText(node.children[i]);
+        const $child = renderText(node.children[i], extra);
         if ($child) {
           $tmp.appendChild($child);
         }
       }
       if (child.type === SlateDescendantType.Paragraph) {
-        const $child = renderElement(node.children[i]);
+        const $child = renderElement(node.children[i], extra);
         if ($child) {
           $tmp.appendChild($child);
         }
@@ -251,7 +251,7 @@ export function formatInnerHTML(v: string) {
   }
   return v;
 }
-export function formatText(v: string) {
+export function renderHTML(v: string) {
   if (v === "") {
     return TEXT_EMPTY_PLACEHOLDER;
   }
@@ -353,8 +353,17 @@ export function refreshSelection($editor: Element, start: SlatePoint, end: Slate
     return;
   }
   const range = document.createRange();
-  range.setStart($node_start.childNodes[0], start.offset);
-  range.setEnd($node_end.childNodes[0], end.offset);
+  console.log("[]refresh selection - start", $node_start, $node_start.childNodes[0], start.offset);
+  console.log("[]refresh selection - end", $node_end.childNodes[0], end.offset);
+  if ($node_start.textContent === "") {
+    const $br = $node_start.childNodes[0];
+    console.log("[]refresh selection - find $br", $node_start.parentElement, $br);
+    range.setStartBefore($br);
+    range.setEndBefore($br);
+  } else {
+    range.setStart($node_start.childNodes[0], start.offset);
+    range.setEnd($node_end.childNodes[0], end.offset);
+  }
   selection.removeAllRanges();
   selection.addRange(range);
 }
