@@ -107,18 +107,18 @@ export const app = new Application({
     const route = routesWithPathname[pathname];
     console.log("[ROOT]onMount", pathname, query, route, app.$user.isLogin);
     // await sleep(3000);
-    // const r = await requests.ready.run();
-    // if (r.error) {
-    //   return Result.Err(r.error);
-    // }
-    //   if (!route) {
-    //     history.push("root.notfound");
-    //     return Result.Ok(null);
-    //   }
-    //   if (!history.isLayout(route.name)) {
-    //     history.push(route.name, query, { ignore: true });
-    //     return Result.Ok(null);
-    //   }
+    const r = await requests.ready.run();
+    if (r.error) {
+      return Result.Err(r.error);
+    }
+    if (!route) {
+      history.push("root.notfound");
+      return Result.Ok(null);
+    }
+    if (!history.isLayout(route.name)) {
+      history.push(route.name, query, { ignore: true });
+      return Result.Ok(null);
+    }
     history.push("root.home.index");
     return Result.Ok(null);
   },

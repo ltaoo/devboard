@@ -9,6 +9,7 @@ describe("path", () => {
     const op: SlateOperation = {
       type: SlateOperationType.InsertText,
       text: "Try it out for yourself",
+      original_text: "",
       path: [2, 0],
       offset: 0,
     };

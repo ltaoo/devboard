@@ -243,7 +243,7 @@ export function getNodeText($node: Element) {
     return $node as any as string;
   }
   const v = $node.textContent;
-  return formatInnerHTML(v);
+  return formatInnerHTML(v!);
 }
 export function formatInnerHTML(v: string) {
   if (v === TEXT_EMPTY_PLACEHOLDER) {

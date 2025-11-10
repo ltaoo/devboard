@@ -67,6 +67,7 @@ export function SlateHistoryModel() {
             result.push({
               type: SlateOperationType.RemoveText,
               text: op.text,
+              original_text: "",
               path: op.path,
               offset: op.offset,
             });
@@ -76,6 +77,7 @@ export function SlateHistoryModel() {
             result.push({
               type: SlateOperationType.InsertText,
               text: op.text,
+              original_text: "",
               path: op.path,
               offset: op.offset,
             });
