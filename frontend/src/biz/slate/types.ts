@@ -15,6 +15,7 @@ export type SlateDescendant = MutableRecord2<{
 
 export enum SlateOperationType {
   InsertText = "insert_text",
+  ReplaceText = "replace_text",
   RemoveText = "remove_text",
   InsertLines = "insert_line",
   RemoveLines = "remove_lines",
@@ -26,13 +27,21 @@ export enum SlateOperationType {
 export type SlateOperationInsertText = {
   /** 插入的文本 */
   text: string;
-  // node: SlateDescendant;
+  original_text: string;
+  path: number[];
+  offset: number;
+};
+export type SlateOperationReplaceText = {
+  /** 替换的文本 */
+  text: string;
+  original_text: string;
   path: number[];
   offset: number;
 };
 export type SlateOperationRemoveText = {
   /** 删除的文本 */
   text: string;
+  original_text: string;
   ignore?: boolean;
   // node: SlateDescendant;
   path: number[];
@@ -57,6 +66,7 @@ export type SlateOperationMergeNode = {
   /** 当前光标的位置，只用 end */
   start: SlatePoint;
   end: SlatePoint;
+  compositing?: boolean;
 };
 export type SlateOperationSplitNode = {
   path: number[];
@@ -73,6 +83,7 @@ export type SlateOperationSetSelection = {
 };
 export type SlateOperation = MutableRecord2<{
   [SlateOperationType.InsertText]: SlateOperationInsertText;
+  [SlateOperationType.ReplaceText]: SlateOperationReplaceText;
   [SlateOperationType.RemoveText]: SlateOperationRemoveText;
   [SlateOperationType.InsertLines]: SlateOperationInsertLines;
   [SlateOperationType.RemoveLines]: SlateOperationRemoveLines;

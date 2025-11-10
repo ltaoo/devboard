@@ -4,22 +4,10 @@ import { useViewModelStore } from "@/hooks";
 import { Button } from "@/components/ui";
 
 import { SlateEditorModel } from "@/biz/slate/slate";
-import { SlateDescendant, SlateDescendantType, SlateOperationType } from "@/biz/slate/types";
-import { SlatePoint } from "@/biz/slate/point";
+import { SlateOperationType } from "@/biz/slate/types";
 import { ButtonCore } from "@/domains/ui";
 import { connect } from "@/biz/slate/connect.web";
-import {
-  findNodeByPath,
-  refreshSelection,
-  getNodeText,
-  formatText,
-  renderLineNodesThenInsert,
-  buildInnerHTML,
-  SlateDOMOperations,
-} from "@/biz/slate/op.dom";
-import { deleteTextAtOffset, deleteTextInRange, insertTextAtOffset } from "@/biz/slate/utils/text";
-import { isElement, isText } from "@/biz/slate/utils/node";
-import { SlatePathModel } from "@/biz/slate/path";
+import { refreshSelection, buildInnerHTML, SlateDOMOperations } from "@/biz/slate/op.dom";
 
 export function SlateView(props: { store: SlateEditorModel }) {
   return <SlateEditable store={props.store} />;
@@ -45,39 +33,12 @@ function SlateEditable(props: { store: SlateEditorModel }) {
   });
 
   vm.onAction((operations) => {
-    console.log("[]slate/slate.tsx - vm.onAction", operations.length);
     if (!$input) {
       return;
     }
     for (let i = 0; i < operations.length; i += 1) {
       const op = operations[i];
-      console.log("[]slate/slate.tsx - vm.onAction", i, op.type);
-      (() => {
-        if (op.type === SlateOperationType.InsertText) {
-          SlateDOMOperations.insertText($input, op);
-          return;
-        }
-        if (op.type === SlateOperationType.RemoveText) {
-          SlateDOMOperations.removeText($input, op);
-          return;
-        }
-        if (op.type === SlateOperationType.InsertLines) {
-          SlateDOMOperations.insertLines($input, op);
-          return;
-        }
-        if (op.type === SlateOperationType.RemoveLines) {
-          SlateDOMOperations.removeLines($input, op);
-          return;
-        }
-        if (op.type === SlateOperationType.MergeNode) {
-          SlateDOMOperations.mergeNode($input, op);
-          return;
-        }
-        if (op.type === SlateOperationType.SplitNode) {
-          SlateDOMOperations.splitNode($input, op);
-          return;
-        }
-      })();
+      SlateDOMOperations.exec($input, op);
     }
   });
   vm.onSelectionChange(({ type, start, end }) => {
