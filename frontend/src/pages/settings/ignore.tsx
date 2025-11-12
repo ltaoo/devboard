@@ -78,7 +78,7 @@ function IgnoreSettingsViewModel(props: ViewComponentProps) {
     $form_settings: new ObjectFieldCore({
       fields: {
         max_length: new SingleFieldCore({
-          label: "最大长度",
+          label: "内容最大长度",
           rules: [],
           input: new InputCore({
             defaultValue: 0,
@@ -90,7 +90,7 @@ function IgnoreSettingsViewModel(props: ViewComponentProps) {
           }),
         }),
         filename: new SingleFieldCore({
-          label: "文件名",
+          label: "文件名(一行一个，可以使用正则)",
           rules: [],
           input: new InputCore({
             defaultValue: "",
@@ -170,7 +170,7 @@ export function IgnoreSettingsView(props: ViewComponentProps) {
   return (
     <ScrollView store={vm.ui.$view} class="p-4">
       <div class="block">
-        <div class="text-2xl text-w-fg-0">配置</div>
+        <div class="text-2xl text-w-fg-0">粘贴事件忽略规则配置</div>
         <div class="mt-4 space-y-8">
           <div>
             <FieldV2 store={vm.ui.$form_settings.fields.max_length}>

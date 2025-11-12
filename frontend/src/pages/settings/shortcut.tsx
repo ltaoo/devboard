@@ -2,7 +2,7 @@
  * @file 用户配置/快捷键
  */
 import { For, Match, Show, Switch } from "solid-js";
-import { BrushCleaning, Check, Delete, File } from "lucide-solid";
+import { BrushCleaning, Check, Delete, File, X } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -37,6 +37,13 @@ function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
           if (_pending) {
             return;
           }
+          if (event.code === "Escape") {
+            methods.handleClickReset();
+            return;
+          }
+          _preparing = false;
+          _recording = true;
+          methods.refresh();
           event.preventDefault();
           console.log(event.code);
           ui.$shortcut.methods.handleKeydown(event);
@@ -52,23 +59,24 @@ function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
     setExistingCodes(codes: string) {
       console.log("[DOMAIN]ShortcutRecordModel - setExistingCodes", codes);
       _pending = false;
+      _preparing = false;
       _recording = false;
       _completed = true;
       ui.$shortcut.methods.setRecordingCodes(codes);
     },
     handleClickStartRecord() {
       _pending = false;
-      _recording = true;
+      _preparing = true;
       methods.startListenKeyEvents();
       methods.refresh();
     },
     handleClickReset() {
       bus.emit(Events.Unregister, { codes: ui.$shortcut.state.codes2.join("+") });
       _pending = true;
+      _preparing = false;
       _recording = false;
       _completed = false;
       ui.$shortcut.methods.reset();
-      methods.startListenKeyEvents();
       methods.refresh();
     },
   };
@@ -78,11 +86,15 @@ function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
 
   let _unlisten: () => void = () => {};
   let _pending = true;
+  let _preparing = false;
   let _recording = false;
   let _completed = false;
   const _state = {
     get pending() {
       return _pending;
+    },
+    get preparing() {
+      return _preparing;
     },
     get recording() {
       return _recording;
@@ -109,6 +121,16 @@ function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
 
   ui.$shortcut.onStateChange(() => methods.refresh());
   ui.$shortcut.onShortcutComplete(() => {
+    if (ui.$shortcut.state.codes2.length === 1) {
+      props.app.tip({
+        text: ["必须包含一个修饰键+一个常规键"],
+      });
+      _preparing = true;
+      _recording = false;
+      ui.$shortcut.methods.reset();
+      methods.refresh();
+      return;
+    }
     _unlisten();
     _completed = true;
     bus.emit(Events.Register, { codes: ui.$shortcut.state.codes2.join("+") });
@@ -225,20 +247,23 @@ export function ShortcutSettingsView(props: ViewComponentProps) {
         <div class="mt-4 space-y-8">
           <div class="flex items-center justify-between">
             <div>展示主面板</div>
-            <div class="h-[32px]">
-              <Switch>
-                <Match when={state().recorder.pending}>
-                  <div
-                    onClick={() => {
-                      vm.ui.$recorder.methods.handleClickStartRecord();
-                    }}
-                  >
-                    点击录制
-                  </div>
-                </Match>
-                <Match when={state().recorder.recording || state().recorder.completed}>
-                  <div class="flex items-center gap-1">
-                    <div class="flex gap-1 p-2 border rounded-md">
+            <div class="flex items-center h-[32px]">
+              <div class="flex items-center gap-1">
+                <div class="flex gap-1 p-2 border border-2 border-w-fg-3 rounded-md">
+                  <Switch>
+                    <Match when={state().recorder.pending}>
+                      <div
+                        onClick={() => {
+                          vm.ui.$recorder.methods.handleClickStartRecord();
+                        }}
+                      >
+                        点击录制
+                      </div>
+                    </Match>
+                    <Match when={state().recorder.preparing}>
+                      <div>请按下快捷键</div>
+                    </Match>
+                    <Match when={state().recorder.recording || state().recorder.completed}>
                       <For each={state().recorder.codes}>
                         {(code, idx) => {
                           return (
@@ -251,20 +276,22 @@ export function ShortcutSettingsView(props: ViewComponentProps) {
                           );
                         }}
                       </For>
-                    </div>
-                    <Show when={state().recorder.completed}>
-                      <div
-                        class="p-1 rounded-md cursor-pointer"
-                        onClick={() => {
-                          vm.ui.$recorder.methods.handleClickReset();
-                        }}
-                      >
-                        <Delete class="w-6 h-6 text-w-fg-1" />
-                      </div>
-                    </Show>
+                    </Match>
+                  </Switch>
+                </div>
+              </div>
+              <div class="w-[24px] p-1">
+                <Show when={state().recorder.completed}>
+                  <div
+                    class="rounded-md cursor-pointer"
+                    onClick={() => {
+                      vm.ui.$recorder.methods.handleClickReset();
+                    }}
+                  >
+                    <X class="w-6 h-6 text-w-fg-1" />
                   </div>
-                </Match>
-              </Switch>
+                </Show>
+              </div>
             </div>
           </div>
         </div>

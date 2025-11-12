@@ -70,7 +70,7 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
-	viper.SetDefault("info.version", "0.3.1")
+	viper.SetDefault("info.version", "0.4.0")
 	viper.SetDefault("info.productName", "Devboard")
 	viper.SetDefault("UserConfigDir", data_dir)
 	viper.SetDefault("UserConfigName", "settings.json")

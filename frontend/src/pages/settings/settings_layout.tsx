@@ -26,10 +26,10 @@ function SettingsViewModel(props: ViewComponentProps) {
           title: "快捷键",
           url: "root.settings.shortcut",
         },
-        {
-          title: "忽略规则",
-          url: "root.settings.ignore",
-        },
+        // {
+        //   title: "忽略规则",
+        //   url: "root.settings.ignore",
+        // },
         {
           title: "标签",
           url: "root.settings.category",

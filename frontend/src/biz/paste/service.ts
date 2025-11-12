@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 
+import { FetchAppList, FetchDeviceList } from "~/commonservice";
 import {
   DeletePasteEvent,
   DownloadContentWithPasteEventId,
@@ -11,14 +12,13 @@ import {
 } from "~/pasteservice";
 
 import { FetchParams } from "@/domains/list/typing";
-import { request } from "@/biz/requests";
-import { ListResponse, ListResponseWithCursor } from "@/biz/requests/types";
 import { TmpRequestResp, UnpackedRequestPayload } from "@/domains/request/utils";
 import { Result } from "@/domains/result";
-import { MutableRecord, Unpacked } from "@/types";
-import { parseJSONStr } from "@/utils";
-import { FetchAppList, FetchDeviceList } from "~/commonservice";
 import { TheResponseOfFetchFunction } from "@/domains/request";
+import { request } from "@/biz/requests";
+import { ListResponse, ListResponseWithCursor } from "@/biz/requests/types";
+import { MutableRecord, Unpacked } from "@/types";
+import { bytes_to_size, parseJSONStr } from "@/utils";
 
 export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types: string[]; keyword: string }>) {
   return request.post<
@@ -62,13 +62,21 @@ export type PasteContentDetails = MutableRecord<{
   [PasteContentType.File]: PasteContentFile;
 }>;
 const PasteCardHeightCache = new Map<string, number>();
+
 export function processPartialPasteEvent(
   v: UnpackedRequestPayload<ReturnType<typeof fetchPasteEventList>>["list"][number]
 ) {
-  const categories = (v.categories ?? []).map((cate) => cate.label);
+  const types = (v.categories ?? []).map((cate) => cate.label);
   const text = (() => {
     const tt = v.text;
-    if (categories.includes("time")) {
+    if (tt && tt.match(/^([0-9,]{1,}) {0,1}Bytes/)) {
+      const match = tt.match(/^([0-9,]{1,}) {0,1}Bytes/);
+      if (match) {
+        types.push("size");
+        return bytes_to_size(Number(match[1]));
+      }
+    }
+    if (types.includes("time")) {
       if (!tt) {
         return tt;
       }
@@ -82,7 +90,7 @@ export function processPartialPasteEvent(
       })();
       return dt.format(tt.length === 10 ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD HH:mm:ss");
     }
-    if (categories.includes("url")) {
+    if (types.includes("url")) {
       return v.text;
     }
     if (v.content_type === PasteContentType.HTML) {
@@ -127,13 +135,13 @@ export function processPartialPasteEvent(
     }
     const base_content_height = 40;
     const estimated__content_height = (() => {
-      if (categories.includes(PasteContentType.Image) && details) {
+      if (types.includes(PasteContentType.Image) && details) {
         const d = details.data as PasteContentImage;
         if (d.height) {
           return d.height;
         }
       }
-      if (categories.includes("text") && text) {
+      if (types.includes("text") && text) {
         const line_count = text.length / 32;
         let height = 6 + line_count * 32 + 6;
         if (height > 76) {
@@ -141,7 +149,7 @@ export function processPartialPasteEvent(
         }
         return height;
       }
-      if (categories.includes("code") && text) {
+      if (types.includes("code") && text) {
         const lines = text.split("\n");
         let height = lines.length * 16 + (lines.length - 1) * 2;
         if (height > 120) {
@@ -158,11 +166,11 @@ export function processPartialPasteEvent(
   return {
     ...v,
     origin_text: v.text,
-    types: categories,
+    types,
     text,
     language: (() => {
-      if (categories.includes("code")) {
-        return categories.filter((c) => c !== "code").join("/");
+      if (types.includes("code")) {
+        return types.filter((c) => c !== "code").join("/");
       }
       return null;
     })(),
@@ -170,10 +178,10 @@ export function processPartialPasteEvent(
     details,
     operations: (() => {
       const r: string[] = [];
-      if (categories.includes("image")) {
+      if (types.includes("image")) {
         r.push("download", "image");
       }
-      if (categories.includes("JSON")) {
+      if (types.includes("JSON")) {
         r.push("download", "json");
       }
       if (
