@@ -288,17 +288,18 @@ func (a *BizApp) RegisterShortcut(vvv string, handler func(biz *BizApp), error_h
 			// a.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
 			return
 		}
-		// log.Printf("hotkey: %v is registered\n", hk)
+		fmt.Printf("hotkey: %v is registered\n", hk)
 		<-hk.Keydown()
-		// log.Printf("hotkey: %v is down\n", hk)
+		fmt.Printf("hotkey: %v is down\n", hk)
 		<-hk.Keyup()
-		// log.Printf("hotkey: %v is up\n", hk)
+		fmt.Printf("hotkey: %v is up\n", hk)
 		if err := hk.Unregister(); err != nil {
 			// t := fmt.Sprintf("hotkey: failed to unregister hotkey: %v", err)
 			// a.ShowErrorWindow("?" + url.QueryEscape("title=Shortcut&desc="+t))
 			error_handler(err)
 			return
 		}
+		fmt.Printf("invoke handler\n")
 		handler(a)
 		register_global_shortcut(hk)
 	}

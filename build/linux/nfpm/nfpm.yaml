@@ -10,7 +10,7 @@ version: "0.1.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "My Product Description"
+description: "Devboard"
 vendor: "com.funzm"
 homepage: "https://wails.io"
 license: "MIT"
