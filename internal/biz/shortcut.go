@@ -7,16 +7,6 @@ import (
 	"golang.design/x/hotkey"
 )
 
-var HotkeyModifierCodeMap = map[string]hotkey.Modifier{
-	"ShiftLeft":    hotkey.ModShift,
-	"ControlLeft":  hotkey.ModCtrl,
-	"MetaLeft":     hotkey.ModCmd,
-	"AltLeft":      hotkey.ModOption,
-	"ShiftRight":   hotkey.ModShift,
-	"ControlRight": hotkey.ModCtrl,
-	"MetaRight":    hotkey.ModCmd,
-	"AltRight":     hotkey.ModOption,
-}
 var HotkeyCodeMap = map[string]hotkey.Key{
 	"Escape":       hotkey.KeyEscape,
 	"Backquote":    hotkey.Key(0x32), // ~
@@ -98,6 +88,9 @@ func NewHotkey(vvv string) (*hotkey.Hotkey, error) {
 			key = k
 			continue
 		}
+	}
+	if len(modifiers) == 0 {
+		return nil, fmt.Errorf("there's must have a modifier")
 	}
 	if key == 0 {
 		return nil, fmt.Errorf("there's must have a key")

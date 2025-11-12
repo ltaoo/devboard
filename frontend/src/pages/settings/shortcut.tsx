@@ -34,6 +34,7 @@ function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
     startListenKeyEvents() {
       _unlisten = listenMultiEvent([
         props.app.onKeydown((event) => {
+          // console.log('[PAGE]props.app.onKeydown - ', event.code);
           if (_pending) {
             return;
           }
@@ -71,7 +72,9 @@ function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
       methods.refresh();
     },
     handleClickReset() {
-      bus.emit(Events.Unregister, { codes: ui.$shortcut.state.codes2.join("+") });
+      if (ui.$shortcut.state.codes2.length) {
+        bus.emit(Events.Unregister, { codes: ui.$shortcut.state.codes2.join("+") });
+      }
       _pending = true;
       _preparing = false;
       _recording = false;
@@ -121,6 +124,9 @@ function ShortcutRecordModel(props: { app: ViewComponentProps["app"] }) {
 
   ui.$shortcut.onStateChange(() => methods.refresh());
   ui.$shortcut.onShortcutComplete(() => {
+    if (ui.$shortcut.state.codes2.length === 0) {
+      return;
+    }
     if (ui.$shortcut.state.codes2.length === 1) {
       props.app.tip({
         text: ["必须包含一个修饰键+一个常规键"],
