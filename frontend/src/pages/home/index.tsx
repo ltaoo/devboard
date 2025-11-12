@@ -696,7 +696,14 @@ function HomeIndexViewModel(props: ViewComponentProps) {
         if (r.error) {
           return;
         }
-        ui.$input_search.methods.setOptions(r.data);
+        ui.$input_search.methods.setOptions(
+          r.data.map((v) => {
+            return {
+              id: v.id,
+              label: `#${v.label}`,
+            };
+          })
+        );
       })();
       const r = await request.paste.list.init();
     },
@@ -770,7 +777,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                     {/* <div class="absolute left-2 top-2">{v.id}</div> */}
                     <div
                       classList={{
-                        "relative min-h-[40px] max-h-[120px] overflow-hidden rounded-md": true,
+                        "relative max-h-[120px] overflow-hidden rounded-md": true,
                       }}
                     >
                       {/* <div
@@ -829,8 +836,8 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                             <div>{v.text}</div>
                           </div>
                         </Match>
-                        <Match when={v.types.includes("time")}>
-                          <div class="flex items-center gap-1 p-2">
+                        <Match when={v.types.includes("time") || v.types.includes("size")}>
+                          <div class="flex items-center gap-2 p-2">
                             <div>{v.origin_text}</div>
                             <div class="text-w-fg-1">{v.text}</div>
                           </div>

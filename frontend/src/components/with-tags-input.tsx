@@ -25,19 +25,19 @@ export function WithTagsInputModel(
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
-    buildOptionWithHeightAndTop(v: Pick<OptionWithTopInList, "id">[]) {
+    buildOptionWithHeightAndTop(v: Pick<OptionWithTopInList, "id" | "label">[]) {
       const options = v.map((opt, idx) => {
         const h = 6 + 24 + 6;
         return {
           id: opt.id,
-          label: `#${opt.id}`,
+          label: opt.label,
           height: h,
           top: idx * h,
         };
       });
       return options;
     },
-    setOptions(v: Pick<OptionWithTopInList, "id">[]) {
+    setOptions(v: Pick<OptionWithTopInList, "id" | "label">[]) {
       _options = methods.buildOptionWithHeightAndTop(v);
       _displayed_options = _options;
       _displayed_options = methods.filterDisplayedOptionsWithSelectedOptions();
@@ -340,6 +340,7 @@ export function buildOptionFromWaterfallCell($item: {
 }) {
   return {
     id: $item.state.payload.id,
+    // label: `#${$item.state.payload.id}`,
     label: $item.state.payload.id,
     top: $item.state.top,
     height: $item.state.height,

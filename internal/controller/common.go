@@ -27,7 +27,7 @@ type AppResp struct {
 
 func (s *AppController) FetchAppList(body AppListBody) ([]*models.App, error) {
 	var list []*models.App
-	if err := s.db.Where("1 = 1").Find(&list).Error; err != nil {
+	if err := s.db.Where("id IS NOT 'unknown'").Find(&list).Error; err != nil {
 		return nil, err
 	}
 	return list, nil
