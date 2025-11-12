@@ -72,9 +72,7 @@ export function HelperCenterShortcutView(props: ViewComponentProps) {
           </thead>
           <tbody>
             <tr>
-              <td class="p-2 w-[280px]">
-                <ShortcutKey keys={["Ctrl", "~"]} separator="+" />
-              </td>
+              <td class="p-2 w-[280px]">需要在设置窗口自定义</td>
               <td class="p-2">
                 <div>macOS端</div>
                 <div>唤起主窗口</div>
