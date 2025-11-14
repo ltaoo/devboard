@@ -10,6 +10,7 @@ import { CodeCard } from "@/components/code-card";
 import { HTMLCard } from "@/components/html-card";
 import { ImageContentPreview } from "@/components/preview-panels/image";
 import { Button, ScrollView, Textarea } from "@/components/ui";
+import { ModelInList } from "@/components/dynamic-content/with-click";
 
 import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { base, Handler } from "@/domains/base";
@@ -19,7 +20,6 @@ import { isCodeContent } from "@/biz/paste/utils";
 import { PasteContentImage, PasteContentType } from "@/biz/paste/service";
 import { RequestCore } from "@/domains/request";
 import { createRemark, deleteRemark } from "@/biz/remark/service";
-import { ModelInList } from "@/components/dynamic-content/with-click";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
@@ -143,7 +143,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
         </Match>
         <Match when={state().profile}>
           <div class="content flex h-full">
-            <div class="content__preview relative flex-1 h-full">
+            <div class="content__preview relative flex-1 w-0 h-full">
               <Switch
                 fallback={
                   <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[60vw] p-4 rounded-md bg-w-bg-3">

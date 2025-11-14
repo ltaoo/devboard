@@ -64,7 +64,7 @@ func (s *PasteController) FetchPasteEventList(body PasteListBody) (*ListResp[Pas
 		return nil, err
 	}
 	list2, has_more, next_marker := pb.ProcessResults(list1)
-	var list []PasteListItemResp
+	list := make([]PasteListItemResp, 0)
 	for _, v := range list2 {
 		vv := PasteListItemResp{
 			Id:           v.Id,

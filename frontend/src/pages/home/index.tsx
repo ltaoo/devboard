@@ -344,20 +344,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     $map_copy_btn: ModelInList<DynamicContentWithClickModel>({}),
     $shortcut: ShortcutModel({}),
     $commands: CommandToolSelectModel({ app: props.app, defaultValue: "" }),
-    $input_main: SlateEditorModel({
-      app: props.app,
-      defaultValue: [
-        {
-          type: SlateDescendantType.Paragraph,
-          children: [
-            {
-              type: SlateDescendantType.Text,
-              text: "",
-            },
-          ],
-        },
-      ],
-    }),
   };
 
   let _selected_files = [] as SelectedFile[];
@@ -393,9 +379,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
   ui.$shortcut.methods.register({
     "KeyK,ArrowUp"(event) {
       console.log("[]shortcut - KeyK", ui.$input_search.isFocus, event.code);
-      if (ui.$input_main.isFocus) {
-        return;
-      }
       if (ui.$commands.isFocus) {
         if (event.code === "ArrowUp") {
           ui.$commands.methods.moveToPrevOption({ step: 1 });
@@ -410,6 +393,7 @@ function HomeIndexViewModel(props: ViewComponentProps) {
           event.preventDefault();
           return;
         }
+        return;
       }
       event.preventDefault();
       ui.$list_highlight.methods.moveToPrevOption({ step: 1 });
@@ -426,9 +410,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     "KeyJ,ArrowDown"(event) {
       // console.log("[]shortcut - KeyJ", ui.$input_search.isFocus, ui.$input_search.isOpen, event.code);
       console.log("[]shortcut - KeyJ");
-      if (ui.$input_main.isFocus) {
-        return;
-      }
       if (ui.$commands.isFocus) {
         if (event.code === "ArrowDown") {
           ui.$commands.methods.moveToNextOption({ step: 1 });
@@ -470,9 +451,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       methods.backToTop();
     },
     "KeyYKeyY,Enter"(event) {
-      if (ui.$input_main.isFocus) {
-        return;
-      }
       if (ui.$commands.isFocus) {
         return;
       }
@@ -496,9 +474,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
     },
     Space(event) {
       // console.log("[PAGE]home/index - key Space", ui.$input_search.isFocus);
-      if (ui.$input_main.isFocus) {
-        return;
-      }
       if (ui.$commands.isFocus) {
         return;
       }
@@ -514,9 +489,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       methods.previewPasteContent($cell.state.payload);
     },
     Backspace() {
-      if (ui.$input_main.isFocus) {
-        return;
-      }
       if (ui.$commands.isFocus) {
         return;
       }
@@ -570,9 +542,6 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$input_search.methods.openSelect({ force: true });
     },
     "MetaLeft+KeyF,ShiftLeft+KeyA,KeyO"(event) {
-      if (ui.$input_main.isFocus) {
-        return;
-      }
       if (ui.$commands.isFocus) {
         return;
       }
