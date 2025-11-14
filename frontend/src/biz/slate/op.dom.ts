@@ -69,7 +69,10 @@ export const SlateDOMOperations = {
     console.log("[op.dom]splitNode - 2. split", text1, text2);
     $node.textContent = renderHTML(text1);
     renderNodeThenInsertLine($input, {
-      node: { type: SlateDescendantType.Paragraph, children: [{ type: SlateDescendantType.Text, text: text2 }] },
+      node: {
+        type: SlateDescendantType.Paragraph,
+        children: [{ type: SlateDescendantType.Text, text: text2 }],
+      },
       path: [op.path[0]],
     });
   },
@@ -181,47 +184,51 @@ export function renderElement(
   node: SlateDescendant & { key?: number },
   extra: { text?: boolean } = {}
 ): Element | null {
-  if (node.type === SlateDescendantType.Paragraph) {
-    const $node = document.createElement("p");
-    $node.setAttribute("data-slate-node", "element");
-    if (node.key) {
-      $node.setAttribute("data-slate-node-key", String(node.key));
-    }
-    const $tmp = document.createDocumentFragment();
-    for (let i = 0; i < node.children.length; i += 1) {
-      const child = node.children[i];
-      if (child.type === SlateDescendantType.Text) {
-        const $child = renderText(node.children[i], extra);
-        if ($child) {
-          $tmp.appendChild($child);
-        }
-      }
-      if (child.type === SlateDescendantType.Paragraph) {
-        const $child = renderElement(node.children[i], extra);
-        if ($child) {
-          $tmp.appendChild($child);
-        }
-      }
-    }
-    $node.appendChild($tmp);
-    return $node;
+  if (node.type !== SlateDescendantType.Paragraph) {
+    return null;
   }
-  return null;
+  const $node = document.createElement("p");
+  $node.setAttribute("data-slate-node", "element");
+  if (node.key) {
+    $node.setAttribute("data-slate-node-key", String(node.key));
+  }
+  const $tmp = document.createDocumentFragment();
+  for (let i = 0; i < node.children.length; i += 1) {
+    const child = node.children[i];
+    // console.log("[]renderElement", i, child, child.type);
+    // 每个节点必须有 type，不能像 slate 一样根据对象键值对来判断？
+    // [] 支持可以不传 type 吧
+    if (child.type === SlateDescendantType.Text) {
+      const $child = renderText(node.children[i], extra);
+      // console.log("[]renderElement before appendChild 1", $child);
+      if ($child) {
+        $tmp.appendChild($child);
+      }
+    }
+    if (child.type === SlateDescendantType.Paragraph) {
+      const $child = renderElement(node.children[i], extra);
+      // console.log("[]renderElement before appendChild 2", $child);
+      if ($child) {
+        $tmp.appendChild($child);
+      }
+    }
+  }
+  $node.appendChild($tmp);
+  return $node;
 }
 export function buildInnerHTML(nodes: SlateDescendant[], parents: number[] = [], level = 0) {
   // let lines: Element[] = [];
   const $tmp = document.createDocumentFragment();
   for (let i = 0; i < nodes.length; i += 1) {
     const node = nodes[i];
-    const path = [...parents, i].filter((v) => v !== undefined).join("_");
+    // const path = [...parents, i].filter((v) => v !== undefined).join("_");
     if (isText(node)) {
       const $node = renderText(node);
       if ($node) {
         // lines.push($node);
         $tmp.appendChild($node);
       }
-    }
-    if (isElement(node)) {
+    } else if (isElement(node)) {
       const $node = renderElement(node);
       if ($node) {
         // lines.push($node);
@@ -308,7 +315,7 @@ export function findInnerTextNode($node?: any) {
 }
 
 export function getNodePath(targetNode: Element, rootNode: Element) {
-  const path = [];
+  const path: number[] = [];
   let currentNode = targetNode;
 
   // 从目标节点向上遍历直到根节点

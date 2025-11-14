@@ -10,10 +10,6 @@ import { connect } from "@/biz/slate/connect.web";
 import { refreshSelection, buildInnerHTML, SlateDOMOperations } from "@/biz/slate/op.dom";
 
 export function SlateView(props: { store: SlateEditorModel }) {
-  return <SlateEditable store={props.store} />;
-}
-
-function SlateEditable(props: { store: SlateEditorModel }) {
   let $input: HTMLDivElement | undefined;
 
   const [state, vm] = useViewModelStore(props.store);
@@ -60,7 +56,7 @@ function SlateEditable(props: { store: SlateEditorModel }) {
     <>
       <div
         ref={$input}
-        class="overflow-y-auto p-1 border border-2 border-w-fg-3 rounded-md outline-none"
+        class="overflow-y-auto min-h-[120px] p-1 border border-2 border-w-fg-3 rounded-md outline-none"
         style={{ "white-space": "pre-wrap", "ime-mode": "disabled" }}
         // style=“ime-mode:disabled”
         contenteditable
@@ -73,21 +69,19 @@ function SlateEditable(props: { store: SlateEditorModel }) {
           vm.methods.handleKeyDown({
             code: event.code,
             preventDefault: event.preventDefault.bind(event),
-            nativeEvent: event,
           });
         }}
         onKeyUp={(event) => {
           vm.methods.handleKeyUp({
             code: event.code,
             preventDefault: event.preventDefault.bind(event),
-            nativeEvent: event,
           });
         }}
         onCompositionStart={vm.methods.handleCompositionStart}
         onCompositionUpdate={vm.methods.handleCompositionUpdate}
         onCompositionEnd={vm.methods.handleCompositionEnd}
       ></div>
-      <div class="flex gap-2">
+      {/* <div class="flex gap-2">
         <Button store={$btn}>测试</Button>
         <Button store={$btn_refresh}>刷新</Button>
       </div>
@@ -116,7 +110,7 @@ function SlateEditable(props: { store: SlateEditorModel }) {
       </div>
       <div class="text-[12px]">
         <pre>{state().JSON}</pre>
-      </div>
+      </div> */}
     </>
   );
 }
