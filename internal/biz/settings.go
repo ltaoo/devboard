@@ -41,6 +41,7 @@ type UserSettingsValue struct {
 			RootDir  string `json:"root_dir"`
 		} `json:"webdav"`
 	} `json:"synchronize"`
+	AutoStart bool `json:"auto_start"` // 开机自启
 }
 
 func NewBizConfig(dir string, filename string) *UserSettings {

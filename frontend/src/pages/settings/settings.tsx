@@ -6,18 +6,19 @@ import { BrushCleaning, Check, Delete, File } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
-import { Button, Input, ScrollView, Textarea } from "@/components/ui";
+import { Button, Checkbox, Input, ScrollView, Textarea } from "@/components/ui";
 import { FieldObjV2 } from "@/components/fieldv2/obj";
 import { FieldV2 } from "@/components/fieldv2/field";
 
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { RequestCore } from "@/domains/request";
-import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
+import { ButtonCore, CheckboxCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { ObjectFieldCore, SingleFieldCore } from "@/domains/ui/formv2";
 import {
   fetchUserSettings,
   registerShortcut,
+  toggleAutoStart,
   unregisterShortcut,
   updateUserSettings,
   updateUserSettingsWithPath,
@@ -32,6 +33,9 @@ function SettingsViewModel(props: ViewComponentProps) {
       update_by_path: new RequestCore(updateUserSettingsWithPath, { client: props.client }),
       register_shortcut: new RequestCore(registerShortcut, { client: props.client }),
       unregister_shortcut: new RequestCore(unregisterShortcut, { client: props.client }),
+    },
+    auto_start: {
+      update: new RequestCore(toggleAutoStart, { client: props.client }),
     },
   };
   const methods = {
@@ -77,6 +81,20 @@ function SettingsViewModel(props: ViewComponentProps) {
     }),
     $form_settings: new ObjectFieldCore({
       fields: {
+        auto_start: new SingleFieldCore({
+          label: "开机启动",
+          input: new CheckboxCore({
+            onChange() {
+              const v = ui.$form_settings.getValueWithPath(["auto_start"]);
+              methods.updateSettingsByPath("auto_start", {
+                value: v,
+              });
+              request.auto_start.update.run({
+                auto_start: v,
+              });
+            },
+          }),
+        }),
         douyin: new ObjectFieldCore({
           label: "抖音",
           fields: {
@@ -163,6 +181,11 @@ export function SettingsView(props: ViewComponentProps) {
       <div class="block">
         <div class="text-2xl text-w-fg-0">配置</div>
         <div class="mt-4 space-y-8">
+          <div>
+            <FieldV2 store={vm.ui.$form_settings.fields.auto_start}>
+              <Checkbox store={vm.ui.$form_settings.fields.auto_start.input} />
+            </FieldV2>
+          </div>
           <div>
             <FieldObjV2 class="space-y-2" store={vm.ui.$form_settings.fields.douyin}>
               <FieldV2 store={vm.ui.$form_settings.fields.douyin.fields.cookie}>

@@ -1,4 +1,5 @@
 import { Read, UpdateSettingsByPath, WriteConfig } from "~/configservice";
+import { UpdateAutoStart } from "~/systemservice";
 import { RegisterShortcut, UnregisterShortcut } from "~/commonservice";
 
 import { request } from "@/biz/requests";
@@ -59,4 +60,8 @@ export function registerShortcut(body: { shortcut: string; command: string }) {
 
 export function unregisterShortcut(body: { shortcut: string }) {
   return request.post(UnregisterShortcut, body);
+}
+
+export function toggleAutoStart(body: { auto_start: boolean }) {
+  return request.post(UpdateAutoStart, body);
 }

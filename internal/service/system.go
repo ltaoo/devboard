@@ -5,6 +5,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"devboard/internal/biz"
+	"devboard/pkg/autostart"
 	"devboard/pkg/system"
 )
 
@@ -79,5 +80,21 @@ func (s *SystemService) FetchComputeInfo() *Result {
 	return Ok(map[string]interface{}{
 		"device": device,
 		"app":    app,
+	})
+}
+
+type UpdateAutoStartBody struct {
+	AutoStart bool `json:"auto_start"`
+}
+
+func (s *SystemService) UpdateAutoStart(body UpdateAutoStartBody) *Result {
+	service := autostart.New(s.Biz.Name)
+	if body.AutoStart {
+		service.Enable()
+	} else {
+		service.Disable()
+	}
+	return Ok(map[string]interface{}{
+		"auto_start": body.AutoStart,
 	})
 }
