@@ -24,6 +24,7 @@ import (
 	"devboard/internal/routes"
 	"devboard/internal/service"
 	"devboard/models"
+	"devboard/pkg/autostart"
 	"devboard/pkg/logger"
 	"devboard/pkg/system"
 )
@@ -371,6 +372,19 @@ func main() {
 				err := biz.RegisterShortcutWithCommand(shortcut1, "ToggleMainWindowVisible")
 				if err != nil {
 					fmt.Println("register shortcut failed,", err.Error())
+				}
+			}
+		}()
+		go func() {
+			auto_start := biz.Perferences.Value.AutoStart
+			as := autostart.New(biz.Name)
+			if auto_start && !as.IsEnabled() {
+				if err := as.Enable(); err != nil {
+					fmt.Println("Failed to enable autostart:", err)
+				}
+			} else if !auto_start && as.IsEnabled() {
+				if err := as.Disable(); err != nil {
+					fmt.Println("Failed to disable autostart:", err)
 				}
 			}
 		}()
