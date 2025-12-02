@@ -66,10 +66,15 @@ func (s *PasteController) FetchPasteEventList(body PasteListBody) (*ListResp[Pas
 	list2, has_more, next_marker := pb.ProcessResults(list1)
 	list := make([]PasteListItemResp, 0)
 	for _, v := range list2 {
+		text := v.Text
+		r := []rune(text)
+		if len(r) > 800 {
+			text = string(r[:800])
+		}
 		vv := PasteListItemResp{
 			Id:           v.Id,
 			ContentType:  v.ContentType,
-			Text:         v.Text,
+			Text:         text,
 			HTML:         v.Html,
 			ImageBase64:  v.ImageBase64,
 			FileListJSON: v.FileListJSON,
