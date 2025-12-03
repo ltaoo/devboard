@@ -20,18 +20,21 @@ type BaseModel struct {
 }
 
 func (p *BaseModel) BeforeCreate(tx *gorm.DB) error {
-	now_timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	if p.Id == "" {
-		p.Id = uuid.New().String()
-	}
-	if p.CreatedAt == "" {
-		p.CreatedAt = now_timestamp
-	}
-	if p.LastOperationTime == "" {
-		p.LastOperationTime = now_timestamp
-	}
-	if p.LastOperationType == 0 {
-		p.LastOperationType = 1
+    now_timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
+    if p.Id == "" {
+        p.Id = uuid.New().String()
+    }
+    if p.CreatedAt == "" {
+        p.CreatedAt = now_timestamp
+    }
+    if p.UpdatedAt == "" {
+        p.UpdatedAt = now_timestamp
+    }
+    if p.LastOperationTime == "" {
+        p.LastOperationTime = now_timestamp
+    }
+    if p.LastOperationType == 0 {
+        p.LastOperationType = 1
 	}
 	if p.SyncStatus == 0 {
 		p.SyncStatus = 1

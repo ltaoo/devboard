@@ -103,3 +103,7 @@ func (s *DouyinService) DownloadDouyinVideo(body DownloadDouyinVideoBody) *Resul
 	}
 	return Ok(map[string]interface{}{})
 }
+
+func Test() *Result {
+	return Ok(nil)
+}

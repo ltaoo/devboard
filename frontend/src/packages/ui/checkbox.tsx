@@ -95,17 +95,15 @@ const Root = (props: { store: CheckboxCore } & JSX.HTMLAttributes<HTMLButtonElem
  * -----------------------------------------------------------------------------------------------*/
 
 const Indicator = (props: { store: CheckboxCore } & JSX.HTMLAttributes<HTMLSpanElement>) => {
-  const { store } = props;
+  const [state, setState] = createSignal(props.store.state);
 
-  const [state, setState] = createSignal(store.state);
-
-  store.onStateChange((nextState) => {
-    // console.log("[PACKAGE]checkbox/Indicator", nextState);
+  props.store.onStateChange((nextState) => {
+    console.log("[PACKAGE]checkbox/Indicator", nextState);
     setState(nextState);
   });
 
   return (
-    <Presence store={store.presence} class="w-full h-full">
+    <Presence store={props.store.presence} class="w-full h-full">
       <span
         data-state={getState(state().checked)}
         data-disabled={state().disabled ? "" : undefined}

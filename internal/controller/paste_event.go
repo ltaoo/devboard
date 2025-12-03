@@ -94,7 +94,26 @@ func get_device_id(db *gorm.DB, machine_id string) string {
 }
 
 func (s *PasteController) HandlePasteText(text string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
-	var created_paste_event models.PasteEvent
+    var created_paste_event models.PasteEvent
+    var existing []models.PasteEvent
+    if err := s.db.Where("content_type = ? AND text = ?", "text", text).Limit(1).Find(&existing).Error; err == nil && len(existing) > 0 {
+        tx := s.db.Begin()
+        defer func() {
+            if r := recover(); r != nil {
+                tx.Rollback()
+                return
+            }
+        }()
+        if err := tx.Save(&existing[0]).Error; err != nil {
+            tx.Rollback()
+            return nil, err
+        }
+        if err := tx.Commit().Error; err != nil {
+            tx.Rollback()
+            return nil, err
+        }
+        return nil, nil
+    }
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	created_paste_event = models.PasteEvent{
@@ -144,11 +163,30 @@ func (s *PasteController) HandlePasteText(text string, extra *PasteExtraInfo) (*
 }
 
 func (s *PasteController) HandlePasteHTML(html_content string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
-	var created_paste_event models.PasteEvent
-	r := _html.ParseHTMLContent(html_content)
-	text := extra.PlainText
-	html := r.HTMLContent
-	html = _html.CleanRichTextStrict(html)
+    var created_paste_event models.PasteEvent
+    r := _html.ParseHTMLContent(html_content)
+    text := extra.PlainText
+    html := r.HTMLContent
+    html = _html.CleanRichTextStrict(html)
+    var existing []models.PasteEvent
+    if err := s.db.Where("content_type = ? AND html = ?", "html", html).Limit(1).Find(&existing).Error; err == nil && len(existing) > 0 {
+        tx := s.db.Begin()
+        defer func() {
+            if r := recover(); r != nil {
+                tx.Rollback()
+                return
+            }
+        }()
+        if err := tx.Save(&existing[0]).Error; err != nil {
+            tx.Rollback()
+            return nil, err
+        }
+        if err := tx.Commit().Error; err != nil {
+            tx.Rollback()
+            return nil, err
+        }
+        return nil, nil
+    }
 	details, _ := json.Marshal(&map[string]interface{}{
 		"source_url":   r.SourceURL,
 		"window_title": extra.WindowTitle,
@@ -214,7 +252,26 @@ type PNGFileInfo struct {
 func (s *PasteController) HandlePastePNG(image_bytes []byte, extra *PasteExtraInfo) (*models.PasteEvent, error) {
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
-	encoded := base64.StdEncoding.EncodeToString(image_bytes)
+    encoded := base64.StdEncoding.EncodeToString(image_bytes)
+    var existing []models.PasteEvent
+    if err := s.db.Where("content_type = ? AND image_base64 = ?", "image", encoded).Limit(1).Find(&existing).Error; err == nil && len(existing) > 0 {
+        tx := s.db.Begin()
+        defer func() {
+            if r := recover(); r != nil {
+                tx.Rollback()
+                return
+            }
+        }()
+        if err := tx.Save(&existing[0]).Error; err != nil {
+            tx.Rollback()
+            return nil, err
+        }
+        if err := tx.Commit().Error; err != nil {
+            tx.Rollback()
+            return nil, err
+        }
+        return nil, nil
+    }
 	details := "{}"
 	reader := bytes.NewReader(image_bytes)
 	info, err := png.DecodeConfig(reader)
@@ -286,7 +343,7 @@ type FileInPasteEvent struct {
 }
 
 func (s *PasteController) HandlePasteFile(files []string, extra *PasteExtraInfo) (*models.PasteEvent, error) {
-	var created_paste_event models.PasteEvent
+    var created_paste_event models.PasteEvent
 	// now := time.Now()
 	// now_timestamp := strconv.FormatInt(now.UnixMilli(), 10)
 	var results []FileInPasteEvent
@@ -321,10 +378,29 @@ func (s *PasteController) HandlePasteFile(files []string, extra *PasteExtraInfo)
 	if len(results) == 0 {
 		return nil, fmt.Errorf("No valid file")
 	}
-	content, err := json.Marshal(&results)
-	if err != nil {
-		return nil, err
-	}
+    content, err := json.Marshal(&results)
+    if err != nil {
+        return nil, err
+    }
+    var existing []models.PasteEvent
+    if err := s.db.Where("content_type = ? AND file_list_json = ?", "file", string(content)).Limit(1).Find(&existing).Error; err == nil && len(existing) > 0 {
+        tx := s.db.Begin()
+        defer func() {
+            if r := recover(); r != nil {
+                tx.Rollback()
+                return
+            }
+        }()
+        if err := tx.Save(&existing[0]).Error; err != nil {
+            tx.Rollback()
+            return nil, err
+        }
+        if err := tx.Commit().Error; err != nil {
+            tx.Rollback()
+            return nil, err
+        }
+        return nil, nil
+    }
 	details, _ := json.Marshal(&map[string]interface{}{
 		"window_title": extra.WindowTitle,
 	})

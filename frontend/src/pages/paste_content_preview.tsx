@@ -224,7 +224,7 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                 <div class="fields mt-4 space-y-2">
                   <div class="field">
                     <div class="text-w-fg-1 text-[12px]">创建时间</div>
-                    <div class="text-w-fg-0">{state().profile?.created_at_text}</div>
+                    <div class="text-w-fg-0">{state().profile?.updated_at_text}</div>
                   </div>
                   <div class="field text-w-fg-1 text-sm">
                     <div class="text-w-fg-1 text-[12px]">应用</div>

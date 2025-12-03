@@ -106,7 +106,14 @@ export class CheckboxCore extends BaseDomain<TheTypesOfEvents> {
     this.checked = this.defaultChecked;
   }
   setValue(v: boolean) {
+    // console.log("[DOMAIN]ui/checkbox - setValue", v);
     this.checked = v;
+    if (v) {
+      this.presence.show();
+    } else {
+      this.presence.hide();
+    }
+    // this.emit(Events.StateChange, { ...this.state });
   }
 
   onChange(handler: Handler<TheTypesOfEvents[Events.Change]>) {
