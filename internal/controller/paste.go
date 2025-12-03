@@ -44,6 +44,7 @@ type PasteListItemResp struct {
 	FileListJSON string              `json:"file_list_json,omitempty"`
 	Details      string              `json:"details,omitempty"`
 	CreatedAt    string              `json:"created_at"`
+	UpdatedAt    string              `json:"updated_at"`
 	Categories   []PasteCategoryResp `json:"categories"`
 }
 
@@ -55,10 +56,10 @@ func (s *PasteController) FetchPasteEventList(body PasteListBody) (*ListResp[Pas
 	if len(body.Types) != 0 {
 		query = query.Joins("JOIN paste_event_category_mapping ON paste_event_category_mapping.paste_event_id = paste_event.id").Where("paste_event_category_mapping.category_id IN ?", body.Types).Distinct("paste_event.*")
 	}
-	pb := models.NewPaginationBuilder[models.PasteEvent](query).
-		SetLimit(body.PageSize).
-		SetPage(body.Page).
-		SetOrderBy("paste_event.created_at DESC")
+    pb := models.NewPaginationBuilder[models.PasteEvent](query).
+        SetLimit(body.PageSize).
+        SetPage(body.Page).
+        SetOrderBy("paste_event.updated_at DESC")
 	var list1 []models.PasteEvent
 	if err := pb.Build().Preload("Categories").Find(&list1).Error; err != nil {
 		return nil, err
@@ -80,6 +81,7 @@ func (s *PasteController) FetchPasteEventList(body PasteListBody) (*ListResp[Pas
 			FileListJSON: v.FileListJSON,
 			Details:      v.Details,
 			CreatedAt:    v.CreatedAt,
+			UpdatedAt:    v.UpdatedAt,
 		}
 		var categories []PasteCategoryResp
 		for _, c := range v.Categories {
@@ -118,7 +120,19 @@ func (s *PasteController) FetchPasteEventProfile(body PasteProfileBody) (*models
 		Preload("Categories").First(&record).Error; err != nil {
 		return nil, err
 	}
-	return &record, nil
+	vv := record
+	// vv := &PasteListItemResp{
+	// 	Id:           record.Id,
+	// 	ContentType:  record.ContentType,
+	// 	Text:         record.text,
+	// 	HTML:         record.Html,
+	// 	ImageBase64:  record.ImageBase64,
+	// 	FileListJSON: record.FileListJSON,
+	// 	Details:      record.Details,
+	// 	CreatedAt:    record.CreatedAt,
+	// 	UpdatedAt:    record.UpdatedAt,
+	// }
+	return &vv, nil
 }
 
 type PasteEventBody struct {

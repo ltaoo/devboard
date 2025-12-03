@@ -31,6 +31,7 @@ export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types
       html?: string;
       details: string;
       created_at: string;
+      updated_at: string;
       last_modified_time: string;
       categories: {
         id: string;
@@ -196,8 +197,8 @@ export function processPartialPasteEvent(
     files,
     height,
     type: v.content_type,
-    created_at: dayjs(Number(v.created_at)),
-    created_at_text: dayjs(Number(v.created_at)).format("YYYY-MM-DD HH:mm:ss"),
+    updated_at: dayjs(Number(v.updated_at || v.created_at)),
+    updated_at_text: dayjs(Number(v.updated_at || v.created_at)).format("YYYY-MM-DD HH:mm:ss"),
   };
 }
 export function fetchPasteEventListProcess(r: TmpRequestResp<typeof fetchPasteEventList>) {
@@ -222,6 +223,7 @@ export function fetchPasteEventProfile(body: { id: string }) {
     html?: string;
     details: string;
     created_at: string;
+    updated_at: string;
     last_modified_time: string;
     categories: {
       id: string;

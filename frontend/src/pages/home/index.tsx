@@ -641,6 +641,9 @@ function HomeIndexViewModel(props: ViewComponentProps) {
       // console.log("[PAGE]onKeyup", event.code);
       ui.$shortcut.methods.handleKeyup(event);
     }),
+    props.app.onBlur(() => {
+      ui.$shortcut.methods.reset();
+    }),
     Events.On("clipboard:update", (event) => {
       const created_paste_event = event.data[0];
       if (!created_paste_event) {
@@ -848,8 +851,8 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                           when={state().highlighted_idx === idx}
                           fallback={
                             <div class="time flex justify-between">
-                              <div title={v.created_at_text}>
-                                <RelativeTime class="text-sm text-w-fg-1" time={v.created_at}></RelativeTime>
+                              <div title={v.updated_at_text}>
+                                <RelativeTime class="text-sm text-w-fg-1" time={v.updated_at}></RelativeTime>
                               </div>
                             </div>
                           }
