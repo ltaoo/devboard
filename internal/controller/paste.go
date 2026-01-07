@@ -103,7 +103,7 @@ func (s *PasteController) FetchPasteEventList(body PasteListBody) (*ListResp[Pas
 }
 
 type PasteProfileBody struct {
-	EventId string `json:"event_id"`
+	EventId string `json:"paste_event_id"`
 }
 
 func (s *PasteController) FetchPasteEventProfile(body PasteProfileBody) (*models.PasteEvent, error) {
@@ -155,7 +155,7 @@ func (s *PasteController) DeletePasteEvent(body PasteEventBody) (*models.PasteEv
 }
 
 type PasteWriteBody struct {
-	EventId string `json:"event_id"`
+	EventId string `json:"paste_event_id"`
 }
 
 func (s *PasteController) WritePasteContent(body PasteWriteBody) (int, error) {

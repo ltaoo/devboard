@@ -237,7 +237,7 @@ export function fetchPasteEventProfile(body: { id: string }) {
       id: string;
       name: string;
     };
-  }>(FetchPasteEventProfile, { event_id: body.id });
+  }>(FetchPasteEventProfile, { paste_event_id: body.id });
 }
 export function fetchPasteEventProfileProcess(r: TmpRequestResp<typeof fetchPasteEventProfile>) {
   if (r.error) {
@@ -256,11 +256,11 @@ export function deletePasteEvent(body: { id: string }) {
 }
 
 export function openPasteEventPreviewWindow(body: { id: string }) {
-  return request.post(PreviewPasteEvent, { event_id: body.id });
+  return request.post(PreviewPasteEvent, { paste_event_id: body.id });
 }
 
 export function writePasteEvent(body: { id: string }) {
-  return request.post(Write, { event_id: body.id });
+  return request.post(Write, { paste_event_id: body.id });
 }
 
 export function fakePasteEvent(body: { text: string }) {

@@ -61,13 +61,13 @@ func (s *PasteService) DeletePasteEvent(body controller.PasteEventBody) *Result 
 }
 
 type PasteEventPreviewBody struct {
-	EventId string `json:"event_id"`
+	EventId string `json:"paste_event_id"`
 	Focus   bool   `json:"focus"`
 }
 
 func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 	if body.EventId == "" {
-		return Error(fmt.Errorf("缺少 event_id 参数"))
+		return Error(fmt.Errorf("缺少 paste_event_id 参数"))
 	}
 	unique_url := "/preview"
 	url := unique_url + "?id=" + url.QueryEscape(body.EventId)
