@@ -93,7 +93,13 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                     {/* <div class="absolute left-2 top-2">{v.id}</div> */}
                     <div
                       classList={{
-                        "relative max-h-[120px] overflow-hidden rounded-md": true,
+                        "relative overflow-hidden rounded-md": true,
+                        // "max-h-[120px]": !state().is_fixed_height,
+                        // "h-[64px]": state().is_fixed_height,
+                        "max-h-[120px]": !state().is_fixed_height,
+                      }}
+                      style={{
+                        height: state().is_fixed_height ? `${state().item_content_height}px` : undefined,
                       }}
                     >
                       {/* <div

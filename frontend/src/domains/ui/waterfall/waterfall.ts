@@ -4,13 +4,12 @@ import { WaterfallColumnModel } from "./column";
 import { WaterfallCellModel } from "./cell";
 import { remove_arr_item } from "@/utils";
 
-setInterval(() => {}, 100);
-
 export function WaterfallModel<T extends Record<string, unknown>>(props: {
   column?: number;
   size?: number;
   buffer?: number;
   gutter?: number;
+  itemHeight?: number;
 }) {
   const methods = {
     refresh() {
@@ -28,7 +27,7 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
       }
       for (let i = 0; i < columns; i += 1) {
         // console.log("[]before new ListColumnViewCore", size);
-        const $column = WaterfallColumnModel<T>({ size, buffer, gutter, index: i });
+        const $column = WaterfallColumnModel<T>({ size, buffer, gutter, index: i, itemHeight: v.itemHeight });
         $column.onHeightChange((height) => {
           if (_height >= height) {
             return;

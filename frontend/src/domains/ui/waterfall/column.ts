@@ -10,6 +10,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
   size?: number;
   buffer?: number;
   gutter?: number;
+  itemHeight?: number;
 }) {
   function handleScrollForce(values: { scrollTop: number }) {
     const { scrollTop } = values;
@@ -52,6 +53,16 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
      * 放置一个 item 到列中
      */
     appendItem($item: WaterfallCellModel<T>) {
+      if (_itemHeight) {
+        $item.methods.setColumnIdx(_index);
+        const idx = _$total_items.length;
+        $item.methods.setTop(idx * (_itemHeight + _gutter));
+        _$total_items.push($item);
+        _height = _$total_items.length * (_itemHeight + _gutter);
+        _$items = _$total_items.slice(_start, _end + _buffer_size);
+        bus.emit(Events.HeightChange, _height);
+        return;
+      }
       $item.onHeightChange(([original_height, height_difference]) => {
         const idx = _$total_items.findIndex((v) => v.id === $item.id);
         if (idx !== -1) {
@@ -115,6 +126,24 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
      * 往顶部插入一个 item 到列中
      */
     unshiftItem($item: WaterfallCellModel<T>, opt: Partial<{ skipUpdateHeight: boolean }> = {}) {
+      if (_itemHeight) {
+        // 固定高度模式下，unshift 需要更新所有后续元素的 top
+        // 但如果用 absolute top = index * height，其实只需要更新数组位置，并重新计算 visible 即可？
+        // 不，WaterfallCellView 是 absolute 定位的，每个 Cell 都保存了自己的 top。
+        // 如果往头部加了一个，所有后续 Cell 的 index+1，top 也要 + height。
+        // 既然是 state.top，我们需要遍历更新。
+        $item.methods.setColumnIdx(_index);
+        _$total_items.unshift($item);
+        // 更新所有 items 的 top
+        for (let i = 0; i < _$total_items.length; i += 1) {
+          _$total_items[i].methods.setTop(i * (_itemHeight + _gutter));
+        }
+        _height = _$total_items.length * (_itemHeight + _gutter);
+        _$items = _$total_items.slice(_start, _end + _buffer_size);
+        bus.emit(Events.HeightChange, _height);
+        methods.refresh();
+        return;
+      }
       $item.onHeightChange(([original_height, height_difference]) => {
         _height += height_difference;
         const idx = _$total_items.findIndex((v) => v === $item);
@@ -207,6 +236,14 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       // methods.calcVisibleRange(0);
     },
     calcVisibleRange(scroll_top: number) {
+      if (_itemHeight) {
+        const item_outer_height = _itemHeight + _gutter;
+        // console.log("[DOMAIN]waterfall/column - calcVisibleRange fixed", scroll_top, item_outer_height);
+        // start index
+        const start = Math.floor(scroll_top / item_outer_height);
+        const end = start + _size;
+        return { start: Math.max(0, start - _buffer_size), end: Math.min(end, _$total_items.length) };
+      }
       // console.log("[BIZ]waterfall/column - calcVisibleRange", scroll_top, _start, _end, _$items);
       // 找中点需要遍历几万个元素，不是最佳方案
       // const $middle_item = (() => {
@@ -295,6 +332,7 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
   let _buffer_size = props.buffer ?? 1;
   /** 每个元素和下面元素的距离 */
   let _gutter = props.gutter ?? 0;
+  let _itemHeight = props.itemHeight;
   let _scroll = { scrollTop: 0 };
   // let _range = { start: 0, end: _size + _buffer_size };
   let _start = 0;

@@ -44,6 +44,12 @@ import { SlateEditorModel } from "@/biz/slate/slate";
 import { SlateView } from "@/components/slate/slate";
 import { SlateDescendantType } from "@/biz/slate/types";
 
+const FIXED_HEIGHT_MODE = true;
+const ITEM_HEIGHT = 86;
+const ITEM_OVERHEAD = 52;
+const ITEM_CONTENT_HEIGHT = ITEM_HEIGHT - ITEM_OVERHEAD;
+// const ITEM_HEIGHT_CONTENT_ONLY = 64;
+
 const copy_buttons = [
   {
     content: "copy",
@@ -89,7 +95,13 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
       // const created_paste_event = d;
       // const vv = processPartialPasteEvent(created_paste_event);
       const vv = d;
-      const height_of_new_paste_event = vv.height + ui.$waterfall.gutter;
+      // const height_of_new_paste_event = 116 + ui.$waterfall.gutter;
+      const height_of_new_paste_event = (() => {
+        if (FIXED_HEIGHT_MODE) {
+          return ITEM_HEIGHT + ui.$waterfall.gutter;
+        }
+        return vv.height + ui.$waterfall.gutter;
+      })();
       const added_height = height_of_new_paste_event;
       // const $column = ui.$waterfall.$columns[0];
       // const h = $column.state.height;
@@ -330,7 +342,13 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
         methods.searchWithKeyword(event);
       },
     }),
-    $waterfall: WaterfallModel<PasteRecord>({ column: 1, gutter: 12, size: 10, buffer: 4 }),
+    $waterfall: WaterfallModel<PasteRecord>({
+      column: 1,
+      gutter: 12,
+      size: 10,
+      buffer: 4,
+      itemHeight: FIXED_HEIGHT_MODE ? ITEM_HEIGHT : undefined,
+    }),
     $list_highlight: ListHighlightModel({
       $view,
     }),
@@ -359,6 +377,12 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
     },
     get highlighted_idx() {
       return ui.$list_highlight.state.idx;
+    },
+    get is_fixed_height() {
+      return FIXED_HEIGHT_MODE;
+    },
+    get item_content_height() {
+      return ITEM_CONTENT_HEIGHT;
     },
   };
   enum EventNames {
