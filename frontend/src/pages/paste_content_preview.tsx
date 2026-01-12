@@ -158,7 +158,10 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                 </Match>
                 <Match when={state().profile?.type === "image"}>
                   <Show when={state().profile!.image_url}>
-                    <ImageContentPreview url={state().profile!.image_url!} />
+                    <ImageContentPreview
+                      url={state().profile!.image_url!}
+                      id={state().profile!.id}
+                    />
                   </Show>
                 </Match>
                 <Match when={state().profile?.type === "file"}>
