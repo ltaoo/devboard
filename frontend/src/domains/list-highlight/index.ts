@@ -64,7 +64,6 @@ export function ListHighlightModel(props: { $view: ScrollViewCore; num?: number 
     },
     moveToNextOption(opt: Partial<{ step: number; force: boolean }> = {}) {
       const { step = 1, force = false } = opt;
-      // console.log("[DOMAIN]list-select - moveToNextOption", _opt_idx, _options);
       if (_options.length === 0) {
         return;
       }
@@ -79,43 +78,24 @@ export function ListHighlightModel(props: { $view: ScrollViewCore; num?: number 
       const scroll_top = ui.$view.getScrollTop();
       const client_height = ui.$view.getScrollClientHeight();
       const target_option = _options[_opt_idx];
-      // console.log(
-      //   "[COMPONENT]with-tag - moveToNext calc need scroll the container",
-      //   _opt_idx,
-      //   client_height,
-      //   scroll_top,
-      //   target_option
-      // );
       if (target_option && target_option.top !== undefined) {
         const cur_option_in_up_area = target_option.top + target_option.height - scroll_top < 0;
         const cur_option_in_bottom_area = Math.abs(target_option.top - scroll_top) > client_height;
-        // console.log("[COMPONENT]with-tag - moveToNext need goto option", cur_option_in_up_area, cur_option_in_bottom_area);
-        // console.log(target_option.top, scroll_top, client_height);
         if (!force && (cur_option_in_up_area || cur_option_in_bottom_area)) {
           const closest_opt_idx = _options.findIndex((opt) => {
-            return opt.top && opt.top >= scroll_top;
+            return opt.top !== undefined && opt.top >= scroll_top;
           });
           if (closest_opt_idx !== -1) {
-            // const closest_opt = _options[closest_opt_idx];
-            // console.log(closest_opt);
-            // console.log("[COMPONENT]with-tag - moveToNext direct to option", closest_opt_idx);
             _opt_idx = closest_opt_idx;
           }
         } else if (target_option.top > client_height / 2 + scroll_top) {
-          // ui.$view.scrollTo({ top: cur_option.top - client_height / 2 });
           ui.$view.setScrollTop(target_option.top - client_height / 2);
         }
       }
-      // const menu_height = 24 + 6 + 6;
-      // if (_opt_idx * menu_height > scroll_top + (default_displayed_menu_count - 1) * menu_height) {
-      //   ui.$view.setScrollTop(scroll_top + menu_height);
-      // }
       methods.refresh();
     },
     moveToPrevOption(opt: Partial<{ step: number; force: boolean }> = {}) {
       const { step = 1, force = false } = opt;
-      console.log("[COMPONENT]with-tags-input - moveToPrevOption", _opt_idx, _options.length);
-      const cur_option = _options[_opt_idx];
       if (_opt_idx === 0) {
         return;
       }
@@ -126,34 +106,29 @@ export function ListHighlightModel(props: { $view: ScrollViewCore; num?: number 
       const target_option = _options[_opt_idx];
       const scroll_top = ui.$view.getScrollTop();
       const client_height = ui.$view.getScrollClientHeight();
-      // console.log(
-      //   "[COMPONENT]with-tags-input - calc need scroll the container",
-      //   _opt_idx,
-      //   client_height,
-      //   scroll_top,
-      //   cur_option.top,
-      //   target_option
-      // );
       if (target_option && target_option.top !== undefined) {
-        if (Math.abs(target_option.top - scroll_top) > client_height) {
-          const closest_opt_idx = _options.findIndex((opt) => {
-            return opt.top && opt.top + opt.height >= scroll_top + client_height;
-          });
-          // console.log("[COMPONENT]with-tags-input - offscreen", closest_opt_idx);
+        const cur_option_in_up_area = target_option.top + target_option.height - scroll_top < 0;
+        const cur_option_in_bottom_area = Math.abs(target_option.top - scroll_top) > client_height;
+        if (!force && (cur_option_in_up_area || cur_option_in_bottom_area)) {
+          let closest_opt_idx = -1;
+          for (let i = _options.length - 1; i >= 0; i--) {
+            const opt = _options[i];
+            if (opt.top !== undefined && opt.top + opt.height <= scroll_top + client_height) {
+              closest_opt_idx = i;
+              break;
+            }
+          }
           if (closest_opt_idx !== -1) {
             _opt_idx = closest_opt_idx;
           }
         } else if (target_option.top >= scroll_top && target_option.top <= scroll_top + client_height) {
+          // Inside viewport, do nothing
         } else if (target_option.top < scroll_top) {
           ui.$view.setScrollTop(target_option.top - 58);
         } else {
           ui.$view.setScrollTop(0);
         }
       }
-      // const menu_height = 24 + 6 + 6;
-      // if (_opt_idx * menu_height < scroll_top) {
-      //   ui.$view.setScrollTop(scroll_top - menu_height);
-      // }
       methods.refresh();
     },
     setIdx(idx: number) {
@@ -216,7 +191,7 @@ export function ListHighlightModel(props: { $view: ScrollViewCore; num?: number 
     methods,
     ui,
     state: _state,
-    ready() {},
+    ready() { },
     destroy() {
       bus.destroy();
     },

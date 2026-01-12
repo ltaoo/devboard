@@ -54,10 +54,7 @@ export function ModelInList<T>(props: {}) {
   };
 }
 
-export function DynamicContentWithClickModel(props: {
-  options: { content: null | JSX.Element }[];
-  onClick?: () => void;
-}) {
+export function DynamicContentWithClickModel(props: { options: { content: string }[]; onClick?: () => void }) {
   const methods = {
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
@@ -142,6 +139,7 @@ export type DynamicContentWithClickModel = ReturnType<typeof DynamicContentWithC
 
 export function DynamicContentWithClick(
   props: {
+    contents: Record<string, JSX.Element>;
     store: DynamicContentWithClickModel;
   } & JSX.HTMLAttributes<HTMLDivElement>
 ) {
@@ -159,7 +157,8 @@ export function DynamicContentWithClick(
         if (!matched) {
           return null;
         }
-        return matched.content;
+        const $elm = props.contents[matched.content];
+        return $elm ?? matched.content;
       })()}
     </div>
   );

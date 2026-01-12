@@ -38,7 +38,10 @@ export function fetchPasteEventList(body: Partial<FetchParams> & Partial<{ types
         label: string;
       }[];
     }>
-  >(FetchPasteEventList, body);
+  >(FetchPasteEventList, {
+    ...body,
+    page_size: body.pageSize,
+  });
 }
 
 export enum PasteContentType {

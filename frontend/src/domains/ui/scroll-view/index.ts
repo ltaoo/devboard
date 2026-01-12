@@ -69,6 +69,7 @@ export type ScrollViewProps = {
   /** 下拉多少距离后刷新 */
   offset?: number;
   disabled?: boolean;
+  threshold?: number;
   onScroll?: (pos: { scrollTop: number }) => void;
   onReachBottom?: () => void;
   onPullToRefresh?: () => void;
@@ -192,7 +193,16 @@ export class ScrollViewCore extends BaseDomain<TheTypesOfEvents> {
   constructor(props: ScrollViewProps = {}) {
     super(props);
 
-    const { os, offset = 80, disabled = false, onScroll, onReachBottom, onPullToRefresh, onPullToBack } = props;
+    const {
+      os,
+      offset = 80,
+      disabled = false,
+      threshold = 120,
+      onScroll,
+      onReachBottom,
+      onPullToRefresh,
+      onPullToBack,
+    } = props;
     // console.log(props);
 
     this.options = props;
@@ -200,6 +210,7 @@ export class ScrollViewCore extends BaseDomain<TheTypesOfEvents> {
     if (os) {
       this.os = os;
     }
+    this.threshold = threshold;
     this.pullToRefreshOptions = {
       isLock: false,
       offset,

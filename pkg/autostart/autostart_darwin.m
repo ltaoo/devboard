@@ -39,7 +39,7 @@ int isLoginItemEnabled() {
     if (@available(macOS 13.0, *)) {
         SMAppService *service = [SMAppService mainAppService];
         SMAppServiceStatus status = service.status;
-        return (status == SMAppServiceStatusEnabled) ? 1 : 0;
+        return (status == SMAppServiceStatusEnabled || status == SMAppServiceStatusRequiresApproval) ? 1 : 0;
     } else {
         return 0;
     }

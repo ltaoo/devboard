@@ -28,12 +28,7 @@ export function WaterfallView<T extends Record<string, unknown>>(
   // console.log("[COMPONENT]ui/waterfall/waterfall - render", props.showFallback);
 
   return (
-    <div
-      class={props.class}
-      classList={{
-        "flex space-x-2": true,
-      }}
-    >
+    <div class={props.class}>
       {props.extra}
       <Switch>
         <Match when={list().initial}>{props.skeleton}</Match>
@@ -48,21 +43,23 @@ export function WaterfallView<T extends Record<string, unknown>>(
                 <Show when={list().loading}>
                   <Loader class="w-6 h-6 animate-spin" />
                 </Show>
-                <div class="text-center text-xl">{list().loading ? "加载中" : "列表为空"}</div>
+                <div class="text-center text-xl">{list().loading ? "" : "列表为空"}</div>
               </div>
             </div>
           </div>
         </Match>
         <Match when={state().items.length !== 0}>
-          <For each={state().columns}>
-            {(column, idx) => {
-              const $column = vm.$columns[idx()];
-              if (!$column) {
-                return null;
-              }
-              return <WaterfallColumnView store={$column} render={props.render} />;
-            }}
-          </For>
+          <div class="flex space-x-2">
+            <For each={state().columns}>
+              {(column, idx) => {
+                const $column = vm.$columns[idx()];
+                if (!$column) {
+                  return null;
+                }
+                return <WaterfallColumnView store={$column} render={props.render} />;
+              }}
+            </For>
+          </div>
           <Show
             when={list().noMore}
             fallback={
@@ -76,7 +73,7 @@ export function WaterfallView<T extends Record<string, unknown>>(
                   <Show when={list().loading} fallback={<ArrowDown class="w-6 h-6" />}>
                     <Loader class="w-6 h-6 animate-spin" />
                   </Show>
-                  <div class="text-center text-sm">{list().loading ? "加载中" : "加载更多"}</div>
+                  <div class="text-center text-sm">{list().loading ? "" : "加载更多"}</div>
                 </div>
               </div>
             }

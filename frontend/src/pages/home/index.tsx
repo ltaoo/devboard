@@ -1,7 +1,7 @@
 /**
  * @file 首页
  */
-import { For, Match, Show, Switch } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Match, onMount, Show, Switch } from "solid-js";
 import { Bird, Check, ChevronUp, Copy, Download, Earth, Eye, File, Folder, Link, Trash } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
@@ -24,21 +24,90 @@ import { isCodeContent } from "@/biz/paste/utils";
 
 import { HomeIndexViewModel } from "./model";
 
-const CopyButtonJSXArr = [
-  {
-    content: <Copy class="w-4 h-4 text-w-fg-0" />,
-  },
-  {
-    content: <Check class="w-4 h-4 text-green-500" />,
-  },
-];
+const CopyButtonJSX = {
+  copy: <Copy class="w-4 h-4 text-w-fg-0" />,
+  check: <Check class="w-4 h-4 text-green-500" />,
+};
+
 
 export const HomeIndexView = (props: ViewComponentProps) => {
   const [state, vm] = useViewModel(HomeIndexViewModel, [props]);
 
+  let homeContainerRef: HTMLDivElement | undefined;
+  let zoomedInnerRef: HTMLDivElement | undefined;
+
+  const [zoomedRect, setZoomedRect] = createSignal<DOMRect | null>(null);
+  const [isExpanded, setIsExpanded] = createSignal(false);
+  const [localZoomedRecord, setLocalZoomedRecord] = createSignal<any>(null);
+  const [measuredHeight, setMeasuredHeight] = createSignal(0);
+
+  createEffect(() => {
+    const r = state().zoomed_record;
+    if (r) {
+      setLocalZoomedRecord(r);
+      const idx = state().zoomed_idx;
+      const el = document.querySelector(`[data-home-card-idx="${idx}"]`);
+      if (el) {
+        setZoomedRect(el.getBoundingClientRect());
+      }
+      setTimeout(() => {
+        if (zoomedInnerRef) {
+          // Add a bit of padding to the measured height
+          setMeasuredHeight(zoomedInnerRef.scrollHeight);
+        }
+        setIsExpanded(true);
+      }, 10);
+    } else {
+      setIsExpanded(false);
+      setTimeout(() => {
+        setLocalZoomedRecord(null);
+        setZoomedRect(null);
+        setMeasuredHeight(0);
+      }, 300);
+    }
+  });
+
+  const expandedRect = createMemo(() => {
+    const rect = zoomedRect();
+    if (!rect) return null;
+
+    const containerRect = homeContainerRef?.getBoundingClientRect();
+    const boundary = containerRect || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+
+    const margin = 12;
+    // Proportionally grow but stay within reasonable bounds
+    // Avoid large fixed minimums that cause jumping
+    const targetWidth = Math.min(boundary.width - margin * 2, rect.width * 1.25);
+
+    // Use measured height if available, otherwise grow slightly
+    const minHeight = 120;
+    const naturalHeight = Math.max(minHeight, measuredHeight() || rect.height * 1.25);
+    const targetHeight = Math.min(boundary.height - margin * 2, naturalHeight);
+
+    let left = rect.left - (targetWidth - rect.width) / 2;
+    let top = rect.top - (targetHeight - rect.height) / 2;
+
+    // Boundary check relative to container/window
+    const minLeft = boundary.left + margin;
+    const maxLeft = boundary.left + boundary.width - margin - targetWidth;
+    const minTop = boundary.top + margin;
+    const maxTop = boundary.top + boundary.height - margin - targetHeight;
+
+    if (left < minLeft) left = minLeft;
+    if (left > maxLeft) left = maxLeft;
+    if (top < minTop) top = minTop;
+    if (top > maxTop) top = maxTop;
+
+    return { top, left, width: targetWidth, height: targetHeight };
+  });
+
   return (
     <>
-      <div class="relative w-full h-full" style="--custom-contextmenu: refresh; --custom-contextmenu-data: some-data">
+      <div
+        ref={homeContainerRef}
+        class="relative w-full h-full"
+        style="--custom-contextmenu: refresh; --custom-contextmenu-data: some-data"
+      >
         <Show when={!!state().show_refresh_tip}>
           <div class="z-[99] absolute top-4 left-1/2 -translate-x-1/2">
             <div class="py-2 px-4 bg-w-bg-3 rounded-full cursor-pointer" onClick={vm.methods.loadAddedRecords}>
@@ -77,6 +146,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
               const v = payload;
               return (
                 <div
+                  data-home-card-idx={idx}
                   classList={{
                     "paste-event-card group relative p-2 rounded-md outline outline-2 outline-w-fg-3 select-text": true,
                     "bg-w-fg-5": state().highlighted_idx === idx,
@@ -89,96 +159,7 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                     <div class="absolute left-[-4px] top-1/2 -translate-y-1/2 w-[4px] h-[36px] rounded-md bg-green-500"></div>
                   </Show>
                   <div class="paste-event-card__content">
-                    {/* <div class="absolute left-0 top-0">{state().highlighted_idx}</div> */}
-                    {/* <div class="absolute left-2 top-2">{v.id}</div> */}
-                    <div
-                      classList={{
-                        "relative overflow-hidden rounded-md": true,
-                        // "max-h-[120px]": !state().is_fixed_height,
-                        // "h-[64px]": state().is_fixed_height,
-                        "max-h-[120px]": !state().is_fixed_height,
-                      }}
-                      style={{
-                        height: state().is_fixed_height ? `${state().item_content_height}px` : undefined,
-                      }}
-                    >
-                      {/* <div
-                    classList={{
-                      "absolute left-0 top-0 h-full w-[4px] bg-green-300 hidden": true,
-                      "group-hover:block": true,
-                    }}
-                  ></div> */}
-                      {/* <div class="absolute right-0">{idx}</div> */}
-                      <Switch fallback={<div class="p-2 text-w-fg-0 break-all">{v.text}</div>}>
-                        <Match when={v.type === "file" && v.files}>
-                          <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
-                            <For each={v.files}>
-                              {(f) => {
-                                return (
-                                  <div>
-                                    <div
-                                      class="inline-flex items-center gap-1 cursor-pointer hover:underline"
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        vm.methods.handleClickFile(f);
-                                      }}
-                                    >
-                                      <Switch>
-                                        <Match when={f.mime_type === "folder"}>
-                                          <Folder class="w-4 h-4 text-w-fg-1" />
-                                        </Match>
-                                        <Match when={f.mime_type !== "folder"}>
-                                          <File class="w-4 h-4 text-w-fg-1" />
-                                        </Match>
-                                      </Switch>
-                                      <div class="text-w-fg-0">{f.name}</div>
-                                    </div>
-                                  </div>
-                                );
-                              }}
-                            </For>
-                          </div>
-                        </Match>
-                        <Match when={v.types.includes("url") && v.text}>
-                          <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
-                            <div
-                              class="flex items-center gap-1 cursor-pointer"
-                              onClick={() => {
-                                vm.methods.handleClickURL(v.text!);
-                              }}
-                            >
-                              <Link class="w-4 h-4" />
-                              <div class="flex-1 w-0 underline">{v.text}</div>
-                            </div>
-                          </div>
-                        </Match>
-                        <Match when={v.types.includes("color")}>
-                          <div class="flex items-center gap-1 p-2">
-                            <div class="w-[16px] h-[16px]" style={{ "background-color": v.text }}></div>
-                            <div>{v.text}</div>
-                          </div>
-                        </Match>
-                        <Match when={v.types.includes("time") || v.types.includes("size")}>
-                          <div class="flex items-center gap-2 p-2">
-                            <div>{v.origin_text}</div>
-                            <div class="text-w-fg-1">{v.text}</div>
-                          </div>
-                        </Match>
-                        <Match when={v.type === "html" && v.text}>
-                          <HTMLCard html={v.text!} />
-                        </Match>
-                        <Match when={v.type === "image" && v.image_url}>
-                          <AspectRatio class="relative" ratio={6 / 2}>
-                            <img class="absolute w-full h-full object-cover" src={v.image_url!} />
-                          </AspectRatio>
-                        </Match>
-                        <Match when={isCodeContent(v.types) && v.text}>
-                          <div class="w-full overflow-auto">
-                            <CodeCard id={v.id} language={v.language} code={v.text!} />
-                          </div>
-                        </Match>
-                      </Switch>
-                    </div>
+                    <PasteEventPayloadContent payload={v} isZoomed={false} state={state} vm={vm} />
                     <div class="flex items-center justify-between mt-1">
                       <div class="flex items-center space-x-1 tags">
                         <div class="px-2 bg-w-bg-5 rounded-full">
@@ -237,7 +218,10 @@ export const HomeIndexView = (props: ViewComponentProps) => {
                                     vm.methods.handleClickCopyBtn(v);
                                   }}
                                 >
-                                  <DynamicContentWithClick store={vm.ui.$map_copy_btn.methods.get(v.id)!} />
+                                  <DynamicContentWithClick
+                                    contents={CopyButtonJSX}
+                                    store={vm.ui.$map_copy_btn.methods.get(v.id)!}
+                                  />
                                 </div>
                               </Show>
                               <Show when={["JSON"].includes(v.type)}>
@@ -271,6 +255,135 @@ export const HomeIndexView = (props: ViewComponentProps) => {
         </Show>
       </div>
       <CommandToolSelect store={vm.ui.$commands} />
+      <Show when={localZoomedRecord()}>
+        <div
+          class="fixed inset-0 z-[100] transition-all duration-300 flex items-center justify-center"
+          classList={{
+            "bg-black/20 backdrop-blur-[2px] opacity-100 visible": isExpanded(),
+            "bg-transparent backdrop-blur-none opacity-0 invisible": !isExpanded(),
+          }}
+          onClick={() => vm.methods.toggleZoom()}
+        >
+          <div
+            class="bg-w-fg-5 rounded-md overflow-hidden transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.2)] outline outline-2 outline-w-fg-3"
+            style={{
+              position: "fixed",
+              top: isExpanded() ? `${expandedRect()?.top ?? 0}px` : `${zoomedRect()?.top ?? 0}px`,
+              left: isExpanded() ? `${expandedRect()?.left ?? 0}px` : `${zoomedRect()?.left ?? 0}px`,
+              width: isExpanded() ? `${expandedRect()?.width ?? 0}px` : `${zoomedRect()?.width ?? 0}px`,
+              height: isExpanded() ? `${expandedRect()?.height ?? 0}px` : `${zoomedRect()?.height ?? 0}px`,
+              "overflow-y": "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div class="paste-event-card__content">
+              <PasteEventPayloadContent payload={localZoomedRecord()} isZoomed={true} state={state} vm={vm} />
+            </div>
+          </div>
+        </div>
+      </Show>
     </>
   );
 };
+
+
+const PasteEventPayloadContent = (props: {
+  payload: any;
+  isZoomed?: boolean;
+  state: any;
+  vm: any;
+}) => {
+  const { payload: v, isZoomed, state, vm } = props;
+
+  return (
+    <div
+      classList={{
+        "relative overflow-hidden rounded-md": true,
+        "max-h-[120px]": !state().is_fixed_height && !isZoomed,
+      }}
+      style={{
+        height: state().is_fixed_height && !isZoomed ? `${state().item_content_height}px` : undefined,
+      }}
+    >
+      <Switch fallback={<div class="p-2 text-w-fg-0 break-all">{v.text}</div>}>
+        <Match when={v.type === "file" && v.files}>
+          <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
+            <For each={v.files}>
+              {(f: any) => {
+                return (
+                  <div>
+                    <div
+                      class="inline-flex items-center gap-1 cursor-pointer hover:underline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        vm.methods.handleClickFile(f);
+                      }}
+                    >
+                      <Switch>
+                        <Match when={f.mime_type === "folder"}>
+                          <Folder class="w-4 h-4 text-w-fg-1" />
+                        </Match>
+                        <Match when={f.mime_type !== "folder"}>
+                          <File class="w-4 h-4 text-w-fg-1" />
+                        </Match>
+                      </Switch>
+                      <div class="text-w-fg-0">{f.name}</div>
+                    </div>
+                  </div>
+                );
+              }}
+            </For>
+          </div>
+        </Match>
+        <Match when={v.types.includes("url") && v.text}>
+          <div class="w-full p-2 overflow-auto whitespace-nowrap scroll--hidden">
+            <div
+              class="flex items-center gap-1 cursor-pointer"
+              onClick={() => {
+                vm.methods.handleClickURL(v.text!);
+              }}
+            >
+              <Link class="w-4 h-4" />
+              <div class="flex-1 w-0 underline">{v.text}</div>
+            </div>
+          </div>
+        </Match>
+        <Match when={v.types.includes("color")}>
+          <div class="flex items-center gap-1 p-2">
+            <div class="w-[16px] h-[16px]" style={{ "background-color": v.text }}></div>
+            <div>{v.text}</div>
+          </div>
+        </Match>
+        <Match when={v.types.includes("time") || v.types.includes("size")}>
+          <div class="flex items-center gap-2 p-2">
+            <div>{v.origin_text}</div>
+            <div class="text-w-fg-1">{v.text}</div>
+          </div>
+        </Match>
+        <Match when={v.type === "html" && v.text}>
+          <HTMLCard html={v.text!} />
+        </Match>
+        <Match when={v.type === "image" && v.image_url}>
+          <Show
+            when={!isZoomed}
+            fallback={<img class="w-full h-auto object-contain rounded-md" src={v.image_url!} />}
+          >
+            <AspectRatio class="relative" ratio={6 / 2}>
+              <img class="absolute w-full h-full object-cover rounded-md" src={v.image_url!} />
+            </AspectRatio>
+          </Show>
+        </Match>
+        <Match when={isCodeContent(v.types) && v.text}>
+          <div
+            class="w-full overflow-auto"
+            classList={{
+              "max-h-[300px]": !isZoomed,
+            }}
+          >
+            <CodeCard id={v.id} language={v.language} code={v.text!} />
+          </div>
+        </Match>
+      </Switch>
+    </div>
+  );
+}

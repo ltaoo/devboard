@@ -70,7 +70,7 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
     paste: {
       list: new ListCore(
         new RequestCore(fetchPasteEventList, { process: fetchPasteEventListProcess, client: props.client }),
-        {}
+        { pageSize: 100 }
       ),
       delete: new RequestCore(deletePasteEvent, { client: props.client }),
       preview: new RequestCore(openPasteEventPreviewWindow, { client: props.client }),
@@ -306,8 +306,24 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
     //   }
     //   methods.clickPasteWithIdx();
     // },
+    toggleZoom() {
+      if (_zoomed_record) {
+        _zoomed_record = null;
+        _zoomed_idx = null;
+        methods.refresh();
+        return;
+      }
+      const idx = ui.$list_highlight.state.idx;
+      const $cell = ui.$waterfall.$items[idx];
+      if ($cell) {
+        _zoomed_record = $cell.state.payload;
+        _zoomed_idx = idx;
+        methods.refresh();
+      }
+    },
   };
   const $view = new ScrollViewCore({
+    threshold: 500,
     async onPullToRefresh() {
       // await methods.ready();
       // props.app.tip({
@@ -318,7 +334,15 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
     async onReachBottom() {
       console.log("[PAGE]home/index - onReachBottom");
       await request.paste.list.loadMore();
+      // Ensure the UI has time to update before we allow another load
+      // Although appendItems is now sync, we might want to wait a tick
       $view.finishLoadingMore();
+
+      // Check if we are still near the bottom, if so, trigger again if needed
+      // (This is usually handled by the next scroll event, but can be helpful for large screens)
+      if ($view.getToBottom() < $view.threshold && !request.paste.list.response.noMore) {
+        // request.paste.list.loadMore();
+      }
     },
     onScroll(pos) {
       ui.$back_to_top.methods.handleScroll({ top: pos.scrollTop });
@@ -359,6 +383,8 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
 
   let _selected_files = [] as SelectedFile[];
   let _added_records: PasteRecord[] = [];
+  let _zoomed_record: PasteRecord | null = null;
+  let _zoomed_idx: number | null = null;
   const _state = {
     get waterfall() {
       return ui.$waterfall.state;
@@ -383,6 +409,12 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
     },
     get item_content_height() {
       return ITEM_CONTENT_HEIGHT;
+    },
+    get zoomed_record() {
+      return _zoomed_record;
+    },
+    get zoomed_idx() {
+      return _zoomed_idx;
     },
   };
   enum EventNames {
@@ -546,10 +578,14 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
       if (!opt) {
         return;
       }
-      ui.$commands.methods.show({
-        x: 72,
-        y: (opt.top ?? 0) + opt.height + 58,
-      });
+      // ui.$commands.methods.show({
+      //   x: 72,
+      //   y: (opt.top ?? 0) + opt.height + 58,
+      // });
+      methods.toggleZoom();
+    },
+    "ControlLeft+KeyK"() {
+      methods.toggleZoom();
     },
     "ShiftRight+Digit3"() {
       console.log("[PAGE]home/index - ShiftRight+Digit3");
@@ -571,6 +607,12 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
       ui.$input_search.methods.focus();
     },
     Escape() {
+      if (_zoomed_record) {
+        _zoomed_record = null;
+        _zoomed_idx = null;
+        methods.refresh();
+        return;
+      }
       if (ui.$commands.isFocus) {
         ui.$commands.methods.hide();
         return;

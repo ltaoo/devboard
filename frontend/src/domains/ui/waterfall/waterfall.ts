@@ -73,8 +73,7 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
       }
       // _items.push(...createdItems);
       //     this.state.pendingItems.push(...createdItems);
-      // methods.handleScroll(_scrollValues);
-      // console.log("[BIZ]Waterfall/waterfall - appendItems before StateChange", _state.columns[0].items);
+      methods.handleScroll(_scrollValues, { force: true });
       methods.refresh();
       return $created_items;
     },
@@ -106,7 +105,7 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
       }
       // _items.push(...createdItems);
       //     this.state.pendingItems.push(...createdItems);
-      methods.handleScroll(_scrollValues);
+      methods.handleScroll(_scrollValues, { force: true });
       // console.log("[BIZ]Waterfall/waterfall - appendItems before StateChange", _state.columns[0].items);
       bus.emit(Events.StateChange, { ..._state });
       return createdItems;
@@ -199,7 +198,7 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
       }
       $column.methods.deleteCell($matched);
       remove_arr_item(_$items, idx);
-      methods.handleScroll({ scrollTop: _scrollValues.scrollTop });
+      methods.handleScroll({ scrollTop: _scrollValues.scrollTop }, { force: true });
     },
     resetRange() {
       for (let i = 0; i < _$columns.length; i += 1) {
