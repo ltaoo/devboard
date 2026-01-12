@@ -16,10 +16,11 @@ import { ButtonCore, InputCore, ScrollViewCore } from "@/domains/ui";
 import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { PasteEventProfileModel } from "@/biz/paste/paste_profile";
-import { isCodeContent } from "@/biz/paste/utils";
+import { isCodeContent, isURL } from "@/biz/paste/utils";
 import { PasteContentImage, PasteContentType } from "@/biz/paste/service";
 import { RequestCore } from "@/domains/request";
 import { createRemark, deleteRemark } from "@/biz/remark/service";
+import { Earth } from "lucide-solid";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
@@ -163,6 +164,27 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                       id={state().profile!.id}
                     />
                   </Show>
+                </Match>
+                <Match when={isURL(state().profile?.types)}>
+                  <div class="absolute inset-0 p-4 flex flex-col gap-2">
+                    <div class="flex items-center justify-between px-3 py-2 rounded-md bg-w-bg-3 border border-w-bg-1 shadow-sm">
+                      <div class="flex-1 w-0 truncate text-sm text-w-fg-1">
+                        {state().profile?.text}
+                      </div>
+                      <a
+                        href={state().profile?.text}
+                        target="_blank"
+                        class="ml-2 text-w-brand flex items-center gap-1 text-sm hover:underline"
+                        rel="noreferrer"
+                      >
+                        <Earth class="w-4 h-4" />
+                      </a>
+                    </div>
+                    <iframe
+                      src={state().profile?.text!}
+                      class="flex-1 w-full border-none rounded-md bg-w-bg-3 shadow-sm"
+                    />
+                  </div>
                 </Match>
                 <Match when={state().profile?.type === "file"}>
                   <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-[60vw] p-4 rounded-md bg-w-bg-3">
