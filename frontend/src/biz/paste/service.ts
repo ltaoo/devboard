@@ -1,11 +1,13 @@
 import dayjs from "dayjs";
 
 import { FetchAppList, FetchDeviceList } from "~/commonservice";
+import * as CommonService from "~/commonservice";
 import {
   DeletePasteEvent,
   DownloadContentWithPasteEventId,
   FetchPasteEventList,
   FetchPasteEventProfile,
+  GetPasteImageAsTempFile,
   MockPasteText,
   PreviewPasteEvent,
   Write,
@@ -258,6 +260,18 @@ export function deletePasteEvent(body: { id: string }) {
   return request.post(DeletePasteEvent, { paste_event_id: body.id });
 }
 
+export function fetchURLMeta(body: { url: string }) {
+  const fn = (CommonService as any).FetchURLMeta;
+  return request.post<{
+    title: string;
+    description: string;
+    site_name: string;
+    icon: string;
+    image: string;
+    url: string;
+  }>(fn, body);
+}
+
 export function openPasteEventPreviewWindow(body: { id: string }) {
   return request.post(PreviewPasteEvent, { paste_event_id: body.id });
 }
@@ -272,6 +286,10 @@ export function fakePasteEvent(body: { text: string }) {
 
 export function downloadPasteContent(body: { paste_event_id: string }) {
   return request.post(DownloadContentWithPasteEventId, body);
+}
+
+export function getPasteImageAsTempFile(body: { paste_event_id: string }) {
+  return request.post<string>(GetPasteImageAsTempFile, body);
 }
 
 export function fetchAppList() {

@@ -66,14 +66,8 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       $item.onHeightChange(([original_height, height_difference]) => {
         const idx = _$total_items.findIndex((v) => v.id === $item.id);
         if (idx !== -1) {
-          const $next = _$total_items[idx + 1];
-          if ($next) {
-            // console.log(
-            //   "[DOMAIN]appendItem - before setTopWithDifference",
-            //   [_index, $item.idx],
-            //   height_difference,
-            //   $next.state.top
-            // );
+          for (let i = idx + 1; i < _$total_items.length; i += 1) {
+            const $next = _$total_items[i];
             $next.methods.setTopWithDifference(height_difference);
           }
         }
@@ -90,18 +84,18 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
         });
         methods.refresh();
       });
-      $item.onTopChange(([, top_difference]) => {
-        const idx = _$total_items.findIndex((v) => v === $item);
-        if (idx !== -1) {
-          const $next = _$total_items[idx + 1];
-          if ($next) {
-            $next.methods.setTopWithDifference(top_difference);
-          }
-        }
-        bus.emit(Events.CellUpdate, {
-          $item,
-        });
-      });
+      // $item.onTopChange(([, top_difference]) => {
+      //   const idx = _$total_items.findIndex((v) => v === $item);
+      //   if (idx !== -1) {
+      //     const $next = _$total_items[idx + 1];
+      //     if ($next) {
+      //       $next.methods.setTopWithDifference(top_difference);
+      //     }
+      //   }
+      //   bus.emit(Events.CellUpdate, {
+      //     $item,
+      //   });
+      // });
       const idx = _$total_items.length;
       // $item.methods.setIndex(idx);
       $item.methods.setColumnIdx(_index);
@@ -148,28 +142,32 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
         _height += height_difference;
         const idx = _$total_items.findIndex((v) => v === $item);
         if (idx !== -1) {
-          const $next = _$total_items[idx + 1];
-          if ($next) {
+          for (let i = idx + 1; i < _$total_items.length; i += 1) {
+            const $next = _$total_items[i];
             $next.methods.setTopWithDifference(height_difference);
           }
         }
       });
-      $item.onTopChange(([, top_difference]) => {
-        const idx = _$total_items.findIndex((v) => v === $item);
-        console.log("[BIZ]waterfall/column - response the top change", idx, $item.height);
-        if (idx !== -1) {
-          const $next = _$total_items[idx + 1];
-          if ($next) {
-            $next.methods.setTopWithDifference(top_difference);
-          }
-        }
-      });
+      // $item.onTopChange(([, top_difference]) => {
+      //   const idx = _$total_items.findIndex((v) => v === $item);
+      //   console.log("[BIZ]waterfall/column - response the top change", idx, $item.height);
+      //   if (idx !== -1) {
+      //     const $next = _$total_items[idx + 1];
+      //     if ($next) {
+      //       $next.methods.setTopWithDifference(top_difference);
+      //     }
+      //   }
+      // });
       const idx = _$total_items.length;
-      const $first = _$total_items[0];
-      if ($first) {
-        // console.log("[BIZ]waterfall/column - before $first set top", idx, $first.id, $first.state.top, $item.height);
-        $first.methods.setTopWithDifference($item.height + _gutter);
-        // console.log("[BIZ]waterfall/column - after $first set top", idx, $first.id, $first.state.top, $item.height);
+      // const $first = _$total_items[0];
+      // if ($first) {
+      //   // console.log("[BIZ]waterfall/column - before $first set top", idx, $first.id, $first.state.top, $item.height);
+      //   $first.methods.setTopWithDifference($item.height + _gutter);
+      //   // console.log("[BIZ]waterfall/column - after $first set top", idx, $first.id, $first.state.top, $item.height);
+      // }
+      for (let i = 0; i < _$total_items.length; i += 1) {
+        const $next = _$total_items[i];
+        $next.methods.setTopWithDifference($item.height + _gutter);
       }
       // const idx = _$items.findIndex((v) => v === $item);
       // if (idx !== -1) {
@@ -208,10 +206,14 @@ export function WaterfallColumnModel<T extends Record<string, unknown>>(props: {
       const height_difference = $item.height + _gutter;
       _height -= height_difference;
       // console.log("[BIZ]waterfall/column - delete cell", idx, $next?.uid, height_difference);
-      if ($next) {
+      // if ($next) {
+      //   $next.methods.setTopWithDifference(-height_difference);
+      // }
+      _$total_items = remove_arr_item(_$total_items, idx);
+      for (let i = idx; i < _$total_items.length; i += 1) {
+        const $next = _$total_items[i];
         $next.methods.setTopWithDifference(-height_difference);
       }
-      _$total_items = remove_arr_item(_$total_items, idx);
       const idx2 = _$items.findIndex((v) => v.id === $item.id);
       // const idx3 = _$items
       if (idx2 !== -1) {

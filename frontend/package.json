@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@wailsio/runtime": "latest",
+    "axios": "^1.7.1",
     "class-variance-authority": "^0.5.2",
     "dayjs": "^1.11.7",
     "highlight.js": "^11.11.1",

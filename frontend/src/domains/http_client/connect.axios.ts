@@ -18,7 +18,7 @@ export function connect(store: HttpClientCore) {
     }
     if (method === "GET") {
       try {
-        const r = await axios.get(url, {
+        const r = await axios.get(url as string, {
           params: data,
           headers,
           cancelToken: source.token,
@@ -32,7 +32,7 @@ export function connect(store: HttpClientCore) {
     }
     if (method === "POST") {
       try {
-        const r = await axios.post(url, data, {
+        const r = await axios.post(url as string, data, {
           headers,
           cancelToken: source.token,
         });

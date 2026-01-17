@@ -18,6 +18,7 @@ require (
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.27
 	go.uber.org/zap v1.27.0
 	golang.design/x/hotkey v0.4.1
+	golang.org/x/net v0.38.0
 	golang.org/x/sys v0.31.0
 	gorm.io/driver/mysql v1.5.4
 	gorm.io/driver/postgres v1.5.4
@@ -104,7 +105,6 @@ require (
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/image v0.28.0 // indirect
-	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect

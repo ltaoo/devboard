@@ -1,7 +1,5 @@
-/**
- * @file 粘贴板内容预览
- */
-import { For, Match, Show, Switch } from "solid-js";
+import { For, Match, Show, Switch, createEffect, createSignal } from "solid-js";
+import { Earth } from "lucide-solid";
 
 import { ViewComponentProps } from "@/store/types";
 import { useViewModel } from "@/hooks";
@@ -17,10 +15,9 @@ import { base, Handler } from "@/domains/base";
 import { BizError } from "@/domains/error";
 import { PasteEventProfileModel } from "@/biz/paste/paste_profile";
 import { isCodeContent, isURL } from "@/biz/paste/utils";
-import { PasteContentImage, PasteContentType } from "@/biz/paste/service";
+import { PasteContentImage, PasteContentType, fetchURLMeta } from "@/biz/paste/service";
 import { RequestCore } from "@/domains/request";
 import { createRemark, deleteRemark } from "@/biz/remark/service";
-import { Earth } from "lucide-solid";
 
 function PreviewPasteEventModel(props: ViewComponentProps) {
   const $profile = PasteEventProfileModel(props);
@@ -136,6 +133,43 @@ function PreviewPasteEventModel(props: ViewComponentProps) {
 export function PreviewPasteEventView(props: ViewComponentProps) {
   const [state, vm] = useViewModel(PreviewPasteEventModel, [props]);
 
+  const urlMetaRequest = new RequestCore(fetchURLMeta, { client: props.client });
+  let lastMetaURL: string | null = null;
+  const [urlMeta, setUrlMeta] = createSignal<
+    | null
+    | {
+        title: string;
+        description: string;
+        site_name: string;
+        icon: string;
+        image: string;
+        url: string;
+      }
+  >(null);
+
+  urlMetaRequest.onStateChange(() => {
+    setUrlMeta(urlMetaRequest.response as any);
+  });
+
+  createEffect(() => {
+    const profile = state().profile;
+    if (!profile) {
+      return;
+    }
+    if (!isURL(profile.types)) {
+      return;
+    }
+    const u = profile.text;
+    if (!u) {
+      return;
+    }
+    if (u === lastMetaURL) {
+      return;
+    }
+    lastMetaURL = u;
+    urlMetaRequest.run({ url: u });
+  });
+
   return (
     <ScrollView store={vm.ui.$view} class="relative w-full h-full">
       <Switch>
@@ -180,10 +214,47 @@ export function PreviewPasteEventView(props: ViewComponentProps) {
                         <Earth class="w-4 h-4" />
                       </a>
                     </div>
-                    <iframe
-                      src={state().profile?.text!}
-                      class="flex-1 w-full border-none rounded-md bg-w-bg-3 shadow-sm"
-                    />
+                    <div class="flex-1 w-full flex items-center">
+                      <div class="w-full rounded-md bg-w-bg-3 border border-w-bg-1 shadow-sm p-3 flex gap-3">
+                        <Show when={urlMeta()?.icon}>
+                          {(icon) => (
+                            <div class="flex items-start">
+                              <img
+                                src={icon()}
+                                alt=""
+                                class="w-10 h-10 rounded-md border border-w-bg-1 bg-w-bg-0 object-cover"
+                              />
+                            </div>
+                          )}
+                        </Show>
+                        <div class="flex-1 min-w-0">
+                          <div class="text-sm text-w-fg-0 truncate">
+                            {urlMeta()?.title || state().profile?.text}
+                          </div>
+                          <Show when={urlMeta()?.description}>
+                            {(desc) => (
+                              <div class="mt-1 text-xs text-w-fg-1 break-all">
+                                {desc()}
+                              </div>
+                            )}
+                          </Show>
+                          <div class="mt-1 text-[11px] text-w-fg-2 truncate">
+                            {urlMeta()?.site_name || urlMeta()?.url || state().profile?.text}
+                          </div>
+                          <Show when={urlMeta()?.image}>
+                            {(image) => (
+                              <div class="mt-2">
+                                <img
+                                  src={image()}
+                                  alt=""
+                                  class="w-full max-h-40 rounded-md object-cover border border-w-bg-1"
+                                />
+                              </div>
+                            )}
+                          </Show>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </Match>
                 <Match when={state().profile?.type === "file"}>

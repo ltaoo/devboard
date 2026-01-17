@@ -26,15 +26,16 @@ export function WaterfallModel<T extends Record<string, unknown>>(props: {
         return;
       }
       for (let i = 0; i < columns; i += 1) {
-        // console.log("[]before new ListColumnViewCore", size);
         const $column = WaterfallColumnModel<T>({ size, buffer, gutter, index: i, itemHeight: v.itemHeight });
-        $column.onHeightChange((height) => {
-          if (_height >= height) {
+        $column.onHeightChange(() => {
+          const maxHeight = _$columns.reduce((max, c) => {
+            return c.state.height > max ? c.state.height : max;
+          }, 0);
+          if (_height === maxHeight) {
             return;
           }
-          _height = height;
+          _height = maxHeight;
           bus.emit(Events.StateChange, { ..._state });
-          // this.handleScroll(this.scrollValues);
         });
         $column.onCellUpdate((v) => {
           bus.emit(Events.CellUpdate, v);

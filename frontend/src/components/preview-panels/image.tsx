@@ -59,6 +59,40 @@ function ImageContentPreviewModel(props: { url: string; id?: string }) {
       await downloadPasteContent({ paste_event_id: props.id });
       ui.$btn_download.setLoading(false);
     },
+    async ocr() {
+      ui.$btn_ocr.setLoading(true);
+      const body = (() => {
+        if (props.id) {
+          return { paste_event_id: props.id };
+        }
+        return { image_base64: _state.url };
+      })();
+      let ok = false;
+      let data: any = null;
+      try {
+        const resp = await fetch("http://127.0.0.1:8389/api/ocr/recognize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = await resp.json();
+        ok = json.code === 200;
+        data = json.data;
+      } catch (err) {
+        ui.$btn_ocr.setLoading(false);
+        const e = err as Error;
+        bus.emit(Events.Error, new BizError([e.message]));
+        return;
+      }
+      ui.$btn_ocr.setLoading(false);
+      if (!ok) {
+        bus.emit(Events.Error, new BizError(["OCR 请求失败"]));
+        return;
+      }
+      const text = JSON.stringify(data);
+      _ocr_text = text;
+      methods.refresh();
+    },
     refresh() {
       bus.emit(Events.StateChange, { ..._state });
     },
@@ -71,9 +105,11 @@ function ImageContentPreviewModel(props: { url: string; id?: string }) {
     $btn_rotate_right: new ButtonCore({ onClick: methods.rotateRight }),
     $btn_reset: new ButtonCore({ onClick: methods.reset }),
     $btn_download: new ButtonCore({ onClick: methods.download }),
+    $btn_ocr: new ButtonCore({ onClick: methods.ocr }),
   };
 
   let _url = props.url;
+  let _ocr_text = "";
   let _state = {
     get url() {
       return _url;
@@ -89,6 +125,9 @@ function ImageContentPreviewModel(props: { url: string; id?: string }) {
     },
     get translateY() {
       return _translateY;
+    },
+    get ocr_text() {
+      return _ocr_text;
     },
   };
   enum Events {
@@ -184,6 +223,10 @@ export function ImageContentPreview(props: { url: string; id?: string }) {
         <div class="w-[1px] h-4 bg-w-bg-4 mx-1" />
         <Button variant="ghost" size="sm" store={vm.ui.$btn_rotate_left} icon={<RotateCcw class="w-4 h-4" />} />
         <Button variant="ghost" size="sm" store={vm.ui.$btn_rotate_right} icon={<RotateCw class="w-4 h-4" />} />
+        <div class="w-[1px] h-4 bg-w-bg-4 mx-1" />
+        <Button variant="ghost" size="sm" store={vm.ui.$btn_ocr}>
+          OCR
+        </Button>
         <Show when={props.id}>
           <div class="w-[1px] h-4 bg-w-bg-4 mx-1" />
           <Button variant="ghost" size="sm" store={vm.ui.$btn_download} icon={<Download class="w-4 h-4" />} />
@@ -200,6 +243,11 @@ export function ImageContentPreview(props: { url: string; id?: string }) {
           }}
           src={state().url}
         />
+        <Show when={state().ocr_text}>
+          <div class="absolute left-2 right-2 bottom-2 max-h-[40%] overflow-auto bg-w-bg-3/80 backdrop-blur-md rounded-md p-2 text-xs whitespace-pre-wrap">
+            {state().ocr_text}
+          </div>
+        </Show>
       </div>
     </div>
   );

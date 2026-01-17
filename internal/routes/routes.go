@@ -51,6 +51,8 @@ func SetupRouter(db *gorm.DB, logger *logger.Logger, cfg *config.Config, machine
 
 	paste := NewPasteHandler(db, machine_id)
 	api.GET("/paste_event/list", paste.FetchPasteEventList)
+	ocr := NewOCRHandler(db)
+	api.POST("/ocr/recognize", ocr.Recognize)
 
 	return r
 }

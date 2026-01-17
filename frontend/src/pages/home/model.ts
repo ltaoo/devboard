@@ -32,7 +32,9 @@ import {
   downloadPasteContent,
   fetchPasteEventList,
   fetchPasteEventListProcess,
+  getPasteImageAsTempFile,
   openPasteEventPreviewWindow,
+  PasteContentType,
   processPartialPasteEvent,
   writePasteEvent,
 } from "@/biz/paste/service";
@@ -76,6 +78,7 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
       preview: new RequestCore(openPasteEventPreviewWindow, { client: props.client }),
       write: new RequestCore(writePasteEvent, { client: props.client }),
       download: new RequestCore(downloadPasteContent, { client: props.client }),
+      get_image_temp_file: new RequestCore(getPasteImageAsTempFile, { client: props.client }),
     },
     category: {
       tree: new RequestCore(fetchCategoryTree, { client: props.client }),
@@ -535,7 +538,27 @@ export function HomeIndexViewModel(props: ViewComponentProps) {
         return;
       }
       event.preventDefault();
-      methods.previewPasteContent($cell.state.payload);
+
+      const record = $cell.state.payload;
+      if (record.content_type === PasteContentType.Image) {
+        (async () => {
+          const r = await request.paste.get_image_temp_file.run({ paste_event_id: record.id });
+          if (r.error) {
+            props.app.tip({
+              text: [r.error.message],
+            });
+            return;
+          }
+          const filepath = r.data;
+          request.file.open_preview_window.run({
+            mime_type: "image/png",
+            filepath,
+          });
+        })();
+        return;
+      }
+
+      methods.previewPasteContent(record);
     },
     Backspace() {
       if (ui.$commands.isFocus) {

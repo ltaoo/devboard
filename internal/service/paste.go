@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -174,6 +175,38 @@ func (s *PasteService) DownloadContentWithPasteEventId(body controller.PasteProf
 		return Error(err)
 	}
 	return Ok(map[string]interface{}{})
+}
+
+func (s *PasteService) GetPasteImageAsTempFile(body controller.PasteProfileBody) *Result {
+	if s.Biz.DB == nil {
+		return Error(fmt.Errorf("请先初始化数据库"))
+	}
+	existing_paste_event, err := s.Biz.ControllerMap.Paste.FetchPasteEventProfile(body)
+	if err != nil {
+		return Error(err)
+	}
+	if existing_paste_event.ContentType != "image" {
+		return Error(fmt.Errorf("not an image"))
+	}
+
+	data, err := base64.StdEncoding.DecodeString(existing_paste_event.ImageBase64)
+	if err != nil {
+		return Error(fmt.Errorf("Base64解码失败"))
+	}
+
+	filename := fmt.Sprintf("paste_image_%s.png", existing_paste_event.Id)
+	path := filepath.Join(os.TempDir(), filename)
+
+	file, err := os.Create(path)
+	if err != nil {
+		return Error(err)
+	}
+	defer file.Close()
+	_, err = file.Write(data)
+	if err != nil {
+		return Error(err)
+	}
+	return Ok(path)
 }
 
 type MockPasteTextBody struct {
