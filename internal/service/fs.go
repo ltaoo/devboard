@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,19 +12,19 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
-
-	"devboard/pkg/lodash"
+	"github.com/ltaoo/velo"
+	velo_file "github.com/ltaoo/velo/file"
 )
 
 type FileService struct {
-	App   *application.App
+	App   *velo.Box
 	route string
 }
 
-// func NewFileService() *FileService {
+func NewFileService(app *velo.Box) *FileService {
+	return &FileService{App: app, route: "/file"}
+}
 
-// }
 type FileResp struct {
 	Name      string `json:"name"`
 	FullPath  string `json:"full_path"`
@@ -37,66 +36,53 @@ type FileResp struct {
 	CreatedAt int64  `json:"created_at"`
 }
 
-func (s *FileService) ServiceStartup(ctx context.Context, options application.ServiceOptions) error {
-	s.route = options.Route
-	return nil
-}
-
 func get_video_dimensions(filename string) (width, height int, err error) {
 	return 0, 0, nil
 }
 
 func (f *FileService) OpenFileDialog() *Result {
-	dialog := application.OpenFileDialog()
-	dialog.SetTitle("Select Image")
-	dialog.SetOptions(&application.OpenFileDialogOptions{
-		CanChooseFiles:       true,
-		CanCreateDirectories: true,
-		CanChooseDirectories: true,
-		// Filters: []application.FileFilter{
-		// 	{
-		// 		// DisplayName: "Images (*.png;*.jpg)",
-		// 		Pattern: "*.png",
-		// 	},
-		// },
+	paths, err := velo_file.ShowOpenDialog(velo_file.OpenDialogOptions{
+		Title:                   "Select files",
+		CanChooseFiles:          true,
+		AllowsMultipleSelection: true,
 	})
-	if paths, err := dialog.PromptForMultipleSelection(); err == nil {
+	if err == nil {
 		var files []FileResp
-		var errors []string
+		var error_messages []string
 
-		for _, f := range paths {
-			info, err := os.Stat(f)
+		for _, file_path := range paths {
+			info, err := os.Stat(file_path)
 			if err != nil {
 
-				errors = append(errors, fmt.Sprintf("Error getting file info: %v\n", err))
+				error_messages = append(error_messages, fmt.Sprintf("Error getting file info: %v\n", err))
 				continue
 			}
 
 			if info.IsDir() {
-				errors = append(errors, fmt.Sprintf("'%s' is a directory, ignoring.\n", f))
+				error_messages = append(error_messages, fmt.Sprintf("'%s' is a directory, ignoring.\n", file_path))
 				continue
 			}
 
 			size := info.Size()
-			fmt.Printf("File: %s\nSize: %d bytes\n", f, size)
+			fmt.Printf("File: %s\nSize: %d bytes\n", file_path, size)
 
 			// 获取 MIME 类型
-			file, err := os.Open(f)
+			file, err := os.Open(file_path)
 			if err != nil {
-				errors = append(errors, fmt.Sprintf("Error opening file: %v\n", err))
+				error_messages = append(error_messages, fmt.Sprintf("Error opening file: %v\n", err))
 				continue
 			}
 			defer file.Close()
 
 			buffer := make([]byte, 512)
-			_, err = file.Read(buffer)
-			if err != nil {
-				errors = append(errors, fmt.Sprintf("Error reading file for MIME detection: %v\n", err))
+			read_count, err := file.Read(buffer)
+			if err != nil && !errors.Is(err, io.EOF) {
+				error_messages = append(error_messages, fmt.Sprintf("Error reading file for MIME detection: %v\n", err))
 				continue
 			}
-			mine_type := http.DetectContentType(buffer)
+			mine_type := http.DetectContentType(buffer[:read_count])
 			// 尝试从文件扩展名获取更具体的 MIME 类型
-			ext := filepath.Ext(f)
+			ext := filepath.Ext(file_path)
 			if ext != "" {
 				if ext := mime.TypeByExtension(ext); ext != "" {
 					mine_type = ext
@@ -104,13 +90,13 @@ func (f *FileService) OpenFileDialog() *Result {
 			}
 			ff := FileResp{
 				Name:      info.Name(),
-				FullPath:  f,
+				FullPath:  file_path,
 				Size:      size,
 				MimeType:  mine_type,
 				CreatedAt: info.ModTime().Unix(),
 			}
 			if ff.MimeType == "video/mp4" {
-				w, h, err := get_video_dimensions(f)
+				w, h, err := get_video_dimensions(file_path)
 				if err == nil {
 					ff.Width = w
 					ff.Height = h
@@ -120,8 +106,11 @@ func (f *FileService) OpenFileDialog() *Result {
 		}
 		return Ok(map[string]interface{}{
 			"files":  files,
-			"errors": errors,
+			"errors": error_messages,
 		})
+	}
+	if err != nil && !errors.Is(err, velo_file.ErrCancelled) {
+		return Error(err)
 	}
 	return Ok(map[string]interface{}{
 		"files":  []interface{}{},
@@ -142,26 +131,12 @@ func (f *FileService) SaveFileTo(body SaveFileToBody) *Result {
 	if body.Content == "" {
 		return Error(fmt.Errorf("缺少 content 参数"))
 	}
-	dialog := application.SaveFileDialog()
-	dialog.CanCreateDirectories(true)
-	dialog.SetFilename(body.Filename)
-	// dialog.SetTitle("Save Document")
-	// dialog.SetDefaultFilename("document.txt")
-	// dialog.SetFilters([]*application.FileFilter{
-	// 	{
-	// 		DisplayName: "Text Files (*.txt)",
-	// 		Pattern:     "*.txt",
-	// 	},
-	// })
-
-	path, err := dialog.PromptForSingleSelection()
+	path, err := velo_file.ShowSaveDialog(velo_file.SaveDialogOptions{DefaultFilename: body.Filename})
 	if err != nil {
+		if errors.Is(err, velo_file.ErrCancelled) {
+			return Ok(map[string]interface{}{"cancel": true})
+		}
 		return Error(err)
-	}
-	if path == "" {
-		return Ok(map[string]interface{}{
-			"cancel": true,
-		})
 	}
 	file, err := os.Create(path)
 	if err != nil {
@@ -215,39 +190,29 @@ type OpenPreviewWindowBody struct {
 }
 
 func (s *FileService) OpenPreviewWindow(body OpenPreviewWindowBody) *Result {
-	type FilePreviewPayload struct {
-		Title string
-		URL   string
+	title := ""
+	pathname := ""
+	switch body.MimeType {
+	case "video/mp4":
+		title, pathname = "视频预览", "/video_preview"
+	case "image/jpeg", "image/png":
+		title, pathname = "图片预览", "/image_preview"
+	case "application/pdf":
+		title, pathname = "PDF 预览", "/pdf_preview"
 	}
-	p := FilePreviewPayload{
-		Title: "",
-		URL:   "",
-	}
-	if lodash.Include([]string{"video/mp4"}, func(v string, i int) bool {
-		return v == body.MimeType
-	}) {
-		p.Title = "视频预览"
-		p.URL = "/video_preview"
-	} else if lodash.Include([]string{"image/jpeg", "image/png"}, func(v string, i int) bool {
-		return v == body.MimeType
-	}) {
-		p.Title = "图片预览"
-		p.URL = "/image_preview"
-	}
-	if p.URL == "" {
+	if pathname == "" {
 		return Error(fmt.Errorf("该文件不支持预览"))
 	}
-	s.App.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: p.Title,
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		Width:            420,
-		Height:           720,
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              p.URL + "?f=" + url.QueryEscape(body.Filepath),
+	s.App.OpenWindow(&velo.VeloWebviewOpt{
+		Name:                   pathname,
+		Title:                  title,
+		Width:                  420,
+		Height:                 720,
+		BackgroundColor:        velo.NewRGB(27, 38, 54),
+		MacBackdropTranslucent: true,
+		MacTitleBarHeight:      50,
+		MacTitleBarInset:       true,
+		Pathname:               pathname + "?f=" + url.QueryEscape(body.Filepath),
 	})
 	return Ok(map[string]interface{}{})
 }

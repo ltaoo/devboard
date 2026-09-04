@@ -1,12 +1,10 @@
 package models
 
 import (
-	"fmt"
-	"strconv"
-	"time"
-
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+
+	"devboard/pkg/util"
 )
 
 type BaseModel struct {
@@ -20,21 +18,21 @@ type BaseModel struct {
 }
 
 func (p *BaseModel) BeforeCreate(tx *gorm.DB) error {
-    now_timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-    if p.Id == "" {
-        p.Id = uuid.New().String()
-    }
-    if p.CreatedAt == "" {
-        p.CreatedAt = now_timestamp
-    }
-    if p.UpdatedAt == "" {
-        p.UpdatedAt = now_timestamp
-    }
-    if p.LastOperationTime == "" {
-        p.LastOperationTime = now_timestamp
-    }
-    if p.LastOperationType == 0 {
-        p.LastOperationType = 1
+	now_timestamp := util.GetNowSecond()
+	if p.Id == "" {
+		p.Id = uuid.New().String()
+	}
+	if p.CreatedAt == "" {
+		p.CreatedAt = now_timestamp
+	}
+	if p.UpdatedAt == "" {
+		p.UpdatedAt = now_timestamp
+	}
+	if p.LastOperationTime == "" {
+		p.LastOperationTime = now_timestamp
+	}
+	if p.LastOperationType == 0 {
+		p.LastOperationType = 1
 	}
 	if p.SyncStatus == 0 {
 		p.SyncStatus = 1
@@ -42,14 +40,12 @@ func (p *BaseModel) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 func (p *BaseModel) BeforeUpdate(tx *gorm.DB) error {
-	fmt.Println("[HOOK]BeforeUpdate", p.DeletedAt.Valid)
-	now_timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	p.LastOperationTime = now_timestamp
+	p.LastOperationTime = util.GetNowSecond()
 	p.LastOperationType = 2
 	if p.DeletedAt.Valid {
 		p.LastOperationType = 3
 	}
 	p.SyncStatus = 1
-	p.UpdatedAt = now_timestamp
+	p.UpdatedAt = util.GetNowSecond()
 	return nil
 }

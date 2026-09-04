@@ -87,6 +87,8 @@ type SynchronizeResult struct {
 	FileTasks      []*FileTask           `json:"file_tasks"`
 	FileOperations []*FileOperation      `json:"file_operations"`
 	RecordTasks    []*RecordTask         `json:"record_tasks"`
+	BaseCheckpoint int64                 `json:"base_checkpoint"`
+	NextCheckpoint int64                 `json:"next_checkpoint"`
 }
 
 func SplitToLines(data []byte) []string {

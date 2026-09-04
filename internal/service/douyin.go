@@ -1,20 +1,20 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
+	velo_file "github.com/ltaoo/velo/file"
 
 	"devboard/internal/biz"
 	"devboard/pkg/douyinweb"
 )
 
 type DouyinService struct {
-	App *application.App
 	Biz *biz.BizApp
 }
 
@@ -53,9 +53,13 @@ func (s *DouyinService) DownloadDouyinVideo(body DownloadDouyinVideoBody) *Resul
 	if source_url == "" {
 		return Error(fmt.Errorf("Can't find the source url"))
 	}
-	dialog := application.SaveFileDialog()
-	dialog.CanCreateDirectories(true)
-	dialog.SetFilename(aweme_id + "." + the_source.Format)
+	path, err := velo_file.ShowSaveDialog(velo_file.SaveDialogOptions{DefaultFilename: aweme_id + "." + the_source.Format})
+	if err != nil {
+		if errors.Is(err, velo_file.ErrCancelled) {
+			return Ok(map[string]interface{}{"cancel": true})
+		}
+		return Error(err)
+	}
 	h_client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
@@ -82,26 +86,15 @@ func (s *DouyinService) DownloadDouyinVideo(body DownloadDouyinVideoBody) *Resul
 	if err != nil {
 		return Error(err)
 	}
-	if path, err := dialog.PromptForSingleSelection(); err == nil {
-		if path == "" {
-			return Ok(map[string]interface{}{
-				"cancel": true,
-			})
-		}
-		file, err := os.Create(path)
-		if err != nil {
-			return Error(err)
-		}
-		defer file.Close()
-		_, err = file.Write(b)
-		if err != nil {
-			return Error(err)
-		}
-		return Ok(map[string]interface{}{
-			"path": path,
-		})
+	file, err := os.Create(path)
+	if err != nil {
+		return Error(err)
 	}
-	return Ok(map[string]interface{}{})
+	defer file.Close()
+	if _, err = file.Write(b); err != nil {
+		return Error(err)
+	}
+	return Ok(map[string]interface{}{"path": path})
 }
 
 func Test() *Result {

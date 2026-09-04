@@ -2,10 +2,11 @@ package biz
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/ltaoo/velo"
+	"github.com/ltaoo/velo/webview"
 	"golang.design/x/hotkey"
 	"gorm.io/gorm"
 
@@ -25,14 +26,13 @@ type ControllerMap struct {
 }
 
 type BizApp struct {
-	app                        *application.App
+	app                        *velo.Box
 	Name                       string
 	DB                         *gorm.DB
 	Config                     *config.Config
 	Perferences                *UserSettings
 	MachineId                  string
-	Windows                    map[string]*application.WebviewWindow
-	MainWindow                 *application.WebviewWindow
+	MainWindow                 *webview.Webview
 	Hotkey                     *hotkey.Hotkey
 	HotkeyMap                  map[string]*hotkey.Hotkey // 以 快捷键 为 key，hk 实例为值
 	CommandHotKeyMap           map[string]*hotkey.Hotkey // 以 Command 为 key，kh 实例为值
@@ -43,12 +43,11 @@ type BizApp struct {
 	prev_app *system.ForegroundProcess
 }
 
-func New(app *application.App) *BizApp {
+func New(app *velo.Box) *BizApp {
 	// hk := NewHotkey()
 
 	return &BizApp{
 		app:              app,
-		Windows:          make(map[string]*application.WebviewWindow),
 		HotkeyMap:        make(map[string]*hotkey.Hotkey),
 		CommandHotKeyMap: make(map[string]*hotkey.Hotkey),
 	}
@@ -58,7 +57,7 @@ func (a *BizApp) SetName(name string) *BizApp {
 	a.Name = name
 	return a
 }
-func (a *BizApp) SetApp(app *application.App) *BizApp {
+func (a *BizApp) SetApp(app *velo.Box) *BizApp {
 	a.app = app
 	return a
 }
@@ -94,7 +93,7 @@ func (a *BizApp) InitializeControllerMap() *BizApp {
 	}
 	return a
 }
-func (a *BizApp) SetMainWindow(win *application.WebviewWindow) *BizApp {
+func (a *BizApp) SetMainWindow(win *webview.Webview) *BizApp {
 	a.MainWindow = win
 	return a
 }
@@ -123,24 +122,6 @@ func (a *BizApp) HandlePasteFile(files []string, extra *controller.PasteExtraInf
 	return a.ControllerMap.Paste.HandlePasteFile(files, extra)
 }
 
-func (a *BizApp) FindWindow(url string) *application.WebviewWindow {
-	existing_win := a.Windows[url]
-	if existing_win != nil {
-		existing_win.Show()
-		existing_win.Focus()
-		return existing_win
-	}
-	return nil
-}
-
-func (a *BizApp) AppendWindow(url string, win *application.WebviewWindow) {
-	a.Windows[url] = win
-	win.OnWindowEvent(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		delete(a.Windows, url)
-	})
-	win.Focus()
-}
-
 func (a *BizApp) ToggleMainWindowVisible() {
 	fmt.Println("[]ToggleMainWindowVisible", a.MainWindow.IsVisible())
 	if a.MainWindow.IsFocused() {
@@ -163,34 +144,21 @@ func (a *BizApp) ToggleMainWindowVisible() {
 }
 
 func (a *BizApp) ShowErrorWindow(search string) {
-	url := "/error"
-	existing_win := a.Windows[url]
-	if existing_win != nil {
-		existing_win.SetURL(url + search)
-		existing_win.Show()
-		existing_win.Focus()
-		return
-	}
-	win := a.app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:               "Error - Devboard",
-		MaximiseButtonState: application.ButtonDisabled,
-		MinimiseButtonState: application.ButtonDisabled,
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-		},
-		Width:              428,
-		Height:             260,
-		DisableResize:      true,
-		ZoomControlEnabled: false,
-		BackgroundColour:   application.NewRGB(27, 38, 54),
-		URL:                url + search,
+	window_key := "/error"
+	a.app.OpenWindow(&velo.VeloWebviewOpt{
+		Name:                   window_key,
+		Title:                  "Error - Devboard",
+		Width:                  428,
+		Height:                 260,
+		DisableResize:          true,
+		DisableMinimize:        true,
+		DisableMaximize:        true,
+		DisableZoom:            true,
+		BackgroundColor:        velo.NewRGB(27, 38, 54),
+		MacBackdropTranslucent: true,
+		MacTitleBarHeight:      50,
+		Pathname:               window_key + search,
 	})
-	a.Windows[url] = win
-	win.OnWindowEvent(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		delete(a.Windows, url)
-	})
-	win.Show()
 }
 
 type OpenWindowBody struct {
@@ -205,10 +173,6 @@ func (s *BizApp) OpenWindow(body OpenWindowBody) (int, error) {
 	if body.HTML == "" && body.URL == "" {
 		return 0, fmt.Errorf("缺少 html 或 url 参数")
 	}
-	existing_win := s.FindWindow(body.URL)
-	if existing_win != nil {
-		return 1, nil
-	}
 	if body.Title == "" {
 		body.Title = "新窗口"
 	}
@@ -216,28 +180,39 @@ func (s *BizApp) OpenWindow(body OpenWindowBody) (int, error) {
 		body.Width = 420
 	}
 	if body.Height == 0 {
-		body.Width = 720
+		body.Height = 720
 	}
-	win := s.app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: body.Title,
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-		},
-		Width:            body.Width,
-		Height:           body.Height,
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              body.URL,
-		HTML:             body.HTML,
-	})
-	s.AppendWindow(body.URL, win)
+	window_url := body.URL
+	is_html := window_url == ""
+	if is_html {
+		window_url = "data:text/html;charset=utf-8," + url.QueryEscape(body.HTML)
+	}
+	window_key := body.URL
+	if window_key == "" {
+		window_key = window_url
+	}
+	window_options := &velo.VeloWebviewOpt{
+		Name:                   window_key,
+		Title:                  body.Title,
+		Width:                  body.Width,
+		Height:                 body.Height,
+		BackgroundColor:        velo.NewRGB(27, 38, 54),
+		MacBackdropTranslucent: true,
+		MacTitleBarHeight:      50,
+	}
+	if is_html {
+		window_options.URL = window_url
+	} else {
+		window_options.Pathname = window_url
+	}
+	s.app.OpenWindow(window_options)
 	return 1, nil
 }
 
 func (s *BizApp) OpenSettingsWindow() (int, error) {
 	return s.OpenWindow(OpenWindowBody{
 		Title: "Settings",
-		URL:   "/settings_system",
+		URL:   "/settings",
 	})
 }
 
@@ -247,27 +222,13 @@ type ErrorBody struct {
 }
 
 func (s *BizApp) ShowError(body ErrorBody) error {
-	s.app.Event.Emit("m:show-error", body)
+	search := "?title=" + url.QueryEscape(body.Title) + "&desc=" + url.QueryEscape(body.Content)
+	s.ShowErrorWindow(search)
 	return nil
 }
 
 func (s *BizApp) Quit() {
 	s.app.Quit()
-}
-
-func (a *BizApp) RegisterServices() {
-	// service_common := service.NewCommonService(a.App, a)
-	// service_paste := service.NewPasteService(a.App, a)
-	// a.App.RegisterService(application.NewService(service_common))
-	// a.App.RegisterService(application.NewService(service_paste))
-	// a.App.RegisterService(application.NewService(&service.SystemService{Biz: a}))
-	// a.App.RegisterService(application.NewService(&service.SyncService{App: a.App, Biz: a}))
-	// a.App.RegisterService(application.NewService(&service.DouyinService{App: a.App, Biz: a}))
-	// a.App.RegisterService(application.NewService(&service.ConfigService{App: a.App, Biz: a}))
-	// a.App.RegisterService(application.NewService(&service.CategoryService{App: a.App, Biz: a}))
-	// a.App.RegisterService(application.NewService(&service.RemarkService{App: a.App, Biz: a}))
-	// a.App.RegisterService(application.NewServiceWithOptions(&service.FileService{App: a.App}, application.ServiceOptions{Route: "/file"}))
-
 }
 
 func (a *BizApp) DisableShortcut() {

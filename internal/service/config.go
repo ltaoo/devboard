@@ -2,12 +2,9 @@ package service
 
 import (
 	"devboard/internal/biz"
-
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type ConfigService struct {
-	App *application.App
 	Biz *biz.BizApp
 }
 

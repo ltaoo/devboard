@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Devboard Sync Smoke</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="topbar">
+        <div>
+          <div class="title">Devboard Sync Smoke</div>
+          <div class="subtitle" id="deviceSubtitle">Loading</div>
+        </div>
+        <div class="topbar-actions">
+          <button id="refreshBtn" class="icon-btn" title="刷新">↻</button>
+          <button id="syncBtn" class="primary-btn">Sync</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="left-pane">
+          <div class="section-title">Remote</div>
+          <div class="form-grid">
+            <label>
+              <span>Backend</span>
+              <select id="remoteKind">
+                <option value="webdav">WebDAV</option>
+                <option value="git">Git</option>
+              </select>
+            </label>
+            <label>
+              <span>Root Dir</span>
+              <input id="rootDir" placeholder="/devboard-smoke-test" />
+            </label>
+            <label class="webdav-field span-2">
+              <span>WebDAV URL</span>
+              <input id="webdavUrl" placeholder="https://example.com/dav" />
+            </label>
+            <label class="webdav-field">
+              <span>Username</span>
+              <input id="webdavUser" autocomplete="off" />
+            </label>
+            <label class="webdav-field">
+              <span>Password</span>
+              <input id="webdavPass" type="password" autocomplete="off" />
+            </label>
+            <label class="git-field span-2">
+              <span>Git Worktree</span>
+              <input id="gitRepo" placeholder="/tmp/devboard-sync/repo-a" />
+            </label>
+            <label class="git-field check-row span-2">
+              <input id="gitPush" type="checkbox" />
+              <span>Push after commit when remote exists</span>
+            </label>
+          </div>
+          <div class="button-row">
+            <button id="saveConfigBtn">Save Config</button>
+            <button id="manifestBtn">Load Manifest</button>
+          </div>
+
+          <div class="section-title records-title">Records</div>
+          <div class="composer">
+            <textarea id="createText" rows="3" placeholder="New local record text"></textarea>
+            <button id="createBtn" class="primary-btn">Create</button>
+          </div>
+          <div id="recordList" class="record-list"></div>
+        </section>
+
+        <section class="center-pane">
+          <div class="metrics">
+            <div class="metric">
+              <span>Checkpoint</span>
+              <strong id="metricCheckpoint">0</strong>
+            </div>
+            <div class="metric">
+              <span>Records</span>
+              <strong id="metricRecords">0</strong>
+            </div>
+            <div class="metric">
+              <span>Draft</span>
+              <strong id="metricDraft">0</strong>
+            </div>
+            <div class="metric">
+              <span>Deleted</span>
+              <strong id="metricDeleted">0</strong>
+            </div>
+          </div>
+
+          <div class="editor">
+            <div class="section-title">Selected Record</div>
+            <div id="selectedMeta" class="selected-meta">No record selected</div>
+            <textarea id="editText" rows="8" placeholder="Select a record to edit"></textarea>
+            <div class="button-row">
+              <button id="updateBtn">Update</button>
+              <button id="deleteBtn" class="danger-btn">Delete</button>
+              <button id="clearSelectionBtn">Clear</button>
+            </div>
+          </div>
+
+          <div class="sync-panel">
+            <div class="section-title">Sync Actions</div>
+            <div class="button-grid">
+              <button id="pullBtn">Pull</button>
+              <button id="pushBtn">Push</button>
+              <button id="fullSyncBtn" class="primary-btn">Pull + Push</button>
+            </div>
+            <div id="statusLine" class="status-line">Ready</div>
+          </div>
+        </section>
+
+        <section class="right-pane">
+          <div class="section-title">Remote Manifest</div>
+          <pre id="manifestView" class="code-view">(not loaded)</pre>
+          <div class="section-title log-title">Activity</div>
+          <div id="logView" class="log-view"></div>
+        </section>
+      </main>
+    </div>
+    <script src="./app.js"></script>
+  </body>
+</html>

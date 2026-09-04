@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36" role="img" aria-labelledby="title desc">
+  <title id="title">Devboard tray icon</title>
+  <desc id="desc">A monochrome stacked clipboard with two history rows for system tray template rendering.</desc>
+  <path d="M20 5h6a5 5 0 0 1 5 5v17"
+        fill="none" stroke="#000000" stroke-width="3.5"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="4" y="8" width="23" height="24" rx="5"
+        fill="none" stroke="#000000" stroke-width="4"/>
+  <rect x="10" y="3" width="11" height="9" rx="4" fill="#000000"/>
+  <g fill="#000000">
+    <circle cx="10" cy="18" r="1.75"/>
+    <circle cx="10" cy="25" r="1.75"/>
+  </g>
+  <g fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round">
+    <path d="M15 18h6.5"/>
+    <path d="M15 25h5"/>
+  </g>
+</svg>

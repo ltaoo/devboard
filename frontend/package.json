@@ -1,41 +1,20 @@
 {
-  "name": "@devboard/hoardle_webui",
+  "name": "@devboard/webui",
   "private": true,
-  "version": "250707151622",
+  "version": "260903",
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:dev": "tsc && vite build --minify false --mode development",
-    "build": "tsc && vite build --mode production",
-    "preview": "vite preview"
+    "build:dev": "vite build --minify false --mode development",
+    "build": "vite build --mode production",
+    "preview": "vite preview",
+    "test": "node --test app/model.test.js"
   },
   "devDependencies": {
-    "@types/file-saver": "^2.0.7",
-    "@types/lodash": "^4.14.195",
-    "@types/node": "^18.15.11",
-    "@types/qs": "^6.9.7",
-    "@types/url-parse": "^1.4.8",
     "autoprefixer": "^10.4.14",
-    "husky": "^8.0.3",
-    "postcss": "^8.4.21",
+    "postcss": "^8.4.39",
     "tailwindcss": "^3.3.1",
-    "typescript": "^4.9.5",
-    "vite": "^4.5.3",
-    "vite-plugin-solid": "^2.7.0",
-    "vitest": "^0.30.1"
-  },
-  "dependencies": {
-    "@wailsio/runtime": "latest",
-    "axios": "^1.7.1",
-    "class-variance-authority": "^0.5.2",
-    "dayjs": "^1.11.7",
-    "highlight.js": "^11.11.1",
-    "hls.js": "^1.6.12",
-    "lucide-solid": "^0.552.0",
-    "mitt": "^3.0.0",
-    "path-to-regexp": "^6.2.1",
-    "qs": "^6.11.1",
-    "solid-js": "^1.7.3",
     "tailwindcss-animate": "^1.0.5",
-    "url-parse": "^1.5.10"
+    "vite": "^4.5.3"
   }
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -9,7 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/ltaoo/velo"
+	velo_file "github.com/ltaoo/velo/file"
 
 	"devboard/internal/biz"
 	"devboard/internal/controller"
@@ -17,11 +19,11 @@ import (
 )
 
 type PasteService struct {
-	App *application.App
+	App *velo.Box
 	Biz *biz.BizApp
 }
 
-func NewPasteService(app *application.App, biz *biz.BizApp) *PasteService {
+func NewPasteService(app *velo.Box, biz *biz.BizApp) *PasteService {
 	return &PasteService{
 		App: app,
 		Biz: biz,
@@ -72,26 +74,16 @@ func (s *PasteService) PreviewPasteEvent(body PasteEventPreviewBody) *Result {
 	}
 	unique_url := "/preview"
 	url := unique_url + "?id=" + url.QueryEscape(body.EventId)
-	existing_win := s.Biz.FindWindow(unique_url)
-	if existing_win != nil {
-		existing_win.SetURL(url)
-		return Ok(map[string]interface{}{
-			"ok": true,
-		})
-	}
-	win := s.App.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "预览",
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			// TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		Width:            980,
-		Height:           680,
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              url,
+	s.App.OpenWindow(&velo.VeloWebviewOpt{
+		Name:                   unique_url,
+		Title:                  "预览",
+		Width:                  980,
+		Height:                 680,
+		BackgroundColor:        velo.NewRGB(27, 38, 54),
+		MacBackdropTranslucent: true,
+		MacTitleBarHeight:      50,
+		Pathname:               url,
 	})
-	s.Biz.AppendWindow(unique_url, win)
 	return Ok(map[string]interface{}{})
 }
 
@@ -124,9 +116,6 @@ func (s *PasteService) DownloadContentWithPasteEventId(body controller.PasteProf
 	if existing_paste_event.ContentType == "file" {
 		return Error(fmt.Errorf("can't download the file."))
 	}
-	dialog := application.SaveFileDialog()
-	dialog.CanCreateDirectories(true)
-
 	filename := existing_paste_event.Id + ".txt"
 	var content []byte
 	if existing_paste_event.ContentType == "text" {
@@ -147,23 +136,12 @@ func (s *PasteService) DownloadContentWithPasteEventId(body controller.PasteProf
 			content = []byte(existing_paste_event.Text)
 		}
 	}
-	dialog.SetFilename(filename)
-	// dialog.SetTitle("Save Document")
-	// dialog.SetDefaultFilename("document.txt")
-	// dialog.SetFilters([]*application.FileFilter{
-	// 	{
-	// 		DisplayName: "Text Files (*.txt)",
-	// 		Pattern:     "*.txt",
-	// 	},
-	// })
-	path, err := dialog.PromptForSingleSelection()
+	path, err := velo_file.ShowSaveDialog(velo_file.SaveDialogOptions{DefaultFilename: filename})
 	if err != nil {
+		if errors.Is(err, velo_file.ErrCancelled) {
+			return Ok(map[string]interface{}{"cancel": true})
+		}
 		return Error(err)
-	}
-	if path == "" {
-		return Ok(map[string]interface{}{
-			"cancel": true,
-		})
 	}
 	file, err := os.Create(path)
 	if err != nil {
@@ -229,6 +207,6 @@ func (s *PasteService) MockPasteText(body MockPasteTextBody) *Result {
 			CreatedAt:         now_timestamp,
 		},
 	}
-	s.App.Event.Emit("clipboard:update", created_paste_event)
+	s.App.SendMessage(map[string]interface{}{"name": "clipboard:update", "data": created_paste_event})
 	return Ok(created_paste_event)
 }

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/net/html"
 
 	"devboard/internal/biz"
@@ -20,12 +19,11 @@ import (
 )
 
 type CommonService struct {
-	App *application.App
 	Biz *biz.BizApp
 }
 
-func NewCommonService(app *application.App, biz *biz.BizApp) *CommonService {
-	return &CommonService{App: app, Biz: biz}
+func NewCommonService(biz *biz.BizApp) *CommonService {
+	return &CommonService{Biz: biz}
 }
 
 func (s *CommonService) OpenWindow(body biz.OpenWindowBody) *Result {
@@ -41,6 +39,11 @@ func (s *CommonService) OpenWindow(body biz.OpenWindowBody) *Result {
 func (s *CommonService) ShowError(body biz.ErrorBody) *Result {
 	s.Biz.ShowError(body)
 	return Ok(map[string]interface{}{})
+}
+
+func (s *CommonService) Quit() *Result {
+	s.Biz.Quit()
+	return Ok(nil)
 }
 
 type ShortcutRegisterBody struct {

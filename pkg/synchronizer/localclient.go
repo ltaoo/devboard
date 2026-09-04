@@ -18,6 +18,7 @@ type LocalClient interface {
 	FetchRecordCountBetweenSpecialDayOfTable(day_str string) (int64, error)
 	FetchRecordOrderByTimeAndBetweenStartAndEndOfTable(day string) ([]map[string]interface{}, error)
 	FetchRecordById(id string) ([]map[string]interface{}, error)
+	FetchAllRecords() ([]map[string]interface{}, error)
 	SetRecords(v []map[string]interface{})
 }
 
@@ -86,6 +87,13 @@ func (c *DatabaseLocalClient) FetchRecordById(id string) ([]map[string]interface
 		return nil, err
 	}
 	return local_records, nil
+}
+func (c *DatabaseLocalClient) FetchAllRecords() ([]map[string]interface{}, error) {
+	var records []map[string]interface{}
+	if err := c.DB.Table(c.TableName).Unscoped().Find(&records).Error; err != nil {
+		return nil, err
+	}
+	return records, nil
 }
 func (c *DatabaseLocalClient) SetRecords(v []map[string]interface{}) {
 }
@@ -209,6 +217,11 @@ func (c *MockLocalClient) FetchRecordById(id string) ([]map[string]interface{}, 
 	if len(result) == 0 {
 		return result, nil
 	}
+	return result, nil
+}
+func (c *MockLocalClient) FetchAllRecords() ([]map[string]interface{}, error) {
+	result := make([]map[string]interface{}, len(c.records))
+	copy(result, c.records)
 	return result, nil
 }
 

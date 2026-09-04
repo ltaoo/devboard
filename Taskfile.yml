@@ -9,7 +9,6 @@ includes:
 vars:
   APP_NAME: "Devboard"
   BIN_DIR: "bin"
-  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
 
 tasks:
   build:
@@ -24,11 +23,11 @@ tasks:
 
   run:
     summary: Runs the application
+    deps: [build]
     cmds:
       - task: "{{OS}}:run"
 
   dev:
-    summary: Runs the application in development mode
+    summary: Builds and runs the application locally
     cmds:
-      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
-
+      - task: run

@@ -16,12 +16,14 @@ var local_records = []map[string]interface{}{
 		// 2025-10-13 12:01
 		"last_operation_time": "1760328060000",
 		"created_at":          "1760328060000",
+		"sync_status":         int64(1),
 	},
 	{
 		"id": "d",
 		// 2025-10-12 12:11
 		"last_operation_time": "1760242200000",
 		"created_at":          "1760242200000",
+		"sync_status":         int64(1),
 	},
 	{
 
@@ -29,18 +31,21 @@ var local_records = []map[string]interface{}{
 		// 2025-10-12 12:10
 		"last_operation_time": "1760242200000",
 		"created_at":          "1760242200000",
+		"sync_status":         int64(1),
 	},
 	{
 		"id":                  "b",
 		"last_operation_time": "1760241600000",
 		// 2025-10-12 12:01
-		"created_at": "1760241600000",
+		"created_at":  "1760241600000",
+		"sync_status": int64(1),
 	},
 	{
 		"id":                  "a",
 		"last_operation_time": "1760241600000",
 		// 2025-10-12 12:00
-		"created_at": "1760241600000",
+		"created_at":  "1760241600000",
+		"sync_status": int64(1),
 	},
 }
 
@@ -69,8 +74,8 @@ func TestBuildLocalToRemoteTasks(t *testing.T) {
 	for _, log := range result.Logs {
 		fmt.Println(log)
 	}
-	if len(result.FileTasks) != 9 {
-		t.Errorf("最终文件任务数不匹配:\n得到: %v\n期望: %v", len(result.FileTasks), 9)
+	if len(result.FileTasks) != 8 {
+		t.Errorf("最终文件任务数不匹配:\n得到: %v\n期望: %v", len(result.FileTasks), 8)
 	}
 	// for _, op := range result.FileTasks {
 	// 	fmt.Println(op.Type)
@@ -83,7 +88,6 @@ func TestBuildLocalToRemoteTasks(t *testing.T) {
 		fmt.Println(op)
 	}
 
-	t.Errorf("end?")
 	// first := result.FileOperations[0]
 	// if first.Type != "update_file" {
 

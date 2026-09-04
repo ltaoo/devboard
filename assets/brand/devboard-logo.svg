@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Devboard logo</title>
+  <desc id="desc">Two softly colored stacked clipboard cards representing clipboard history.</desc>
+  <defs>
+    <linearGradient id="logo-tile-gradient" x1="128" y1="96" x2="928" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#918AF7"/>
+      <stop offset="1" stop-color="#6675E8"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(72.5333333333 72.5333333333) scale(.8583333333)">
+    <rect x="32" y="32" width="960" height="960" rx="240" fill="url(#logo-tile-gradient)"/>
+    <rect x="352" y="200" width="488" height="640" rx="128" fill="#FFAA7D"/>
+    <rect x="184" y="256" width="560" height="624" rx="144" fill="#FCFDFF"/>
+    <rect x="336" y="192" width="256" height="152" rx="76" fill="#525CC8"/>
+    <g fill="none" stroke-linecap="round">
+      <circle cx="328" cy="488" r="36" fill="#7078E4"/>
+      <path d="M432 488h184" stroke="#B3B9E8" stroke-width="48"/>
+      <circle cx="328" cy="624" r="36" fill="#FF956D"/>
+      <path d="M432 624h144" stroke="#B3B9E8" stroke-width="48"/>
+      <circle cx="328" cy="760" r="36" fill="#7078E4"/>
+      <path d="M432 760h184" stroke="#B3B9E8" stroke-width="48"/>
+    </g>
+  </g>
+</svg>

@@ -1,20 +1,16 @@
 package service
 
 import (
-	"github.com/wailsapp/wails/v3/pkg/application"
-
 	"devboard/internal/biz"
 	"devboard/internal/controller"
 )
 
 type RemarkService struct {
-	App *application.App
 	Biz *biz.BizApp
 }
 
-func NewRemarkService(app *application.App, biz *biz.BizApp) *RemarkService {
+func NewRemarkService(biz *biz.BizApp) *RemarkService {
 	return &RemarkService{
-		App: app,
 		Biz: biz,
 	}
 }

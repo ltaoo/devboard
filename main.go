@@ -4,22 +4,18 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"io/fs"
-	"net/http"
-	"net/url"
-	"runtime"
 	"time"
 
 	"github.com/denisbrodbeck/machineid"
-	"github.com/gin-gonic/gin"
 	"github.com/ltaoo/clipboard-go"
-	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
-	"github.com/wailsapp/wails/v3/pkg/icons"
+	"github.com/ltaoo/velo"
+	velo_error "github.com/ltaoo/velo/error"
+	"github.com/ltaoo/velo/tray"
+	"github.com/ltaoo/velo/webview"
 
 	"devboard/config"
 	"devboard/db"
-	_biz "devboard/internal/biz"
+	"devboard/internal/biz"
 	"devboard/internal/controller"
 	"devboard/internal/routes"
 	"devboard/internal/service"
@@ -29,369 +25,208 @@ import (
 	"devboard/pkg/system"
 )
 
-// Wails uses Go's `embed` package to embed the frontend files into the binary.
-// Any files in the frontend/dist folder will be embedded into the binary and
-// made available to the frontend.
-// See https://pkg.go.dev/embed for more information.
-
 //go:embed all:frontend/dist
 var assets embed.FS
 
 //go:embed all:migrations
 var migrations embed.FS
 
-func NotFoundMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rw := &ResponseRecorder{ResponseWriter: w}
-		next.ServeHTTP(rw, r)
-		if rw.status == http.StatusNotFound {
-			data, err := fs.ReadFile(assets, "frontend/dist/index.html")
-			if err != nil {
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			w.WriteHeader(http.StatusOK)
-			w.Write(data)
-		}
+//go:embed build/appicon.png
+var app_icon []byte
+
+//go:embed assets/brand/devboard-tray.png
+var tray_icon []byte
+
+func main() {
+	quit_on_last_window_closed := false
+	app := velo.NewApp(&velo.VeloAppOpt{
+		Mode:                   velo.ModeBridge,
+		AppName:                "DevTool Board",
+		Title:                  "Devboard",
+		IconData:               app_icon,
+		QuitOnLastWindowClosed: &quit_on_last_window_closed,
+		HideDockIcon:           true,
+	})
+
+	machine_id, err := machineid.ID()
+	if err != nil {
+		show_startup_error(fmt.Errorf("failed to generate machine id: %w", err))
+		return
+	}
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		show_startup_error(fmt.Errorf("failed to load config: %w", err))
+		return
+	}
+	app_logger := logger.NewLogger(cfg.LogLevel)
+	defer app_logger.Sync()
+	database, err := db.NewDatabase(cfg)
+	if err != nil {
+		show_startup_error(fmt.Errorf("failed to connect to database: %w", err))
+		return
+	}
+	migrator := db.NewMigrator(cfg, app_logger, &migrations)
+	if err := migrator.MigrateUp(); err != nil {
+		show_startup_error(fmt.Errorf("failed to run migrations: %w", err))
+		return
+	}
+	db.Seed(database, machine_id)
+
+	biz_app := biz.New(app).
+		SetName(cfg.ProductName).
+		SetDatabase(database).
+		SetConfig(cfg).
+		SetMachineId(machine_id).
+		InitializeControllerMap().
+		InitializeUserConfig(cfg)
+	service.RegisterRoutes(app, biz_app)
+
+	main_window := app.NewWebview(&velo.VeloWebviewOpt{
+		Name:                   "main",
+		Title:                  "Devboard",
+		Width:                  450,
+		Height:                 680,
+		DisableResize:          true,
+		DisableMinimize:        true,
+		DisableMaximize:        true,
+		ReloadContextMenu:      true,
+		BackgroundColor:        velo.NewRGB(27, 38, 54),
+		MacBackdropTranslucent: true,
+		MacTitleBarHeight:      50,
+		HiddenOnTaskbar:        true,
+		Pathname:               "/home/index",
+		FrontendFS:             assets,
+		EntryPage:              "dist/index.html",
+		HideOnClose:            true,
+		OnReopen: func() {
+			biz_app.MainWindow.Show()
+			biz_app.MainWindow.Focus()
+		},
+	})
+	biz_app.SetMainWindow(main_window).SetReady()
+
+	setup_tray(app, biz_app, main_window)
+	start_background_services(app, biz_app, cfg, machine_id, app_logger)
+	app.Run()
+}
+
+func show_startup_error(err error) {
+	fmt.Println(err)
+	velo_error.ShowErrorDialog(err.Error())
+}
+
+func setup_tray(app *velo.Box, biz_app *biz.BizApp, main_window *webview.Webview) {
+	tray.Setup(&tray.Tray{
+		Icon:       tray_icon,
+		IsTemplate: true,
+		Tooltip:    "Devboard",
+		Menu: &tray.Menu{Items: []*tray.MenuItem{
+			{Label: "Show Devboard", Click: func(_ *tray.MenuItem) {
+				main_window.Show()
+				main_window.Focus()
+			}},
+			{Label: "Settings", Shortcut: "CmdOrCtrl+,", Click: func(_ *tray.MenuItem) {
+				_, _ = biz_app.OpenSettingsWindow()
+			}},
+			{IsSeparator: true},
+			{Label: "Quit", Shortcut: "CmdOrCtrl+Q", Click: func(_ *tray.MenuItem) {
+				tray.Quit()
+				app.Quit()
+			}},
+		}},
 	})
 }
-func GinMiddleware(engine *gin.Engine) application.Middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Let Wails handle the `/wails` route
-			if r.URL.Path == "/wails" {
-				next.ServeHTTP(w, r)
-				return
-			}
-			// Let Gin handle everything else
-			engine.ServeHTTP(w, r)
-		})
+
+func start_background_services(app *velo.Box, biz_app *biz.BizApp, cfg *config.Config, machine_id string, app_logger *logger.Logger) {
+	go func() {
+		router := routes.SetupRouter(biz_app.DB, app_logger, cfg, machine_id)
+		if err := router.Run(cfg.ServerAddress); err != nil {
+			fmt.Printf("failed to start server: %v\n", err)
+		}
+	}()
+	go watch_clipboard(app, biz_app, machine_id)
+	go register_saved_shortcut(biz_app)
+	go sync_autostart(biz_app)
+}
+
+func watch_clipboard(app *velo.Box, biz_app *biz.BizApp, machine_id string) {
+	updates := clipboard.Watch(context.Background())
+	for data := range updates {
+		if time.Since(biz_app.ManuallyWriteClipboardTime) < 3*time.Second {
+			continue
+		}
+		foreground_process, err := system.GetForegroundProcess()
+		if err != nil || foreground_process == nil {
+			continue
+		}
+		extra := &controller.PasteExtraInfo{
+			AppName:     foreground_process.Name,
+			AppFullPath: foreground_process.ExecuteFullPath,
+			WindowTitle: foreground_process.WindowTitle,
+			MachineId:   machine_id,
+		}
+		created := create_paste_event(biz_app, data, extra)
+		if created != nil {
+			app.SendMessage(map[string]interface{}{"name": "clipboard:update", "data": created})
+		}
 	}
 }
 
-type ResponseRecorder struct {
-	http.ResponseWriter
-	status int
+func create_paste_event(biz_app *biz.BizApp, data clipboard.ClipboardContent, extra *controller.PasteExtraInfo) *models.PasteEvent {
+	switch data.Type {
+	case "public.utf8-plain-text":
+		text, ok := data.Data.(string)
+		if !ok || text == "" {
+			return nil
+		}
+		created, _ := biz_app.HandlePasteText(text, extra)
+		return created
+	case "public.html":
+		html, ok := data.Data.(string)
+		if !ok {
+			return nil
+		}
+		extra.PlainText, _ = clipboard.ReadText()
+		created, _ := biz_app.HandlePasteHTML(html, extra)
+		return created
+	case "public.png":
+		image, ok := data.Data.([]byte)
+		if !ok {
+			return nil
+		}
+		created, _ := biz_app.HandlePastePNG(image, extra)
+		return created
+	case "public.file-url":
+		files, ok := data.Data.([]string)
+		if !ok {
+			return nil
+		}
+		created, _ := biz_app.HandlePasteFile(files, extra)
+		return created
+	default:
+		return nil
+	}
 }
 
-func (r *ResponseRecorder) WriteHeader(status int) {
-	r.status = status
-	r.ResponseWriter.WriteHeader(status)
+func register_saved_shortcut(biz_app *biz.BizApp) {
+	shortcut := biz_app.Perferences.Value.Shortcut.ToggleMainWindowVisible
+	if shortcut != "" {
+		if err := biz_app.RegisterShortcutWithCommand(shortcut, "ToggleMainWindowVisible"); err != nil {
+			fmt.Printf("register shortcut failed: %v\n", err)
+		}
+	}
 }
 
-// main function serves as the application's entry point. It initializes the application, creates a window,
-// and starts a goroutine that emits a time-based event every second. It subsequently runs the application and
-// logs any error that might occur.
-func main() {
-	// Create a new Wails application by providing the necessary options.
-	// Variables 'Name' and 'Description' are for application metadata.
-	// 'Assets' configures the asset server with the 'FS' variable pointing to the frontend files.
-	// 'Bind' is a list of Go struct instances. The frontend has access to the methods of these instances.
-	// 'Mac' options tailor the application when running an macOS.
-	// log := slog.New(slog.NewTextHandler(&bytes.Buffer{}, nil))
-	app := application.New(application.Options{
-		Name:        "DevTool Board",
-		Description: "A tools base on clipboard for developer",
-		Services:    []application.Service{},
-		Assets: application.AssetOptions{
-			Handler:        application.AssetFileServerFS(assets),
-			Middleware:     NotFoundMiddleware,
-			DisableLogging: true,
-		},
-		Windows: application.WindowsOptions{
-			DisableQuitOnLastWindowClosed: true,
-		},
-		Mac: application.MacOptions{
-			// ApplicationShouldTerminateAfterLastWindowClosed: true,
-			ActivationPolicy: application.ActivationPolicyAccessory,
-		},
-		// Logger: log,
-	})
-	biz := _biz.New(app)
-
-	fmt.Println("[LOG][Before Ready]database is ready")
-	app.RegisterService(application.NewService(service.NewPasteService(app, biz)))
-	app.RegisterService(application.NewService(service.NewCategoryService(app, biz)))
-	app.RegisterService(application.NewService(service.NewRemarkService(app, biz)))
-	app.RegisterService(application.NewService(service.NewSynchronizeService(app, biz)))
-	app.RegisterService(application.NewService(service.NewSystemService(app, biz)))
-	app.RegisterService(application.NewService(service.NewCommonService(app, biz)))
-	app.RegisterService(application.NewService(&service.DouyinService{App: app, Biz: biz}))
-	app.RegisterService(application.NewService(&service.ConfigService{App: app, Biz: biz}))
-	app.RegisterService(application.NewServiceWithOptions(&service.FileService{App: app}, application.ServiceOptions{Route: "/file"}))
-	fmt.Println("[LOG][Before Ready]service register is completed")
-
-	go func() {
-		machine_id, err := machineid.ID()
-		if err != nil {
-			t := fmt.Sprintf("Failed to generate machine id, %v", err)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-			return
+func sync_autostart(biz_app *biz.BizApp) {
+	auto_start := biz_app.Perferences.Value.AutoStart
+	service := autostart.New(biz_app.Name)
+	if auto_start && !service.IsEnabled() {
+		if err := service.Enable(); err != nil {
+			fmt.Printf("failed to enable autostart: %v\n", err)
 		}
-		cfg, err := config.LoadConfig()
-		if err != nil {
-			t := fmt.Sprintf("Failed to load config: %v", err)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-			return
+	} else if !auto_start && service.IsEnabled() {
+		if err := service.Disable(); err != nil {
+			fmt.Printf("failed to disable autostart: %v\n", err)
 		}
-		logger := logger.NewLogger(cfg.LogLevel)
-		defer logger.Sync()
-		database, err := db.NewDatabase(cfg)
-		if err != nil {
-			t := fmt.Sprintf("Failed to connect to database, %v", err)
-			fmt.Println(t)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-			return
-		}
-		migrator := db.NewMigrator(cfg, logger, &migrations)
-		if err := migrator.MigrateUp(); err != nil {
-			t := fmt.Sprintf("Failed to run migrations, %v", err)
-			biz.ShowErrorWindow("?" + url.QueryEscape("title=InitializeFailed&desc="+t))
-			return
-		}
-		db.Seed(database, machine_id)
-
-		// Create a new window with the necessary options.
-		// 'Title' is the title of the window.
-		// 'Mac' options tailor the window when running on macOS.
-		// 'BackgroundColour' is the background colour of the window.
-		// 'URL' is the URL that will be loaded into the webview.
-		win := app.Window.NewWithOptions(application.WebviewWindowOptions{
-			Title:               "Devboard",
-			MaximiseButtonState: application.ButtonDisabled,
-			MinimiseButtonState: application.ButtonDisabled,
-			// AlwaysOnTop:         true,
-			// Hidden:        true,
-			DisableResize: true,
-			Mac: application.MacWindow{
-				InvisibleTitleBarHeight: 50,
-				Backdrop:                application.MacBackdropTranslucent,
-				// WindowLevel:             application.MacWindowLevelModalPanel,
-				// TitleBar:                application.MacTitleBarHiddenInset,
-			},
-			Windows: application.WindowsWindow{
-				HiddenOnTaskbar: true,
-			},
-			KeyBindings: map[string]func(window application.Window){
-				"CmdOrCtrl+,": func(window application.Window) {
-					biz.OpenSettingsWindow()
-				},
-				"CmdOrCtrl+Q": func(window application.Window) {
-					biz.Quit()
-				},
-				// "Escape": func(window application.Window) {
-				// 	window.Close()
-				// },
-			},
-			Width:            450,
-			Height:           680,
-			BackgroundColour: application.NewRGB(27, 38, 54),
-			URL:              "/home/index",
-		})
-
-		app.KeyBinding.Add("CmdOrCtrl+,", func(win application.Window) {
-			biz.OpenSettingsWindow()
-		})
-		app.KeyBinding.Add("CmdOrCtrl+Q", func(win application.Window) {
-			biz.Quit()
-		})
-		// app.KeyBinding.Add("Escape", func(win application.Window) {
-		// 	fmt.Println("escape")
-		// 	win.Close()
-		// })
-		system_tray := app.SystemTray.New()
-		system_tray.OnClick(func() {
-			system_tray.OpenMenu()
-		})
-		// system_tray.OnMouseLeave(func() {
-		// 	register_shortcut(win, hk)
-		// })
-		if runtime.GOOS == "darwin" {
-			system_tray.SetTemplateIcon(icons.SystrayMacTemplate)
-		}
-		// Register a hook to hide the window when the window is closing
-		menu := app.NewMenu()
-		m_main := menu.Add("Show Devboard")
-		// if runtime.GOOS == "darwin" {
-		// 	m_main.SetAccelerator("CmdOrCtrl+Shift+M")
-		// }
-		// if runtime.GOOS == "windows" {
-		// 	m_main.SetAccelerator("CmdOrCtrl+Backquote")
-		// }
-		m_main.OnClick(func(ctx *application.Context) {
-			win.Show()
-			win.Focus()
-		})
-		m_setting := menu.Add("Settings")
-		m_setting.SetAccelerator("CmdOrCtrl+,")
-		m_setting.OnClick(func(ctx *application.Context) {
-			biz.OpenSettingsWindow()
-		})
-		m_quit := menu.Add("Quit")
-		m_quit.SetAccelerator("CmdOrCtrl+Q")
-		m_quit.OnClick(func(ctx *application.Context) {
-			biz.Quit()
-		})
-		system_tray.SetMenu(menu)
-
-		// ctx_menu := application.NewContextMenu("main")
-		// ctx_menu.Add("Refresh").OnClick(func(ctx *application.Context) {
-		// 	app.Event.Emit("m:refresh")
-		// })
-		refresh_menu_text := "Refresh"
-		if runtime.GOOS == "darwin" {
-			refresh_menu_text = "Reload"
-		}
-		ctx_menu := app.ContextMenu.New()
-		m_refresh := ctx_menu.Add(refresh_menu_text)
-		m_refresh.SetAccelerator("Cmd+R")
-		m_refresh.OnClick(func(data *application.Context) {
-			app.Event.Emit("m:refresh")
-		})
-		app.ContextMenu.Add("refresh", ctx_menu)
-
-		fmt.Println("[LOG][Before Ready]the system tray and menus is ready")
-		// win.OnWindowEvent(events.Common.WindowFilesDropped, func(e *application.WindowEvent) {
-		// 	fmt.Println(e.Context().DroppedFiles())
-		// })
-
-		// Create a goroutine that emits an event containing the current time every second.
-		// The frontend can listen to this event and update the UI accordingly.
-		// go func() {
-		// 	for {
-		// 		now := time.Now().Format(time.RFC1123)
-		// 		app.Event.Emit("time", now)
-		// 		time.Sleep(time.Second)
-		// 	}
-		// }()
-		go func() {
-			router := routes.SetupRouter(database, logger, cfg, machine_id)
-			if err := router.Run(cfg.ServerAddress); err != nil {
-				logger.Fatal("Failed to start server", err)
-			}
-		}()
-		go func() {
-			ch := clipboard.Watch(context.TODO())
-			for data := range ch {
-				var created_paste_event *models.PasteEvent
-				foreground_process, _ := system.GetForegroundProcess()
-				extra := &controller.PasteExtraInfo{
-					AppName:     foreground_process.Name,
-					AppFullPath: foreground_process.ExecuteFullPath,
-					WindowTitle: foreground_process.WindowTitle,
-					MachineId:   machine_id,
-				}
-				// fmt.Println("[LOG]paste event within ", window_title)
-				// fmt.Println("[LOG]paste event type is ", data.Type)
-				now := time.Now()
-				if now.Sub(biz.ManuallyWriteClipboardTime) < time.Second*3 {
-					continue
-				}
-				if data.Type == "public.utf8-plain-text" {
-					if text, ok := data.Data.(string); ok {
-						if text == "" {
-							return
-						}
-						created, err := biz.HandlePasteText(text, extra)
-						if err != nil {
-							return
-						}
-						created_paste_event = created
-					}
-				}
-				if data.Type == "public.html" {
-					if html, ok := data.Data.(string); ok {
-						text, _ := clipboard.ReadText()
-						extra.PlainText = text
-						created, err := biz.HandlePasteHTML(html, extra)
-						if err != nil {
-							return
-						}
-						created_paste_event = created
-					}
-				}
-				if data.Type == "public.png" {
-					if f, ok := data.Data.([]byte); ok {
-						created, err := biz.HandlePastePNG(f, extra)
-						if err != nil {
-							return
-						}
-						created_paste_event = created
-					}
-				}
-				if data.Type == "public.file-url" {
-					if files, ok := data.Data.([]string); ok {
-						created, err := biz.HandlePasteFile(files, extra)
-						if err != nil {
-							return
-						}
-						created_paste_event = created
-					}
-				}
-				if created_paste_event != nil {
-					app.Event.Emit("clipboard:update", created_paste_event)
-				}
-			}
-		}()
-
-		win.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
-			win.Hide()
-			e.Cancel()
-		})
-		// win.RegisterHook(events.Common.WindowLostFocus, func(e *application.WindowEvent) {
-		// 	win.Close()
-		// })
-		app.Event.On("m:show-error", func(event *application.CustomEvent) {
-			body := event.Data.(_biz.ErrorBody)
-			search := fmt.Sprintf("?title=%v&desc=%v", body.Title, body.Content)
-			biz.ShowErrorWindow(search)
-		})
-		app.Event.On("m:hide-main-window", func(event *application.CustomEvent) {
-			win.Hide()
-		})
-		fmt.Println("----------------")
-		fmt.Println("--- The Application is Ready ---")
-		fmt.Println("----------------")
-		app.Event.Emit("lifecycle:ready")
-
-		biz.
-			SetName(cfg.ProductName).
-			SetDatabase(database).
-			SetConfig(cfg).
-			SetMachineId(machine_id).
-			InitializeControllerMap().
-			InitializeUserConfig(cfg).
-			SetMainWindow(win).
-			SetReady()
-
-		go func() {
-			shortcut1 := biz.Perferences.Value.Shortcut.ToggleMainWindowVisible
-			// fmt.Println("check there's shortcut need to register", shortcut1)
-			if shortcut1 != "" {
-				err := biz.RegisterShortcutWithCommand(shortcut1, "ToggleMainWindowVisible")
-				if err != nil {
-					fmt.Println("register shortcut failed,", err.Error())
-				}
-			}
-		}()
-		go func() {
-			auto_start := biz.Perferences.Value.AutoStart
-			as := autostart.New(biz.Name)
-			if auto_start && !as.IsEnabled() {
-				if err := as.Enable(); err != nil {
-					fmt.Println("Failed to enable autostart:", err)
-				}
-			} else if !auto_start && as.IsEnabled() {
-				if err := as.Disable(); err != nil {
-					fmt.Println("Failed to disable autostart:", err)
-				}
-			}
-		}()
-	}()
-	// Run the application. This blocks until the application has been exited.
-	if err := app.Run(); err != nil {
-		// If an error occurred while running the application, log it and exit.
-		fmt.Println(err.Error())
 	}
 }

@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/shirou/gopsutil/host"
-	"github.com/wailsapp/wails/v3/pkg/application"
 
 	"devboard/internal/biz"
 	"devboard/pkg/autostart"
@@ -13,7 +12,7 @@ type SystemService struct {
 	Biz *biz.BizApp
 }
 
-func NewSystemService(app *application.App, biz *biz.BizApp) *SystemService {
+func NewSystemService(biz *biz.BizApp) *SystemService {
 	return &SystemService{
 		Biz: biz,
 	}

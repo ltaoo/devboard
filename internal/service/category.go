@@ -1,20 +1,16 @@
 package service
 
 import (
-	"github.com/wailsapp/wails/v3/pkg/application"
-
 	"devboard/internal/biz"
 	"devboard/internal/controller"
 )
 
 type CategoryService struct {
-	App *application.App
 	Biz *biz.BizApp
 }
 
-func NewCategoryService(app *application.App, biz *biz.BizApp) *CategoryService {
+func NewCategoryService(biz *biz.BizApp) *CategoryService {
 	return &CategoryService{
-		App: app,
 		Biz: biz,
 	}
 }
